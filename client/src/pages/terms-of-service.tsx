@@ -9,16 +9,24 @@ export default function TermsOfService() {
       <header className="bg-white border-b border-studywise-gray-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center">
-              <Brain className="w-6 h-6 text-primary mr-2" />
-              <span className="text-lg font-semibold text-studywise-gray-900">StudyWise AI</span>
-            </Link>
+            {/* Back Button - Left */}
             <Link href="/">
               <Button variant="outline" size="sm" className="flex items-center gap-2">
                 <ArrowLeft className="w-4 h-4" />
-                Back to Home
+                <span className="hidden sm:inline">Back to Home</span>
               </Button>
             </Link>
+            
+            {/* Logo - Center */}
+            <div className="absolute left-1/2 transform -translate-x-1/2">
+              <Link href="/" className="flex items-center">
+                <Brain className="w-6 h-6 text-primary mr-2" />
+                <span className="text-lg font-semibold text-studywise-gray-900">StudyWise AI</span>
+              </Link>
+            </div>
+            
+            {/* Spacer for balance */}
+            <div className="w-[100px] sm:w-[120px]"></div>
           </div>
         </div>
       </header>
