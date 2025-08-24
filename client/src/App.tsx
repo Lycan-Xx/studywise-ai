@@ -9,12 +9,16 @@ import Dashboard from "@/pages/dashboard";
 import Library from "@/pages/library";
 import Results from "@/pages/results";
 import Settings from "@/pages/settings";
+import PrivacyPolicy from "@/pages/privacy-policy";
+import TermsOfService from "@/pages/terms-of-service";
 import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
+      <Route path="/privacy-policy" component={PrivacyPolicy} />
+      <Route path="/terms-of-service" component={TermsOfService} />
       <Route path="/dashboard">
         <Layout><Dashboard /></Layout>
       </Route>

@@ -294,9 +294,9 @@ export default function Landing() {
           <div className="text-center">
             <p>
               StudyWise AI |
-              <a href="#" className="hover:text-studywise-gray-300 mx-2">Privacy Policy</a> |
-              <a href="#" className="hover:text-studywise-gray-300 mx-2">Terms of Service</a> |
-              © 2024 StudyWise Inc.
+              <Link href="/privacy-policy" className="hover:text-studywise-gray-300 mx-2">Privacy Policy</Link> |
+              <Link href="/terms-of-service" className="hover:text-studywise-gray-300 mx-2">Terms of Service</Link> |
+              © 2025 StudyWise Inc.
             </p>
           </div>
         </div>
