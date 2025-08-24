@@ -35,39 +35,6 @@ const mockTests = [
     image: "https://images.unsplash.com/photo-1532094349884-543bc11b234d?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=128&q=80",
     bgColor: "bg-green-100",
     textColor: "text-green-800"
-  },
-  {
-    id: "4",
-    title: "English Test 4",
-    subject: "English",
-    createdDate: "2024-01-18",
-    questionCount: 12,
-    gradient: "from-gray-400 to-gray-500",
-    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=128&q=80",
-    bgColor: "bg-gray-100",
-    textColor: "text-gray-800"
-  },
-  {
-    id: "5",
-    title: "Geography Test 5",
-    subject: "Geography",
-    createdDate: "2024-01-19",
-    questionCount: 22,
-    gradient: "from-blue-300 to-blue-400",
-    image: "https://images.unsplash.com/photo-1519302959554-a75be0afc82a?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=128&q=80",
-    bgColor: "bg-blue-100",
-    textColor: "text-blue-800"
-  },
-  {
-    id: "6",
-    title: "Art Test 6",
-    subject: "Art",
-    createdDate: "2024-01-20",
-    questionCount: 10,
-    gradient: "from-amber-300 to-amber-400",
-    image: "https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=128&q=80",
-    bgColor: "bg-amber-100",
-    textColor: "text-amber-800"
   }
 ];
 
@@ -85,22 +52,9 @@ export default function Library() {
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
-        <div>
           <h1 className="text-3xl font-bold text-studywise-gray-900 mb-2" data-testid="text-library-title">
             My Tests
           </h1>
-          <p className="text-studywise-gray-600" data-testid="text-library-subtitle">
-            Your saved quizzes and study materials
-          </p>
-        </div>
-        <Button 
-          onClick={handleCreateNew}
-          className="bg-primary hover:bg-blue-600 px-4 py-2 font-medium flex items-center gap-2"
-          data-testid="button-create-new"
-        >
-          <Plus className="w-4 h-4" />
-          Create New
-        </Button>
       </div>
       
       {/* Test Grid */}
