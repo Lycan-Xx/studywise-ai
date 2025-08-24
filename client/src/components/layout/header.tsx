@@ -5,14 +5,14 @@ export function Header() {
   const [location] = useLocation();
 
   const navItems = [
-    { label: "Home", path: "/", key: "dashboard" },
+    { label: "Dashboard", path: "/dashboard", key: "dashboard" },
     { label: "My Quizzes", path: "/library", key: "library" },
     { label: "Results", path: "/results", key: "results" },
     { label: "Settings", path: "/settings", key: "settings" },
   ];
 
   const isActive = (path: string) => {
-    if (path === "/" && location === "/") return true;
+    if (path === location) return true;
     if (path !== "/" && location.startsWith(path)) return true;
     return false;
   };
