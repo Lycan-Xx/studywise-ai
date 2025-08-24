@@ -11,8 +11,7 @@ const mockTests = [
     questionCount: 15,
     gradient: "from-green-600 to-green-700",
     image: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=128&q=80",
-    bgColor: "bg-green-100",
-    textColor: "text-green-800"
+    
   },
   {
     id: "2",
@@ -22,8 +21,7 @@ const mockTests = [
     questionCount: 20,
     gradient: "from-orange-400 to-orange-500",
     image: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=128&q=80",
-    bgColor: "bg-orange-100",
-    textColor: "text-orange-800"
+    
   },
   {
     id: "3",
@@ -33,8 +31,7 @@ const mockTests = [
     questionCount: 18,
     gradient: "from-green-400 to-green-500",
     image: "https://images.unsplash.com/photo-1532094349884-543bc11b234d?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=128&q=80",
-    bgColor: "bg-green-100",
-    textColor: "text-green-800"
+    
   }
 ];
 
