@@ -6,16 +6,47 @@ import { Link } from "wouter";
 export default function Landing() {
   return (
     <div className="min-h-screen bg-studywise-bg">
+      {/* Floating Pill Navbar */}
+      <nav className="fixed top-4 left-4 right-4 z-50">
+        <div className="max-w-6xl mx-auto floating-navbar border border-studywise-gray-200 rounded-full px-4 sm:px-6 py-3 shadow-lg">
+          <div className="flex items-center justify-between">
+            {/* Left spacer for balance - hidden on mobile */}
+            <div className="hidden sm:flex flex-1"></div>
+
+            {/* Logo - Center on desktop, left on mobile */}
+            <div className="flex-1 sm:flex-1 flex sm:justify-center justify-start">
+              <Link href="/" className="flex items-center">
+                <Brain className="w-5 h-5 sm:w-6 sm:h-6 text-primary mr-2" />
+                <span className="text-base sm:text-lg font-semibold text-studywise-gray-900">StudyWise AI</span>
+              </Link>
+            </div>
+
+            {/* Login Button - Right */}
+            <div className="flex-1 sm:flex-1 flex justify-end">
+              <Link href="/dashboard">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full border-studywise-gray-300 hover:bg-studywise-gray-50 px-4 sm:px-6 text-sm"
+                >
+                  Log In
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </nav>
+
       {/* Hero Section - The Hook */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8" data-testid="section-hero">
+      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8" data-testid="section-hero">
         <div className="max-w-4xl mx-auto text-center relative">
           {/* Background decoration */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <div className="absolute top-10 left-10 w-16 h-16 border border-studywise-gray-200 rounded-full opacity-20"></div>
             <div className="absolute top-32 right-20 w-8 h-8 bg-studywise-gray-100 rounded opacity-30"></div>
-            <div className="absolute bottom-20 left-1/4 w-12 h-12 border border-studywise-gray-200 opacity-20" style={{clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'}}></div>
+            <div className="absolute bottom-20 left-1/4 w-12 h-12 border border-studywise-gray-200 opacity-20" style={{ clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }}></div>
           </div>
-          
+
           {/* Brain icon */}
           <div className="mb-8 flex justify-center">
             <div className="relative">
@@ -23,31 +54,31 @@ export default function Landing() {
               <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary/10 rounded-full animate-pulse"></div>
             </div>
           </div>
-          
+
           <h1 className="text-5xl md:text-6xl font-bold text-studywise-gray-900 mb-6" data-testid="text-hero-title">
             Your Notes. Your Tests. Your A's.
           </h1>
-          
+
           <div className="max-w-2xl mx-auto mb-8 space-y-4 text-lg text-studywise-gray-600">
             <p data-testid="text-hero-description">
-              You've spent hours reading your notes. Highlighting every line. Re-reading pages until your eyes blur. 
+              You've spent hours reading your notes. Highlighting every line. Re-reading pages until your eyes blur.
               But when it's time for the test, you still feel lost.
             </p>
             <p className="font-medium text-studywise-gray-700">
               You're not alone.
             </p>
             <p>
-              Most of us study passively—and it's a huge waste of time. StudyWise AI takes a different approach. 
+              Most of us study passively—and it's a huge waste of time. StudyWise AI takes a different approach.
               It turns your notes into personalized practice tests, so you can stop just reading and start truly learning.
             </p>
           </div>
-          
+
           <Link href="/dashboard">
             <Button size="lg" className="bg-primary hover:bg-blue-600 px-8 py-4 text-lg font-medium" data-testid="button-start-journey">
               Start Your Journey Now
             </Button>
           </Link>
-          
+
           {/* Social Proof */}
           <div className="mt-16 p-6 bg-white/50 rounded-xl border border-studywise-gray-200 max-w-2xl mx-auto">
             <p className="text-studywise-gray-600 italic" data-testid="text-testimonial">
@@ -57,7 +88,7 @@ export default function Landing() {
           </div>
         </div>
       </section>
-      
+
       {/* How It Works Section - The Journey */}
       <section className="py-20 bg-white" data-testid="section-how-it-works">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -69,7 +100,7 @@ export default function Landing() {
               We've made learning simple and smart. Here's how StudyWise AI works:
             </p>
           </div>
-          
+
           <div className="grid md:grid-cols-3 gap-8 mb-16">
             {/* Step 1 */}
             <Card className="text-center p-8 border-studywise-gray-200 hover:shadow-lg transition-shadow" data-testid="card-step-1">
@@ -83,7 +114,7 @@ export default function Landing() {
                 </p>
               </CardContent>
             </Card>
-            
+
             {/* Step 2 */}
             <Card className="text-center p-8 border-studywise-gray-200 hover:shadow-lg transition-shadow" data-testid="card-step-2">
               <CardContent className="pt-6">
@@ -96,7 +127,7 @@ export default function Landing() {
                 </p>
               </CardContent>
             </Card>
-            
+
             {/* Step 3 */}
             <Card className="text-center p-8 border-studywise-gray-200 hover:shadow-lg transition-shadow" data-testid="card-step-3">
               <CardContent className="pt-6">
@@ -110,7 +141,7 @@ export default function Landing() {
               </CardContent>
             </Card>
           </div>
-          
+
           {/* Accuracy System */}
           <div className="bg-studywise-gray-50 rounded-xl p-8 mb-8">
             <h3 className="text-2xl font-semibold text-studywise-gray-900 mb-6 text-center">
@@ -143,7 +174,7 @@ export default function Landing() {
               </div>
             </div>
           </div>
-          
+
           <div className="text-center">
             <Link href="/dashboard">
               <Button size="lg" className="bg-primary hover:bg-blue-600 px-8 py-4 text-lg font-medium" data-testid="button-start-journey-2">
@@ -153,7 +184,7 @@ export default function Landing() {
           </div>
         </div>
       </section>
-      
+
       {/* Pricing Section - The Reward */}
       <section className="py-20 bg-studywise-bg" data-testid="section-pricing">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -165,7 +196,7 @@ export default function Landing() {
               Choose the plan that's right for you.
             </p>
           </div>
-          
+
           <div className="grid md:grid-cols-2 gap-8 mb-16">
             {/* Free Plan */}
             <Card className="p-8 border-studywise-gray-200" data-testid="card-free-plan">
@@ -190,7 +221,7 @@ export default function Landing() {
                 </Link>
               </CardContent>
             </Card>
-            
+
             {/* Premium Plan */}
             <Card className="p-8 border-primary bg-primary/5 relative" data-testid="card-premium-plan">
               <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
@@ -220,7 +251,7 @@ export default function Landing() {
               </CardContent>
             </Card>
           </div>
-          
+
           {/* FAQ Section */}
           <div className="mb-16">
             <h3 className="text-2xl font-bold text-studywise-gray-900 mb-8 text-center">Frequently Asked Questions</h3>
@@ -233,7 +264,7 @@ export default function Landing() {
                   </p>
                 </CardContent>
               </Card>
-              
+
               <Card className="border-studywise-gray-200" data-testid="card-faq-file-types">
                 <CardContent className="p-6">
                   <h4 className="font-semibold text-studywise-gray-900 mb-2">What file types can I upload?</h4>
@@ -242,12 +273,12 @@ export default function Landing() {
                   </p>
                 </CardContent>
               </Card>
-              
+
               <Card className="border-studywise-gray-200" data-testid="card-faq-verification">
                 <CardContent className="p-6">
                   <h4 className="font-semibold text-studywise-gray-900 mb-2">How does the AI verify the answers?</h4>
                   <p className="text-studywise-gray-600">
-                    Our system is built to only generate questions where the answer can be directly found in your uploaded notes. 
+                    Our system is built to only generate questions where the answer can be directly found in your uploaded notes.
                     We then run a second check to ensure the generated answer matches the source text.
                   </p>
                 </CardContent>
@@ -256,15 +287,15 @@ export default function Landing() {
           </div>
         </div>
       </section>
-      
+
       {/* Footer */}
       <footer className="bg-studywise-gray-900 text-studywise-gray-400 py-8" data-testid="footer">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <p>
-              StudyWise AI | 
-              <a href="#" className="hover:text-studywise-gray-300 mx-2">Privacy Policy</a> | 
-              <a href="#" className="hover:text-studywise-gray-300 mx-2">Terms of Service</a> | 
+              StudyWise AI |
+              <a href="#" className="hover:text-studywise-gray-300 mx-2">Privacy Policy</a> |
+              <a href="#" className="hover:text-studywise-gray-300 mx-2">Terms of Service</a> |
               © 2024 StudyWise Inc.
             </p>
           </div>
