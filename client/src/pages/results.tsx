@@ -103,7 +103,7 @@ export default function Results() {
                 <tr key={result.id} className="hover:bg-studywise-gray-50" data-testid={`row-result-${result.id}`}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <span className={`text-lg font-semibold ${result.color}`} data-testid={`text-score-${result.id}`}>
+                      <span className="text-lg font-semibold text-studywise-gray-900" data-testid={`text-score-${result.id}`}>
                         {result.score}%
                       </span>
                       <div className="ml-2 w-16 bg-studywise-gray-200 rounded-full h-2">

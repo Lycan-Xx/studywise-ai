@@ -78,7 +78,7 @@ export default function Library() {
                 Created on {test.createdDate}
               </p>
               <div className="mt-3 flex justify-between items-center">
-                <span className={`text-xs ${test.bgColor} ${test.textColor} px-2 py-1 rounded-full`} data-testid={`text-question-count-${test.id}`}>
+                <span className={`text-xs px-2 py-1 rounded-full`} data-testid={`text-question-count-${test.id}`}>
                   {test.questionCount} questions
                 </span>
                 <button 

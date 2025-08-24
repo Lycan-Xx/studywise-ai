@@ -80,7 +80,7 @@ export function StepOne({ config, updateConfig, onNext, onBack }: StepOneProps) 
             value={customTopic}
             onChange={(e) => setCustomTopic(e.target.value)}
             placeholder="Enter a topic"
-            onKeyPress={(e) => e.key === 'Enter' && addTopic()}
+            onKeyDown={(e) => e.key === 'Enter' && addTopic()}
             className="flex-1"
           />
           <Button onClick={addTopic} variant="outline">

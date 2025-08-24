@@ -25,10 +25,18 @@ export default function Dashboard() {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => {
-        const content = e.target?.result as string;
-        setNotes(content);
-      };
+
+
+reader.onload = (e) => {
+  const result = e.target?.result;
+  if (typeof result === 'string') {
+    setNotes(result);
+  }
+};
+reader.onerror = () => {
+  console.error('Failed to read file');
+};
+
       reader.readAsText(file);
     }
   };

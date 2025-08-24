@@ -28,7 +28,7 @@ export const tests = pgTable("tests", {
   notes: text("notes").notNull(),
   questions: jsonb("questions").$type<Array<{
     id: string;
-    question: text;
+    question: string;
     options?: string[];
     correctAnswer: string;
     explanation?: string;
