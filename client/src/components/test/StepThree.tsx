@@ -46,7 +46,7 @@ export function StepThree({ config, updateConfig, onNext, onBack }: StepThreePro
           ))}
         </div>
 
-        {/* Custom Counter */}
+        {/* Custom Counter
         <div className="border-t border-studywise-gray-200 pt-6">
           <p className="text-sm text-studywise-gray-600 mb-3">Or choose a custom number:</p>
           <div className="flex items-center justify-center gap-4">
@@ -78,7 +78,9 @@ export function StepThree({ config, updateConfig, onNext, onBack }: StepThreePro
           <p className="text-xs text-studywise-gray-500 text-center mt-2">
             (1-50 questions)
           </p>
-        </div>
+        </div> */}
+
+
       </div>
 
       <div className="flex justify-between">
