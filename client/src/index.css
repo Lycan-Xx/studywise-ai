@@ -26,12 +26,11 @@
   --radius: 0.75rem;
   
   /* Custom StudyWise AI colors */
-  --studywise-bg: hsl(210, 20%, 98%);
   --studywise-gray-50: hsl(210, 20%, 98%);
   --studywise-gray-100: hsl(220, 14%, 96%);
   --studywise-gray-200: hsl(220, 13%, 91%);
   --studywise-gray-300: hsl(216, 12%, 84%);
-  --studywise-gray-400: hsl(218, 11%, 65%);
+  --studywise-gray-400: hsl(219, 11%, 65%);
   --studywise-gray-500: hsl(220, 9%, 46%);
   --studywise-gray-600: hsl(215, 14%, 34%);
   --studywise-gray-700: hsl(215, 25%, 27%);
@@ -253,4 +252,72 @@ nding Page Floating Navbar */
 /* Smooth scroll behavior for landing page */
 html {
   scroll-behavior: smooth;
+}
+
+
+
+
+
+/* Pill indicator under each nav item */
+.nav-pill {
+  width: 64px;                 /* default width */
+  height: 8px;                 /* thin pill */
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.12);
+  background: transparent;
+  transition: all 180ms ease;
+  box-sizing: border-box;
+}
+
+.nav-pill--active {
+  background: hsl(222, 47%, 11%); /* --studywise-gray-900 */
+  border-color: transparent;
+}
+
+/* Slightly larger pill on larger screens */
+@media (min-width: 768px) {
+  .nav-pill {
+    width: 80px;
+    height: 10px;
+  }
+}
+
+/* Utility: subtle header container max width (keeps centered) */
+header .max-w-[1200px] {
+  max-width: 1200px;
+}
+
+/* Ensure the mobile slide panel scrolls if content bigger than viewport */
+#mobile-nav-panel {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+
+
+
+
+
+/* Mobile dynamic viewport fallback */
+@supports not (height: 100dvh) {
+  .h-\[100dvh\] {
+    height: 100vh;
+  }
+}
+
+/* Ensure mobile textarea uses native momentum scrolling */
+textarea {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Slight shadow tweak for visual matching */
+.shadow-sm {
+  box-shadow: 0 6px 14px rgba(18, 18, 18, 0.04);
+}
+
+/* Ensure bottom floating bar doesn't get clipped by some phones (gesture areas) */
+@media (max-width: 480px) {
+  .fixed.left-4.right-4.bottom-6 {
+    bottom: 12px;
+  }
 }
