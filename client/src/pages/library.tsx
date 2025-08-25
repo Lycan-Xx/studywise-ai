@@ -1,6 +1,16 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Trash2, Play } from "lucide-react";
 import { NotePreview } from "@/components/test/NotePreview";
 
@@ -39,6 +49,8 @@ const mockTests = [
 
 export default function Library() {
   const [selectedTest, setSelectedTest] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [testToDelete, setTestToDelete] = useState<string | null>(null);
 
   const handleTestClick = (testId: string) => {
     setSelectedTest(testId);
@@ -49,9 +61,23 @@ export default function Library() {
     setSelectedTest(testId);
   };
 
-  const handleDeleteTest = (testId: string) => {
-    // TODO: Delete test from backend/storage
-    console.log("Deleting test:", testId);
+  const handleDeleteClick = (testId: string) => {
+    setTestToDelete(testId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (testToDelete) {
+      // TODO: Delete test from backend/storage
+      console.log("Deleting test:", testToDelete);
+      setDeleteDialogOpen(false);
+      setTestToDelete(null);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setTestToDelete(null);
   };
 
   // Helper function to get first few words from notes
@@ -120,7 +146,7 @@ export default function Library() {
                   size="sm"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleDeleteTest(test.id);
+                    handleDeleteClick(test.id);
                   }}
                   className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 p-2"
                   data-testid={`button-delete-test-${test.id}`}
@@ -146,6 +172,29 @@ export default function Library() {
           </Card>
         ))}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Test</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this test? This action cannot be undone and will permanently remove the test and all its questions.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelDelete}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              Delete Test
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
