@@ -11,7 +11,7 @@ interface TestSettingsProps {
 }
 
 export function TestSettings({ testTitle, questionCount, onStartTest, onBack }: TestSettingsProps) {
-  const [selectedTimeLimit, setSelectedTimeLimit] = useState<number | null>(null);
+  const [selectedTimeLimit, setSelectedTimeLimit] = useState<number | null | undefined>(undefined);
 
   const timeLimitOptions = [
     { value: null, label: "No time limit", description: "Take as much time as you need" },

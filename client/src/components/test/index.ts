@@ -6,4 +6,5 @@ export { LoadingModal } from './LoadingModal';
 export { TestPreview } from './TestPreview';
 export { NotePreview } from './NotePreview';
 export { TestSettings } from './TestSettings';
+export { TestTaking } from './TestTaking';
 export type { TestConfig } from './types';
