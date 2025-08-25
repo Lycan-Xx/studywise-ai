@@ -64,18 +64,13 @@ export default function Results() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-studywise-gray-900 mb-2" data-testid="text-results-title">
-          Results
-        </h1>
-      </div>
 
       {/* Results Table */}
       <Card className="shadow-sm border-studywise-gray-200 overflow-hidden" data-testid="card-results-table">
         <div className="px-6 py-4 border-b border-studywise-gray-200">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold text-studywise-gray-900" data-testid="text-table-title">
-              Recent Test Results
+              Recent Test Scores
             </h2>
           </div>
         </div>

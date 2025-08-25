@@ -54,7 +54,7 @@ export function Header() {
             className={`nav-item ${isActive('/results') ? 'active' : ''}`}
             onClick={toggleMenu}
           >
-            Results
+            Score
           </Link>
           <Link
             href="/settings"
