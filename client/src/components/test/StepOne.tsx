@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { TestConfig } from "./types";
+import { TestConfig } from "@/types";
 import { ChevronDown, X } from "lucide-react";
 
 interface StepOneProps {
@@ -26,17 +26,24 @@ export function StepOne({ config, updateConfig, onNext, onBack }: StepOneProps) 
   };
 
   const addTopic = () => {
-    if (customTopic.trim() && !config.topics.includes(customTopic.trim())) {
-      updateConfig({ topics: [...config.topics, customTopic.trim()] });
-      setCustomTopic("");
+    if (customTopic.trim()) {
+      const currentTopics = config.topics ? config.topics.split(',').map(t => t.trim()).filter(t => t) : [];
+      if (!currentTopics.includes(customTopic.trim())) {
+        const newTopics = [...currentTopics, customTopic.trim()].join(', ');
+        updateConfig({ topics: newTopics });
+        setCustomTopic("");
+      }
     }
   };
 
   const removeTopic = (topicToRemove: string) => {
-    updateConfig({ topics: config.topics.filter(topic => topic !== topicToRemove) });
+    const currentTopics = config.topics ? config.topics.split(',').map(t => t.trim()).filter(t => t) : [];
+    const newTopics = currentTopics.filter(topic => topic !== topicToRemove).join(', ');
+    updateConfig({ topics: newTopics });
   };
 
-  const canProceed = config.subject && config.topics.length > 0;
+  const canProceed = config.subject && config.topics && config.topics.trim().length > 0;
+  const topicsArray = config.topics ? config.topics.split(',').map(t => t.trim()).filter(t => t) : [];
 
   return (
     <div>
@@ -88,9 +95,9 @@ export function StepOne({ config, updateConfig, onNext, onBack }: StepOneProps) 
           </Button>
         </div>
 
-        {config.topics.length > 0 && (
+        {topicsArray.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {config.topics.map((topic, index) => (
+            {topicsArray.map((topic, index) => (
               <span
                 key={index}
                 className="inline-flex items-center gap-1 px-3 py-1 bg-studywise-gray-100 text-studywise-gray-700 rounded-full text-sm"

@@ -2,13 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Check, X, List } from "lucide-react";
 import { useLocation } from "wouter";
-
-interface Question {
-  id: number;
-  type: 'mcq' | 'true-false';
-  question: string;
-  options: string[];
-}
+import { Question } from "@/types";
 
 interface TestResultsProps {
   testTitle: string;

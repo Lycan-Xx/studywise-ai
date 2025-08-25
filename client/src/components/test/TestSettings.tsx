@@ -33,10 +33,10 @@ export function TestSettings({ testTitle, questionCount, onStartTest, onBack }: 
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
-          <Button 
+          <Button
             onClick={onBack}
-            variant="outline" 
-            size="sm" 
+            variant="outline"
+            size="sm"
             className="flex items-center gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -60,16 +60,15 @@ export function TestSettings({ testTitle, questionCount, onStartTest, onBack }: 
           <Clock className="w-5 h-5 text-studywise-gray-600" />
           <h3 className="text-lg font-medium text-studywise-gray-900">Time Limit</h3>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {timeLimitOptions.map((option) => (
             <Card
               key={option.value || 'no-limit'}
-              className={`cursor-pointer transition-all border-2 ${
-                selectedTimeLimit === option.value
-                  ? 'border-primary bg-blue-50'
-                  : 'border-studywise-gray-200 hover:border-studywise-gray-300'
-              }`}
+              className={`cursor-pointer transition-all border-2 ${selectedTimeLimit === option.value
+                ? 'border-primary bg-blue-50'
+                : 'border-studywise-gray-200 hover:border-studywise-gray-300'
+                }`}
               onClick={() => setSelectedTimeLimit(option.value)}
             >
               <CardContent className="p-4">
@@ -83,11 +82,10 @@ export function TestSettings({ testTitle, questionCount, onStartTest, onBack }: 
                     </p>
                   </div>
                   <div className="ml-4">
-                    <div className={`w-4 h-4 rounded-full border-2 ${
-                      selectedTimeLimit === option.value
-                        ? 'border-primary bg-primary'
-                        : 'border-studywise-gray-300'
-                    }`}>
+                    <div className={`w-4 h-4 rounded-full border-2 ${selectedTimeLimit === option.value
+                      ? 'border-primary bg-primary'
+                      : 'border-studywise-gray-300'
+                      }`}>
                       {selectedTimeLimit === option.value && (
                         <div className="w-full h-full rounded-full bg-white scale-50"></div>
                       )}
@@ -102,7 +100,7 @@ export function TestSettings({ testTitle, questionCount, onStartTest, onBack }: 
 
       {/* Start Test Button */}
       <div className="flex justify-center">
-        <Button 
+        <Button
           onClick={handleStartTest}
           disabled={selectedTimeLimit === undefined}
           className="bg-primary hover:bg-blue-600 px-8 py-3 text-lg font-medium"

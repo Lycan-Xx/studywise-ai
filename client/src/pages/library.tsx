@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -11,46 +11,29 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Trash2, Play } from "lucide-react";
+import { Trash2, Play, Loader2 } from "lucide-react";
 import { NotePreview } from "@/components/test/NotePreview";
-
-const mockTests = [
-  {
-    id: "1",
-    title: "History Test 1",
-    subject: "History",
-    createdDate: "2024-01-15",
-    questionCount: 15,
-    gradient: "from-green-600 to-green-700",
-    image: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=128&q=80",
-    notes: "Lorem Ipsum Text:\n\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.\n\nExcepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.\n\nNemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.\n\nThe text is a standard Lorem Ipsum placeholder text used in design and typography to demonstrate the visual form of a document or a typeface without relying on meaningful content. It's derived from Cicero's \"de Finibus Bonorum et Malorum\" (The Extremes of Good and Evil), written in 45 BC."
-  },
-  {
-    id: "2",
-    title: "Math Test 2",
-    subject: "Math",
-    createdDate: "2024-01-16",
-    questionCount: 20,
-    gradient: "from-orange-400 to-orange-500",
-    image: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=128&q=80",
-    notes: "Mathematics Study Notes:\n\nAlgebra fundamentals including linear equations, quadratic formulas, and polynomial operations. Key concepts include solving for unknown variables, graphing linear functions, and understanding the relationship between algebraic expressions and their geometric representations.\n\nCalculus basics covering derivatives and integrals. The derivative represents the rate of change of a function, while integrals calculate the area under curves. These concepts are fundamental to understanding motion, optimization problems, and advanced mathematical modeling."
-  },
-  {
-    id: "3",
-    title: "Science Test 3",
-    subject: "Science",
-    createdDate: "2024-01-17",
-    questionCount: 18,
-    gradient: "from-green-400 to-green-500",
-    image: "https://images.unsplash.com/photo-1532094349884-543bc11b234d?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=128&q=80",
-    notes: "Biology and Chemistry Notes:\n\nCell structure and function: Prokaryotic vs eukaryotic cells, organelles and their functions, cell membrane transport mechanisms. The mitochondria is the powerhouse of the cell, responsible for ATP production through cellular respiration.\n\nChemical bonding: Ionic, covalent, and metallic bonds. Understanding electron configuration and how atoms interact to form compounds. The periodic table organization helps predict element properties and bonding behavior."
-  }
-];
+import { useLibraryStore } from "@/stores";
 
 export default function Library() {
   const [selectedTest, setSelectedTest] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [testToDelete, setTestToDelete] = useState<string | null>(null);
+
+  // Zustand store
+  const { 
+    savedTests, 
+    isLoading, 
+    error, 
+    loadTests, 
+    deleteTest, 
+    getTestById 
+  } = useLibraryStore();
+
+  // Load tests on component mount
+  useEffect(() => {
+    loadTests();
+  }, [loadTests]);
 
   const handleTestClick = (testId: string) => {
     setSelectedTest(testId);
@@ -66,12 +49,15 @@ export default function Library() {
     setDeleteDialogOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (testToDelete) {
-      // TODO: Delete test from backend/storage
-      console.log("Deleting test:", testToDelete);
-      setDeleteDialogOpen(false);
-      setTestToDelete(null);
+      try {
+        await deleteTest(testToDelete);
+        setDeleteDialogOpen(false);
+        setTestToDelete(null);
+      } catch (error) {
+        console.error("Failed to delete test:", error);
+      }
     }
   };
 
@@ -91,7 +77,7 @@ export default function Library() {
     console.log("Saving notes for test:", testId, notes);
   };
 
-  const selectedTestData = selectedTest ? mockTests.find(test => test.id === selectedTest) : null;
+  const selectedTestData = selectedTest ? getTestById(selectedTest) : null;
 
   // Show NotePreview if a test is selected
   if (selectedTestData) {
@@ -107,6 +93,32 @@ export default function Library() {
     );
   }
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center gap-2">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <span className="text-studywise-gray-600">Loading your tests...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">Error loading tests: {error}</p>
+          <Button onClick={loadTests} variant="outline">
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
@@ -115,9 +127,19 @@ export default function Library() {
         </h1>
       </div>
 
+      {/* Empty state */}
+      {savedTests.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-studywise-gray-600 mb-4">No tests saved yet.</p>
+          <Button onClick={() => window.location.href = '/dashboard'}>
+            Create Your First Test
+          </Button>
+        </div>
+      )}
+
       {/* Test Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" data-testid="grid-tests">
-        {mockTests.map((test) => (
+        {savedTests.map((test) => (
           <Card
             key={test.id}
             className="shadow-sm border-studywise-gray-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
