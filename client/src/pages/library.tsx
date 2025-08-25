@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus } from "lucide-react";
+import { Trash2, Play } from "lucide-react";
 import { NotePreview } from "@/components/test/NotePreview";
 
 const mockTests = [
@@ -49,9 +49,15 @@ export default function Library() {
     setSelectedTest(testId);
   };
 
-  const handleCreateNew = () => {
-    // TODO: Navigate to create new test flow
-    console.log("Creating new test");
+  const handleDeleteTest = (testId: string) => {
+    // TODO: Delete test from backend/storage
+    console.log("Deleting test:", testId);
+  };
+
+  // Helper function to get first few words from notes
+  const getNotesPreview = (notes: string) => {
+    const words = notes.split(' ').slice(0, 8).join(' ');
+    return words.length < notes.length ? `${words}...` : words;
   };
 
   const handleSaveNotes = (testId: string, notes: string) => {
@@ -78,49 +84,63 @@ export default function Library() {
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-studywise-gray-900 mb-2" data-testid="text-library-title">
-            My Tests
-          </h1>
+        <h1 className="text-3xl font-bold text-studywise-gray-900 mb-2" data-testid="text-library-title">
+          My Tests
+        </h1>
       </div>
-      
+
       {/* Test Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" data-testid="grid-tests">
         {mockTests.map((test) => (
-          <Card 
+          <Card
             key={test.id}
             className="shadow-sm border-studywise-gray-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
             data-testid={`card-test-${test.id}`}
             onClick={() => handleTestClick(test.id)}
           >
-            <div className={`h-32 bg-gradient-to-br ${test.gradient} flex items-center justify-center`}>
-              <img 
-                src={test.image} 
-                alt={`${test.subject} study materials`} 
-                className="w-full h-full object-cover opacity-90"
-                data-testid={`img-test-${test.id}`}
-              />
-            </div>
-            <CardContent className="p-4">
-              <h3 className="font-semibold text-studywise-gray-900 mb-1" data-testid={`text-test-title-${test.id}`}>
-                {test.title}
-              </h3>
-              <p className="text-sm text-studywise-gray-500" data-testid={`text-test-date-${test.id}`}>
-                Created on {test.createdDate}
-              </p>
-              <div className="mt-3 flex justify-between items-center">
-                <span className={`text-xs px-2 py-1 rounded-full bg-studywise-gray-100 text-studywise-gray-700`} data-testid={`text-question-count-${test.id}`}>
+            <CardContent className="p-6">
+              <div className="mb-4">
+                <h3 className="font-semibold text-studywise-gray-900 mb-2 text-lg" data-testid={`text-test-title-${test.id}`}>
+                  {test.title}
+                </h3>
+                <p className="text-sm text-studywise-gray-600 mb-2 line-clamp-2" data-testid={`text-test-notes-${test.id}`}>
+                  {getNotesPreview(test.notes)}
+                </p>
+                <p className="text-xs text-studywise-gray-500 mb-1" data-testid={`text-test-date-${test.id}`}>
+                  Created on {test.createdDate}
+                </p>
+                <p className="text-xs text-studywise-gray-500" data-testid={`text-question-count-${test.id}`}>
                   {test.questionCount} questions
-                </span>
-                <button 
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-4 border-t border-studywise-gray-100">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteTest(test.id);
+                  }}
+                  className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 p-2"
+                  data-testid={`button-delete-test-${test.id}`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleStartTest(test.id);
                   }}
-                  className="text-primary hover:text-blue-600 text-sm font-medium"
+                  className="flex-1 border-primary text-primary hover:bg-blue-50 hover:border-blue-600 flex items-center gap-2"
                   data-testid={`button-start-test-${test.id}`}
                 >
+                  <Play className="w-4 h-4" />
                   Start Test
-                </button>
+                </Button>
               </div>
             </CardContent>
           </Card>
