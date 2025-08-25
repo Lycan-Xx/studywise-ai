@@ -1,0 +1,180 @@
+import { useCallback, useMemo } from 'react';
+import { useTestStore, useLibraryStore, useTestSessionStore, useResultsStore } from './index';
+import { TestConfig, SavedTest, TestResult } from '@/types';
+
+/**
+ * Custom hook that provides high-level workflow functions
+ * that coordinate between multiple stores
+ */
+export const useTestWorkflow = () => {
+  const testStore = useTestStore();
+  const libraryStore = useLibraryStore();
+  const sessionStore = useTestSessionStore();
+  const resultsStore = useResultsStore();
+
+  /**
+   * Generate questions and save test to library
+   */
+  const generateAndSaveTest = useCallback(async (config: TestConfig, notes: string, title?: string) => {
+    try {
+      // Generate questions using test store
+      await testStore.generateQuestions(config, notes);
+      
+      // Create saved test object
+      const savedTest: Omit<SavedTest, 'id' | 'createdDate'> = {
+        title: title || `${config.subject} Test`,
+        subject: config.subject,
+        questionCount: config.numberOfQuestions,
+        config,
+        questions: testStore.generatedQuestions,
+        notes,
+        gradient: getRandomGradient()
+      };
+
+      // Save to library
+      await libraryStore.saveTest(savedTest);
+
+      return savedTest;
+    } catch (error) {
+      console.error('Failed to generate and save test:', error);
+      throw error;
+    }
+  }, [testStore, libraryStore]);
+
+  /**
+   * Start a test session from a saved test
+   */
+  const startTestFromLibrary = useCallback((testId: string) => {
+    const test = libraryStore.getTestById(testId);
+    if (!test) {
+      throw new Error('Test not found');
+    }
+
+    sessionStore.startTest(
+      test.id,
+      test.title,
+      test.questions,
+      null // No time limit by default
+    );
+
+    return test;
+  }, [libraryStore, sessionStore]);
+
+  /**
+   * Complete a test and save results
+   */
+  const completeTest = useCallback(async () => {
+    const session = sessionStore.currentSession;
+    if (!session) {
+      throw new Error('No active test session');
+    }
+
+    // Calculate score
+    const totalQuestions = session.questions.length;
+    const correctAnswers: Record<number, string> = {};
+    
+    // Extract correct answers from questions
+    session.questions.forEach(q => {
+      if (q.correctAnswer) {
+        correctAnswers[q.id] = q.correctAnswer;
+      }
+    });
+
+    const correctCount = session.questions.filter(
+      q => session.userAnswers[q.id] === q.correctAnswer
+    ).length;
+
+    const score = (correctCount / totalQuestions) * 100;
+
+    // Create result object
+    const result: Omit<TestResult, 'id' | 'completedAt'> = {
+      testId: session.testId,
+      testTitle: session.testTitle,
+      userAnswers: session.userAnswers,
+      correctAnswers,
+      score: Math.round(score),
+      totalQuestions,
+      timeSpent: session.timeLimit && session.timeRemaining 
+        ? (session.timeLimit * 60) - session.timeRemaining 
+        : undefined,
+      questions: session.questions
+    };
+
+    // Save result
+    await resultsStore.saveResult(result);
+
+    // Submit test in session store
+    sessionStore.submitTest();
+
+    return result;
+  }, [sessionStore, resultsStore]);
+
+  /**
+   * Reset all stores to initial state
+   */
+  const resetAllStores = useCallback(() => {
+    testStore.clearTest();
+    sessionStore.resetSession();
+    resultsStore.setCurrentResult(null);
+  }, [testStore, sessionStore, resultsStore]);
+
+  /**
+   * Get performance analytics across all tests
+   */
+  const getPerformanceAnalytics = useCallback(() => {
+    const results = resultsStore.testResults;
+    const tests = libraryStore.savedTests;
+
+    return {
+      totalTests: tests.length,
+      totalTestsTaken: results.length,
+      averageScore: resultsStore.averageScore,
+      bestScore: resultsStore.bestScore,
+      recentResults: resultsStore.recentResults,
+      testCompletionRate: tests.length > 0 ? (results.length / tests.length) * 100 : 0
+    };
+  }, [resultsStore, libraryStore]);
+
+  return useMemo(() => ({
+    // High-level workflow functions
+    generateAndSaveTest,
+    startTestFromLibrary,
+    completeTest,
+    resetAllStores,
+    getPerformanceAnalytics,
+
+    // Direct store access for fine-grained control
+    testStore,
+    libraryStore,
+    sessionStore,
+    resultsStore
+  }), [
+    generateAndSaveTest,
+    startTestFromLibrary,
+    completeTest,
+    resetAllStores,
+    getPerformanceAnalytics,
+    testStore,
+    libraryStore,
+    sessionStore,
+    resultsStore
+  ]);
+};
+
+/**
+ * Helper function to get random gradient for test cards
+ */
+const getRandomGradient = () => {
+  const gradients = [
+    "from-blue-600 to-blue-700",
+    "from-green-600 to-green-700",
+    "from-purple-600 to-purple-700",
+    "from-orange-600 to-orange-700",
+    "from-red-600 to-red-700",
+    "from-indigo-600 to-indigo-700",
+    "from-pink-600 to-pink-700",
+    "from-teal-600 to-teal-700"
+  ];
+  
+  return gradients[Math.floor(Math.random() * gradients.length)];
+};

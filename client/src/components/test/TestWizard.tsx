@@ -4,7 +4,8 @@ import { StepTwo } from "./StepTwo";
 import { StepThree } from "./StepThree";
 import { LoadingModal } from "./LoadingModal";
 import { TestPreview } from "./TestPreview";
-import { TestConfig } from "./types";
+import { TestConfig } from "@/types";
+import { useTestStore } from "@/stores";
 
 interface TestWizardProps {
   notes: string;
@@ -13,25 +14,25 @@ interface TestWizardProps {
 
 export function TestWizard({ notes, onClose }: TestWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [testConfig, setTestConfig] = useState<TestConfig>({
+  
+  // Use Zustand store
+  const { currentConfig, updateConfig, generateQuestions, isGenerating } = useTestStore();
+  
+  const testConfig = currentConfig || {
     subject: '',
-    topics: [],
-    questionType: 'mcq',
+    topics: '',
+    questionType: 'mcq' as const,
     numberOfQuestions: 10
-  });
+  };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep < 3) {
       setCurrentStep(currentStep + 1);
     } else {
-      // Generate test
-      setIsLoading(true);
-      setTimeout(() => {
-        setIsLoading(false);
-        setShowPreview(true);
-      }, 5000);
+      // Generate test using store
+      await generateQuestions(testConfig, notes);
+      setShowPreview(true);
     }
   };
 
@@ -41,15 +42,11 @@ export function TestWizard({ notes, onClose }: TestWizardProps) {
     }
   };
 
-  const updateConfig = (updates: Partial<TestConfig>) => {
-    setTestConfig(prev => ({ ...prev, ...updates }));
-  };
-
   if (showPreview) {
     return <TestPreview config={testConfig} notes={notes} onClose={onClose} />;
   }
 
-  if (isLoading) {
+  if (isGenerating) {
     return <LoadingModal />;
   }
 

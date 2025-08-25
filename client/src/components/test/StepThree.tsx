@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { TestConfig } from "./types";
+import { TestConfig } from "@/types";
 import { Minus, Plus } from "lucide-react";
 
 interface StepThreeProps {

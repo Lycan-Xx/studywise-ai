@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { TestConfig } from "./types";
+import { TestConfig } from "@/types";
 import { List } from "lucide-react";
 import { TestSettings } from "./TestSettings";
 import { TestTaking } from "./TestTaking";
 import { TestResults } from "./TestResults";
+import { useTestWorkflow, useResultsStore, useTestStore } from "@/stores";
 
 interface TestPreviewProps {
   config: TestConfig;
@@ -12,88 +13,27 @@ interface TestPreviewProps {
   onClose: () => void;
 }
 
-// Mock generated questions based on config
-const generateMockQuestions = (config: TestConfig) => {
-  const questions = [];
 
-  const mcqQuestions = [
-    {
-      question: "What is the main function of the mitochondria in a cell?",
-      options: ["Protein synthesis", "Energy production", "Waste disposal", "Cell division"]
-    },
-    {
-      question: "Which of the following is NOT a characteristic of a well-designed user interface?",
-      options: ["Consistency", "Clarity", "Efficiency", "Complexity"]
-    },
-    {
-      question: "What is the primary purpose of photosynthesis in plants?",
-      options: ["Water absorption", "Converting sunlight to energy", "Root growth", "Seed production"]
-    },
-    {
-      question: "Which programming paradigm focuses on objects and classes?",
-      options: ["Functional programming", "Object-oriented programming", "Procedural programming", "Logic programming"]
-    },
-    {
-      question: "What is the chemical symbol for gold?",
-      options: ["Go", "Gd", "Au", "Ag"]
-    }
-  ];
-
-  const trueFalseQuestions = [
-    {
-      question: "User experience design focuses primarily on visual aesthetics rather than functionality.",
-      options: ["True", "False"]
-    },
-    {
-      question: "The mitochondria is known as the powerhouse of the cell.",
-      options: ["True", "False"]
-    },
-    {
-      question: "JavaScript is a compiled programming language.",
-      options: ["True", "False"]
-    },
-    {
-      question: "Water boils at 100 degrees Celsius at sea level.",
-      options: ["True", "False"]
-    },
-    {
-      question: "The Earth is the third planet from the Sun.",
-      options: ["True", "False"]
-    }
-  ];
-
-  for (let i = 1; i <= config.numberOfQuestions; i++) {
-    if (config.questionType === 'mcq') {
-      const questionData = mcqQuestions[(i - 1) % mcqQuestions.length];
-      questions.push({
-        id: i,
-        type: 'mcq' as const,
-        question: questionData.question,
-        options: questionData.options
-      });
-    } else {
-      const questionData = trueFalseQuestions[(i - 1) % trueFalseQuestions.length];
-      questions.push({
-        id: i,
-        type: 'true-false' as const,
-        question: questionData.question,
-        options: questionData.options
-      });
-    }
-  }
-
-  return questions;
-};
 
 export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [showTest, setShowTest] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [testTimeLimit, setTestTimeLimit] = useState<number | null>(null);
-  const [testAnswers, setTestAnswers] = useState<Record<number, string>>({});
-  const questions = generateMockQuestions(config);
 
-  // Mock correct answers for demonstration
+  // Use workflow hook for coordinated store operations
+  const { generateAndSaveTest, completeTest } = useTestWorkflow();
+  const { generatedQuestions, isGenerating, generateQuestions } = useTestStore();
+  const { currentResult } = useResultsStore();
+
+  // Generate questions when component mounts or config changes
+  useEffect(() => {
+    if (config && notes) {
+      generateQuestions(config, notes);
+    }
+  }, [config, notes, generateQuestions]);
+
+  // Mock correct answers for demonstration (will be replaced with AI-generated answers)
   const correctAnswers: Record<number, string> = {
     1: "Energy production",
     2: "Complexity", 
@@ -118,14 +58,16 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
     setShowTest(true);
   };
 
-  const handleTestSubmit = (answers: Record<number, string>) => {
-    // TODO: Save test results to backend/storage
-    console.log("Test submitted with answers:", answers);
-    setTestAnswers(answers);
+  const handleTestSubmit = async (answers: Record<number, string>) => {
+    try {
+      await completeTest();
+    } catch (error) {
+      console.error("Failed to save test result:", error);
+    }
   };
 
-  const handleShowResults = (answers: Record<number, string>) => {
-    setTestAnswers(answers);
+  const handleShowResults = async (answers: Record<number, string>) => {
+    await handleTestSubmit(answers);
     setShowTest(false);
     setShowResults(true);
   };
@@ -141,20 +83,23 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
     setShowSettings(false);
   };
 
-  const handleSaveToLibrary = () => {
-    // TODO: Save test to library
-    console.log("Saving test to library");
-    onClose();
+  const handleSaveToLibrary = async () => {
+    try {
+      await generateAndSaveTest(config, notes, `${config.subject} Test`);
+      onClose();
+    } catch (error) {
+      console.error("Failed to save test:", error);
+    }
   };
 
   // Show TestResults if test is completed
-  if (showResults) {
+  if (showResults && currentResult) {
     return (
       <TestResults
-        testTitle={`${config.subject} Test`}
-        questions={questions}
-        userAnswers={testAnswers}
-        correctAnswers={correctAnswers}
+        testTitle={currentResult.testTitle}
+        questions={currentResult.questions}
+        userAnswers={currentResult.userAnswers}
+        correctAnswers={currentResult.correctAnswers}
         onBack={handleResultsBack}
       />
     );
@@ -165,7 +110,7 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
     return (
       <TestTaking
         testTitle={`${config.subject} Test`}
-        questions={questions}
+        questions={generatedQuestions}
         timeLimit={testTimeLimit}
         onSubmit={handleTestSubmit}
         onBack={handleTestBack}
@@ -229,34 +174,43 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
           Questions
         </h2>
 
-        <div className="space-y-6">
-          {questions.slice(0, 3).map((question, index) => (
-            <div key={question.id} className="border border-studywise-gray-200 rounded-lg p-6">
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0">
-                  <List className="w-5 h-5 text-studywise-gray-400 mt-1" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-medium text-studywise-gray-900 mb-2">
-                    Question {question.id}
-                  </h3>
-                  <div className="text-studywise-gray-600 mb-3">
-                    {question.options.join(' ')}
+        {isGenerating ? (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-studywise-gray-600">Generating questions...</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {generatedQuestions.slice(0, 3).map((question) => (
+              <div key={question.id} className="border border-studywise-gray-200 rounded-lg p-6">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0">
+                    <List className="w-5 h-5 text-studywise-gray-400 mt-1" />
                   </div>
-                  <p className="text-studywise-gray-700">
-                    {question.question}
-                  </p>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-studywise-gray-900 mb-2">
+                      Question {question.id}
+                    </h3>
+                    <p className="text-studywise-gray-700 mb-3">
+                      {question.question}
+                    </p>
+                    <div className="text-studywise-gray-600">
+                      {question.options.map((option, idx) => (
+                        <div key={idx} className="mb-1">• {option}</div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
 
-          {questions.length > 3 && (
-            <div className="text-center py-4 text-studywise-gray-500">
-              ... and {questions.length - 3} more questions
-            </div>
-          )}
-        </div>
+            {generatedQuestions.length > 3 && (
+              <div className="text-center py-4 text-studywise-gray-500">
+                ... and {generatedQuestions.length - 3} more questions
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Action Buttons */}

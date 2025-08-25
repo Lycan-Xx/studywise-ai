@@ -12,14 +12,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useLocation } from "wouter";
+import { useTestSessionStore } from "@/stores";
+import { Question } from "@/types";
 
-interface Question {
-  id: number;
-  type: 'mcq' | 'true-false';
-  question: string;
-  options: string[];
-}
+
 
 interface TestTakingProps {
   testTitle: string;
@@ -30,17 +26,36 @@ interface TestTakingProps {
   onShowResults: (answers: Record<number, string>) => void;
 }
 
-export function TestTaking({ testTitle, questions, timeLimit, onSubmit, onBack, onShowResults }: TestTakingProps) {
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, string>>({});
-  const [timeRemaining, setTimeRemaining] = useState<number | null>(
-    timeLimit ? timeLimit * 60 : null // convert minutes to seconds
-  );
+export function TestTaking({ testTitle, questions, timeLimit, onSubmit, onShowResults }: TestTakingProps) {
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showResultDialog, setShowResultDialog] = useState(false);
-  const [, setLocation] = useLocation();
+  
+  // Use Zustand store for session management
+  const {
+    currentSession,
+    startTest,
+    answerQuestion,
+    nextQuestion,
+    previousQuestion,
+    submitTest,
+    updateTimer,
+    getCurrentQuestion,
+    getProgress,
+    canGoNext,
+    canGoPrevious
+  } = useTestSessionStore();
 
-  const currentQuestion = questions[currentQuestionIndex];
+  // Initialize test session
+  useEffect(() => {
+    if (!currentSession) {
+      startTest(Date.now().toString(), testTitle, questions, timeLimit);
+    }
+  }, [testTitle, questions, timeLimit, startTest, currentSession]);
+
+  const currentQuestion = getCurrentQuestion();
+  const progress = getProgress();
+  const answers = currentSession?.userAnswers || {};
+  const timeRemaining = currentSession?.timeRemaining;
 
   // Timer effect
   useEffect(() => {
@@ -53,11 +68,11 @@ export function TestTaking({ testTitle, questions, timeLimit, onSubmit, onBack, 
     }
 
     const timer = setInterval(() => {
-      setTimeRemaining(prev => prev ? prev - 1 : null);
+      updateTimer(timeRemaining - 1);
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeRemaining]);
+  }, [timeRemaining, updateTimer]);
 
   const handleAutoSubmit = () => {
     onSubmit(answers);
@@ -65,22 +80,17 @@ export function TestTaking({ testTitle, questions, timeLimit, onSubmit, onBack, 
   };
 
   const handleAnswerSelect = (answer: string) => {
-    setAnswers(prev => ({
-      ...prev,
-      [currentQuestion.id]: answer
-    }));
+    if (currentQuestion) {
+      answerQuestion(currentQuestion.id, answer);
+    }
   };
 
   const handlePrevious = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
-    }
+    previousQuestion();
   };
 
   const handleNext = () => {
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-    }
+    nextQuestion();
   };
 
   const handleSubmitClick = () => {
@@ -88,6 +98,7 @@ export function TestTaking({ testTitle, questions, timeLimit, onSubmit, onBack, 
   };
 
   const handleConfirmSubmit = () => {
+    submitTest();
     onSubmit(answers);
     setShowSubmitDialog(false);
     setShowResultDialog(true);
@@ -122,52 +133,54 @@ export function TestTaking({ testTitle, questions, timeLimit, onSubmit, onBack, 
           {testTitle}
         </h1>
         <p className="text-studywise-gray-600">
-          Question {currentQuestionIndex + 1} of {questions.length}
+          Question {progress.current} of {progress.total}
         </p>
       </div>
 
       {/* Question Card */}
-      <Card className="mb-8">
-        <CardContent className="p-8">
-          <h2 className="text-lg font-medium text-studywise-gray-900 mb-6">
-            {currentQuestion.question}
-          </h2>
+      {currentQuestion && (
+        <Card className="mb-8">
+          <CardContent className="p-8">
+            <h2 className="text-lg font-medium text-studywise-gray-900 mb-6">
+              {currentQuestion.question}
+            </h2>
 
-          <div className="space-y-3">
-            {currentQuestion.options.map((option, index) => (
-              <div
-                key={index}
-                className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                  answers[currentQuestion.id] === option
-                    ? 'border-primary bg-blue-50'
-                    : 'border-studywise-gray-200 hover:border-studywise-gray-300'
-                }`}
-                onClick={() => handleAnswerSelect(option)}
-              >
-                <div className="flex items-center">
-                  <div className="flex items-center h-5">
-                    <input
-                      type="radio"
-                      checked={answers[currentQuestion.id] === option}
-                      onChange={() => handleAnswerSelect(option)}
-                      className="w-4 h-4 text-primary border-studywise-gray-300 focus:ring-primary"
-                    />
+            <div className="space-y-3">
+              {currentQuestion.options.map((option, index) => (
+                <div
+                  key={index}
+                  className={`border rounded-lg p-4 cursor-pointer transition-all ${
+                    answers[currentQuestion.id] === option
+                      ? 'border-primary bg-blue-50'
+                      : 'border-studywise-gray-200 hover:border-studywise-gray-300'
+                  }`}
+                  onClick={() => handleAnswerSelect(option)}
+                >
+                  <div className="flex items-center">
+                    <div className="flex items-center h-5">
+                      <input
+                        type="radio"
+                        checked={answers[currentQuestion.id] === option}
+                        onChange={() => handleAnswerSelect(option)}
+                        className="w-4 h-4 text-primary border-studywise-gray-300 focus:ring-primary"
+                      />
+                    </div>
+                    <label className="ml-3 text-studywise-gray-900 cursor-pointer">
+                      {option}
+                    </label>
                   </div>
-                  <label className="ml-3 text-studywise-gray-900 cursor-pointer">
-                    {option}
-                  </label>
                 </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Navigation */}
       <div className="flex justify-between items-center mb-8">
         <Button
           onClick={handlePrevious}
-          disabled={currentQuestionIndex === 0}
+          disabled={!canGoPrevious()}
           variant="outline"
           className="flex items-center gap-2"
         >
@@ -184,7 +197,7 @@ export function TestTaking({ testTitle, questions, timeLimit, onSubmit, onBack, 
 
         <Button
           onClick={handleNext}
-          disabled={currentQuestionIndex === questions.length - 1}
+          disabled={!canGoNext()}
           className="bg-primary hover:bg-blue-600 flex items-center gap-2"
         >
           Next
@@ -226,7 +239,7 @@ export function TestTaking({ testTitle, questions, timeLimit, onSubmit, onBack, 
           <AlertDialogHeader>
             <AlertDialogTitle>Submit Test</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to submit your test? You have answered {Object.keys(answers).length} out of {questions.length} questions. 
+              Are you sure you want to submit your test? You have answered {Object.keys(answers).length} out of {progress.total} questions. 
               Once submitted, you cannot make any changes.
             </AlertDialogDescription>
           </AlertDialogHeader>
