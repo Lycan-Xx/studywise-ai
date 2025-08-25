@@ -13,14 +13,22 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Trash2, Play, Loader2 } from "lucide-react";
 import { NotePreview } from "@/components/test/NotePreview";
-import { useLibraryStore } from "@/stores";
+import { TestSettings } from "@/components/test/TestSettings";
+import { TestTaking } from "@/components/test/TestTaking";
+import { TestResults } from "@/components/test/TestResults";
+import { useLibraryStore, useTestSessionStore, useResultsStore } from "@/stores";
 
 export default function Library() {
   const [selectedTest, setSelectedTest] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [testToDelete, setTestToDelete] = useState<string | null>(null);
+  const [startingTest, setStartingTest] = useState<string | null>(null);
+  const [showTestSettings, setShowTestSettings] = useState(false);
+  const [showTest, setShowTest] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const [testTimeLimit, setTestTimeLimit] = useState<number | null>(null);
 
-  // Zustand store
+  // Zustand stores
   const { 
     savedTests, 
     isLoading, 
@@ -29,6 +37,16 @@ export default function Library() {
     deleteTest, 
     getTestById 
   } = useLibraryStore();
+  
+  const { 
+    startTest,
+    submitTest,
+    currentSession,
+    getCurrentQuestion,
+    getProgress
+  } = useTestSessionStore();
+  
+  const { currentResult } = useResultsStore();
 
   // Load tests on component mount
   useEffect(() => {
@@ -40,8 +58,43 @@ export default function Library() {
   };
 
   const handleStartTest = (testId: string) => {
-    // Start test directly from card
-    setSelectedTest(testId);
+    // Start test directly - skip TestPreview
+    setStartingTest(testId);
+    setShowTestSettings(true);
+  };
+
+  const handleStartTestWithSettings = (timeLimit: number | null) => {
+    if (startingTest) {
+      const test = getTestById(startingTest);
+      if (test) {
+        startTest(test.id, test.title, test.questions, timeLimit);
+        setTestTimeLimit(timeLimit);
+        setShowTestSettings(false);
+        setShowTest(true);
+      }
+    }
+  };
+
+  const handleTestSubmit = async (answers: Record<number, string>) => {
+    try {
+      submitTest();
+      setShowTest(false);
+      setShowResults(true);
+    } catch (error) {
+      console.error("Failed to submit test:", error);
+    }
+  };
+
+  const handleShowResults = async (answers: Record<number, string>) => {
+    await handleTestSubmit(answers);
+  };
+
+  const handleBackToLibrary = () => {
+    setStartingTest(null);
+    setShowTestSettings(false);
+    setShowTest(false);
+    setShowResults(false);
+    setTestTimeLimit(null);
   };
 
   const handleDeleteClick = (testId: string) => {
@@ -78,8 +131,48 @@ export default function Library() {
   };
 
   const selectedTestData = selectedTest ? getTestById(selectedTest) : null;
+  const startingTestData = startingTest ? getTestById(startingTest) : null;
 
-  // Show NotePreview if a test is selected
+  // Show TestResults if test is completed
+  if (showResults && currentResult) {
+    return (
+      <TestResults
+        testTitle={currentResult.testTitle}
+        questions={currentResult.questions}
+        userAnswers={currentResult.userAnswers}
+        correctAnswers={currentResult.correctAnswers}
+        onBack={handleBackToLibrary}
+      />
+    );
+  }
+
+  // Show TestTaking if test is started
+  if (showTest && startingTestData) {
+    return (
+      <TestTaking
+        testTitle={startingTestData.title}
+        questions={startingTestData.questions}
+        timeLimit={testTimeLimit}
+        onSubmit={handleTestSubmit}
+        onBack={handleBackToLibrary}
+        onShowResults={handleShowResults}
+      />
+    );
+  }
+
+  // Show TestSettings if user clicked Start Test
+  if (showTestSettings && startingTestData) {
+    return (
+      <TestSettings
+        testTitle={startingTestData.title}
+        questionCount={startingTestData.questionCount}
+        onStartTest={handleStartTestWithSettings}
+        onBack={handleBackToLibrary}
+      />
+    );
+  }
+
+  // Show NotePreview if a test note is selected for editing
   if (selectedTestData) {
     return (
       <NotePreview
@@ -123,7 +216,7 @@ export default function Library() {
     <div>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-studywise-gray-900 mb-2" data-testid="text-library-title">
-          My Tests
+          My Notes
         </h1>
       </div>
 
