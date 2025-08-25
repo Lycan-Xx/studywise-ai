@@ -88,11 +88,10 @@ export default function Dashboard() {
                   <button
                     onClick={handleGenerateQuiz}
                     disabled={!notes.trim()}
-                    className={`absolute right-2 bottom-2 w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-95 ${
-                      notes.trim()
+                    className={`absolute right-2 bottom-2 w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-95 ${notes.trim()
                         ? "bg-blue-500 hover:bg-blue-600 text-white shadow-sm"
                         : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    }`}
+                      }`}
                   >
                     <Sparkles className="w-4 h-4" />
                   </button>
