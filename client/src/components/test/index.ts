@@ -4,4 +4,5 @@ export { StepTwo } from './StepTwo';
 export { StepThree } from './StepThree';
 export { LoadingModal } from './LoadingModal';
 export { TestPreview } from './TestPreview';
+export { NotePreview } from './NotePreview';
 export type { TestConfig } from './types';

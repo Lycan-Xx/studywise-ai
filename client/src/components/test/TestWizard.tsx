@@ -61,7 +61,7 @@ export function TestWizard({ notes, onClose }: TestWizardProps) {
           <span className="text-sm text-studywise-gray-600">Step {currentStep} of 3</span>
           <div className="flex-1 mx-4">
             <div className="w-full bg-studywise-gray-200 rounded-full h-2">
-              <div 
+              <div
                 className="bg-primary h-2 rounded-full transition-all duration-300"
                 style={{ width: `${(currentStep / 3) * 100}%` }}
               />
@@ -71,7 +71,7 @@ export function TestWizard({ notes, onClose }: TestWizardProps) {
       </div>
 
       {currentStep === 1 && (
-        <StepOne 
+        <StepOne
           config={testConfig}
           updateConfig={updateConfig}
           onNext={handleNext}
@@ -80,7 +80,7 @@ export function TestWizard({ notes, onClose }: TestWizardProps) {
       )}
 
       {currentStep === 2 && (
-        <StepTwo 
+        <StepTwo
           config={testConfig}
           updateConfig={updateConfig}
           onNext={handleNext}
@@ -89,7 +89,7 @@ export function TestWizard({ notes, onClose }: TestWizardProps) {
       )}
 
       {currentStep === 3 && (
-        <StepThree 
+        <StepThree
           config={testConfig}
           updateConfig={updateConfig}
           onNext={handleNext}
