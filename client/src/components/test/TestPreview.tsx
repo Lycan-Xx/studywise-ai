@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { TestConfig } from "./types";
 import { List } from "lucide-react";
+import { TestSettings } from "./TestSettings";
 
 interface TestPreviewProps {
   config: TestConfig;
@@ -39,11 +41,16 @@ const generateMockQuestions = (config: TestConfig) => {
 };
 
 export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
+  const [showSettings, setShowSettings] = useState(false);
   const questions = generateMockQuestions(config);
 
   const handleStartTest = () => {
-    // TODO: Navigate to test taking interface
-    console.log("Starting test");
+    setShowSettings(true);
+  };
+
+  const handleStartTestWithSettings = (timeLimit: number | null) => {
+    // TODO: Navigate to test taking interface with time limit
+    console.log("Starting test with time limit:", timeLimit);
     onClose();
   };
 
@@ -52,6 +59,18 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
     console.log("Saving test to library");
     onClose();
   };
+
+  // Show TestSettings if user clicked Start Test
+  if (showSettings) {
+    return (
+      <TestSettings
+        testTitle={`${config.subject} Test`}
+        questionCount={config.numberOfQuestions}
+        onStartTest={handleStartTestWithSettings}
+        onBack={() => setShowSettings(false)}
+      />
+    );
+  }
 
   return (
     <div className="w-full">
