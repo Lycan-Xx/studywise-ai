@@ -54,7 +54,8 @@ export default function Dashboard() {
     // Digit-by-digit safe arithmetic for min/max
     // mobile breakpoint < 768
     let minPx = 48; // mobile default min
-    let maxPx = Math.round(vh * 0.4); // mobile max 40vh
+    // Account for header (~70px) + bottom padding (~24px) + some buffer (~50px)
+    let maxPx = Math.round(vh * 0.25); // mobile max 25vh to avoid header overlap
 
     if (vw >= 768) {
       // desktop
@@ -99,9 +100,9 @@ export default function Dashboard() {
       {!showWizard ? (
         <>
           {/* MOBILE VERSION */}
-          <div className="md:hidden flex flex-col h-[100dvh]  overflow-hidden">
+          <div className="md:hidden flex flex-col h-[100dvh] overflow-hidden">
             {/* Hero: giant centered headline near top */}
-            <div className="flex-1 flex items-start justify-start pt-12 px-6">
+            <div className="flex-1 flex items-start justify-start pt-12 px-6 pb-32">
               <h1
                 className="mx-auto text-[3.6rem] leading-tight font-light text-[var(--studywise-gray-900)]"
                 style={{ lineHeight: 1 }}
@@ -139,11 +140,10 @@ export default function Dashboard() {
                   onClick={handleGenerateQuiz}
                   aria-label="Send"
                   disabled={!notes.trim()}
-                  className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all active:scale-95 ${
-                    notes.trim()
+                  className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all active:scale-95 ${notes.trim()
                       ? "bg-[var(--studywise-primary)] text-white border-transparent"
                       : "bg-white text-gray-400 border-gray-200 cursor-not-allowed"
-                  }`}
+                    }`}
                 >
                   <ArrowUp className="w-4 h-4" />
                 </button>
@@ -208,11 +208,10 @@ export default function Dashboard() {
                       onClick={handleGenerateQuiz}
                       aria-label="Generate test"
                       disabled={!notes.trim()}
-                      className={`ml-3 mt-6 h-12 px-4 rounded-full flex items-center gap-2 transition-shadow active:scale-95 ${
-                        notes.trim()
+                      className={`ml-3 mt-6 h-12 px-4 rounded-full flex items-center gap-2 transition-shadow active:scale-95 ${notes.trim()
                           ? "bg-[var(--studywise-primary)] text-white border-transparent shadow-sm"
                           : "bg-white text-gray-400 border border-gray-200 cursor-not-allowed"
-                      }`}
+                        }`}
                     >
                       <ArrowUp className="w-4 h-4" />
                       <span className="hidden lg:inline">Generate Test</span>

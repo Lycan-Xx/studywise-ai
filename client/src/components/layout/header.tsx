@@ -122,16 +122,15 @@ export function Header(): JSX.Element {
           {/* Overlay */}
           <div
             onClick={closeMenu}
-            className={`fixed inset-0 bg-black/30 z-30 transition-opacity duration-300 ${isMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+            className={`fixed inset-0 bg-black/30 z-[60] transition-opacity duration-300 ${isMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
             aria-hidden={!isMenuOpen}
           />
 
           {/* Slide-in panel from the right */}
           <aside
             id="mobile-nav-panel"
-            className={`fixed right-0 top-0 h-full w-72 z-40 transform transition-transform duration-300 bg-white shadow-xl flex flex-col ${
-              isMenuOpen ? "translate-x-0" : "translate-x-full"
-            }`}
+            className={`fixed right-0 top-0 h-full w-72 z-[60] transform transition-transform duration-300 bg-white shadow-xl flex flex-col ${isMenuOpen ? "translate-x-0" : "translate-x-full"
+              }`}
             role="dialog"
             aria-modal="true"
           >
