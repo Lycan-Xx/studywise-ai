@@ -4,6 +4,7 @@ import { TestConfig } from "./types";
 import { List } from "lucide-react";
 import { TestSettings } from "./TestSettings";
 import { TestTaking } from "./TestTaking";
+import { TestResults } from "./TestResults";
 
 interface TestPreviewProps {
   config: TestConfig;
@@ -87,8 +88,24 @@ const generateMockQuestions = (config: TestConfig) => {
 export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [showTest, setShowTest] = useState(false);
+  const [showResults, setShowResults] = useState(false);
   const [testTimeLimit, setTestTimeLimit] = useState<number | null>(null);
+  const [testAnswers, setTestAnswers] = useState<Record<number, string>>({});
   const questions = generateMockQuestions(config);
+
+  // Mock correct answers for demonstration
+  const correctAnswers: Record<number, string> = {
+    1: "Energy production",
+    2: "Complexity", 
+    3: "Converting sunlight to energy",
+    4: "Object-oriented programming",
+    5: "Au",
+    6: "False",
+    7: "True",
+    8: "False", 
+    9: "True",
+    10: "True"
+  };
 
   const handleStartTest = () => {
     setShowSettings(true);
@@ -104,9 +121,22 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
   const handleTestSubmit = (answers: Record<number, string>) => {
     // TODO: Save test results to backend/storage
     console.log("Test submitted with answers:", answers);
+    setTestAnswers(answers);
+  };
+
+  const handleShowResults = (answers: Record<number, string>) => {
+    setTestAnswers(answers);
+    setShowTest(false);
+    setShowResults(true);
   };
 
   const handleTestBack = () => {
+    setShowTest(false);
+    setShowSettings(false);
+  };
+
+  const handleResultsBack = () => {
+    setShowResults(false);
     setShowTest(false);
     setShowSettings(false);
   };
@@ -117,6 +147,19 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
     onClose();
   };
 
+  // Show TestResults if test is completed
+  if (showResults) {
+    return (
+      <TestResults
+        testTitle={`${config.subject} Test`}
+        questions={questions}
+        userAnswers={testAnswers}
+        correctAnswers={correctAnswers}
+        onBack={handleResultsBack}
+      />
+    );
+  }
+
   // Show TestTaking if test is started
   if (showTest) {
     return (
@@ -126,6 +169,7 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
         timeLimit={testTimeLimit}
         onSubmit={handleTestSubmit}
         onBack={handleTestBack}
+        onShowResults={handleShowResults}
       />
     );
   }

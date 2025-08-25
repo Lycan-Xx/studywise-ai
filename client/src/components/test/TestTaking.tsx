@@ -27,9 +27,10 @@ interface TestTakingProps {
   timeLimit: number | null; // in minutes, null for no limit
   onSubmit: (answers: Record<number, string>) => void;
   onBack: () => void;
+  onShowResults: (answers: Record<number, string>) => void;
 }
 
-export function TestTaking({ testTitle, questions, timeLimit, onSubmit, onBack }: TestTakingProps) {
+export function TestTaking({ testTitle, questions, timeLimit, onSubmit, onBack, onShowResults }: TestTakingProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [timeRemaining, setTimeRemaining] = useState<number | null>(
@@ -93,7 +94,7 @@ export function TestTaking({ testTitle, questions, timeLimit, onSubmit, onBack }
   };
 
   const handleShowResults = () => {
-    setLocation("/results");
+    onShowResults(answers);
   };
 
   const formatTime = (seconds: number) => {
@@ -252,12 +253,9 @@ export function TestTaking({ testTitle, questions, timeLimit, onSubmit, onBack }
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={onBack}>
-              Back to Library
-            </AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleShowResults}
-              className="bg-primary hover:bg-blue-600"
+              className="bg-primary hover:bg-blue-600 w-full"
             >
               Show Results
             </AlertDialogAction>
