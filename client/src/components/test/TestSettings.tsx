@@ -23,7 +23,9 @@ export function TestSettings({ testTitle, questionCount, onStartTest, onBack }: 
   ];
 
   const handleStartTest = () => {
-    onStartTest(selectedTimeLimit);
+    if (selectedTimeLimit !== undefined) {
+      onStartTest(selectedTimeLimit);
+    }
   };
 
   return (
