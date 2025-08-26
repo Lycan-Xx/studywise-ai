@@ -141,10 +141,10 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-studywise-gray-900 mb-2">
-          Test Preview
+          Your Test is Ready!
         </h1>
         <p className="text-studywise-gray-600">
-          Review the questions generated from your notes before starting the test.
+          Here's a preview of your personalized practice test. Review the questions below or start testing immediately.
         </p>
       </div>
 
@@ -219,24 +219,27 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
           <Button
             onClick={handleSaveToLibrary}
             variant="outline"
-            className="px-6"
+            size="lg"
+            className="px-8"
           >
-            Save to Library
+            Save for Later
           </Button>
           <Button
             onClick={onClose}
             variant="outline"
-            className="px-6"
+            size="lg"
+            className="px-8"
           >
-            Generate New Test
+            Create Different Test
           </Button>
         </div>
 
         <Button
           onClick={handleStartTest}
-          className="bg-primary hover:bg-blue-600 px-8"
+          size="lg"
+          className="bg-primary hover:bg-primary/90 px-12"
         >
-          Start Test
+          Start Practice Test
         </Button>
       </div>
     </div>

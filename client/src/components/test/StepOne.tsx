@@ -48,8 +48,8 @@ export function StepOne({ config, updateConfig, onNext, onBack }: StepOneProps) 
   return (
     <div>
       <div className="mb-6">
-        <label className="block text-sm font-medium text-studywise-gray-700 mb-2">
-          Subject
+        <label className="block text-base font-semibold text-studywise-gray-900 mb-3">
+          What subject is this test for?
         </label>
         <div className="relative">
           <button
@@ -79,14 +79,14 @@ export function StepOne({ config, updateConfig, onNext, onBack }: StepOneProps) 
       </div>
 
       <div className="mb-8">
-        <label className="block text-sm font-medium text-studywise-gray-700 mb-2">
-          Topics
+        <label className="block text-base font-semibold text-studywise-gray-900 mb-3">
+          Which specific topics should be covered?
         </label>
         <div className="flex gap-2 mb-3">
           <Input
             value={customTopic}
             onChange={(e) => setCustomTopic(e.target.value)}
-            placeholder="Enter a topic"
+            placeholder="e.g., Photosynthesis, Cell Division"
             onKeyDown={(e) => e.key === 'Enter' && addTopic()}
             className="flex-1"
           />
@@ -122,9 +122,10 @@ export function StepOne({ config, updateConfig, onNext, onBack }: StepOneProps) 
         <Button
           onClick={onNext}
           disabled={!canProceed}
-          className="bg-primary hover:bg-blue-600"
+          size="lg"
+          className="bg-primary hover:bg-primary/90 px-8"
         >
-          Next
+          Continue
         </Button>
       </div>
     </div>

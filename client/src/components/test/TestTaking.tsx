@@ -53,13 +53,13 @@ export function TestTaking({
     answerQuestion,
     nextQuestion,
     previousQuestion,
+    setCurrentQuestion,
     submitTest,
     updateTimer,
     getCurrentQuestion,
     getProgress,
     canGoNext,
-    canGoPrevious,
-    jumpToQuestion,
+    canGoPrevious
   } = useTestSessionStore();
 
   // initialize test session
@@ -73,7 +73,7 @@ export function TestTaking({
   const currentQuestion = getCurrentQuestion();
   const progress = getProgress();
   const answers = currentSession?.userAnswers || {};
-  const sessionId = currentSession?.id ?? "no-session";
+  const sessionId = currentSession?.testId ?? "no-session";
   const timeRemaining = currentSession?.timeRemaining ?? null;
 
   // ------- TIMER: robust single-interval implementation -------
@@ -229,11 +229,7 @@ export function TestTaking({
   // ---------- JUMP-TO-QUESTION (index modal) ----------
   const handleJumpTo = (index: number) => {
     setShowQuestionIndex(false);
-    try {
-      jumpToQuestion(index + 1); // assume 1-based inside store, adjust if needed
-    } catch {
-      // fallback: call previous/next until location reached (not implemented here)
-    }
+    setCurrentQuestion(index);
   };
 
   // ---------- RENDER ----------

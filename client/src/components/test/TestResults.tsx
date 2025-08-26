@@ -33,22 +33,27 @@ export function TestResults({ testTitle, questions, userAnswers, correctAnswers,
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-studywise-gray-900 mb-2">
-          Test Results
+          How Did You Do?
         </h1>
         <p className="text-studywise-gray-600">
-          Review your performance on the test and see which questions you answered correctly or incorrectly.
+          Here's your performance breakdown. Review each question to understand what you got right and where you can improve.
         </p>
       </div>
 
       {/* Summary */}
       <div className="mb-8">
         <h2 className="text-xl font-semibold text-studywise-gray-900 mb-4">
-          Summary
+          Your Score
         </h2>
-        <div className="bg-studywise-gray-50 rounded-lg p-4">
-          <p className="text-lg font-medium text-studywise-gray-900">
-            Total Score: {correctCount}/{totalQuestions}
-          </p>
+        <div className="bg-studywise-gray-50 rounded-lg p-6">
+          <div className="text-center">
+            <p className="text-3xl font-bold text-studywise-gray-900 mb-2">
+              {correctCount}/{totalQuestions}
+            </p>
+            <p className="text-lg text-studywise-gray-600">
+              {Math.round((correctCount/totalQuestions) * 100)}% Correct
+            </p>
+          </div>
         </div>
       </div>
 
@@ -122,12 +127,23 @@ export function TestResults({ testTitle, questions, userAnswers, correctAnswers,
 
       {/* Back to Library Button */}
       <div className="flex justify-start">
-        <Button 
-          onClick={handleBackToLibrary}
-          className="bg-primary hover:bg-blue-600 px-6"
-        >
-          Back to Library
-        </Button>
+        <div className="flex gap-4">
+          <Button 
+            onClick={handleBackToLibrary}
+            size="lg"
+            className="bg-primary hover:bg-primary/90 px-8"
+          >
+            Back to Library
+          </Button>
+          <Button 
+            onClick={onBack}
+            variant="outline"
+            size="lg"
+            className="px-8"
+          >
+            Study Again
+          </Button>
+        </div>
       </div>
     </div>
   );

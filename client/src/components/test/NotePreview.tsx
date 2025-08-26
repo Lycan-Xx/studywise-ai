@@ -17,14 +17,16 @@ export function NotePreview({ testId, title, subject, initialNotes, onClose, onS
   const [notes, setNotes] = useState(initialNotes);
   const [showWizard, setShowWizard] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [lastSaved, setLastSaved] = useState<string>(initialNotes);
 
   const handleNotesChange = (value: string) => {
     setNotes(value);
-    setHasChanges(value !== initialNotes);
+    setHasChanges(value !== lastSaved);
   };
 
   const handleSave = () => {
     onSave(testId, notes);
+    setLastSaved(notes);
     setHasChanges(false);
   };
 
@@ -72,9 +74,10 @@ export function NotePreview({ testId, title, subject, initialNotes, onClose, onS
         <div className="flex gap-3 w-full sm:w-auto">
           <Button
             onClick={handleStartTest}
-            className="bg-primary hover:bg-blue-600 px-6 py-3 flex-1 sm:flex-none"
+            size="lg"
+            className="bg-primary hover:bg-primary/90 px-8 py-3 flex-1 sm:flex-none"
           >
-            Start Test
+            Create Practice Test
           </Button>
         </div>
       </div>
@@ -87,7 +90,7 @@ export function NotePreview({ testId, title, subject, initialNotes, onClose, onS
             <Textarea
               value={notes}
               onChange={(e) => handleNotesChange(e.target.value)}
-              placeholder="Enter your study notes here or upload a file to get started..."
+              placeholder="Edit your study notes here. All changes are automatically saved when you create a test..."
               className="w-full h-96 resize-none border-2 border-studywise-gray-300 rounded-2xl p-6 text-base leading-relaxed focus:ring-2 focus:ring-primary focus:border-transparent pr-20"
               maxLength={maxLength}
             />
