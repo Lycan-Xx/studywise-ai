@@ -216,15 +216,19 @@ export default function Library() {
     <div>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-studywise-gray-900 mb-2" data-testid="text-library-title">
-          My Notes
+          My Study Library
         </h1>
       </div>
 
       {/* Empty state */}
       {savedTests.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-studywise-gray-600 mb-4">No tests saved yet.</p>
-          <Button onClick={() => window.location.href = '/dashboard'}>
+          <p className="text-studywise-gray-600 mb-4">No study materials saved yet. Start by creating your first test!</p>
+          <Button 
+            onClick={() => window.location.href = '/dashboard'}
+            size="lg"
+            className="bg-primary hover:bg-primary/90"
+          >
             Create Your First Test
           </Button>
         </div>

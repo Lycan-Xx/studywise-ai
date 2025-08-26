@@ -53,7 +53,7 @@ export function TestWizard({ notes, onClose }: TestWizardProps) {
   return (
     <div className="w-full">
       <div className="mb-8">
-        <h2 className="text-2xl font-bold text-studywise-gray-900 mb-4">Create a Test</h2>
+        <h2 className="text-2xl font-bold text-studywise-gray-900 mb-4">Test Configuration</h2>
         <div className="flex items-center mb-6">
           <span className="text-sm text-studywise-gray-600">Step {currentStep} of 3</span>
           <div className="flex-1 mx-4">

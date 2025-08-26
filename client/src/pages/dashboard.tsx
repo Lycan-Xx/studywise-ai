@@ -103,12 +103,12 @@ export default function Dashboard() {
           <div className="md:hidden flex flex-col h-[100dvh] overflow-hidden">
             {/* Hero: giant centered headline near top */}
             <div className="flex-1 flex items-start justify-start pt-12 px-6 pb-32">
-              <h1
-                className="mx-auto text-[3.6rem] leading-tight font-light text-[var(--studywise-gray-900)]"
-                style={{ lineHeight: 1 }}
-              >
-                welcome to studywise AI
-              </h1>
+                <h1
+                  className="mx-auto text-[3.6rem] leading-tight font-light text-[var(--studywise-gray-900)]"
+                  style={{ lineHeight: 1 }}
+                >
+                  Turn your notes into smart tests
+                </h1>
             </div>
 
             {/* Bottom floating pill input - fixed - minimal chrome */}
@@ -124,16 +124,16 @@ export default function Dashboard() {
                 </button>
 
                 {/* Single-line textarea that can expand up to mobile max */}
-                <textarea
-                  ref={textareaRef}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  onInput={adjustTextareaHeight}
-                  onFocus={handleFocus}
-                  placeholder="Ask anything"
-                  aria-label="Ask anything"
-                  className="flex-1 min-h-[48px] max-h-[40vh] resize-none bg-transparent outline-none placeholder:text-gray-400 text-base text-gray-900"
-                />
+                  <textarea
+                    ref={textareaRef}
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    onInput={adjustTextareaHeight}
+                    onFocus={handleFocus}
+                    placeholder="Paste your notes here to get started..."
+                    aria-label="Study notes input"
+                    className="flex-1 min-h-[48px] max-h-[40vh] resize-none bg-transparent outline-none placeholder:text-gray-400 text-base text-gray-900"
+                  />
 
                 {/* Send / up arrow (same icon used on desktop generate) */}
                 <button
@@ -164,15 +164,15 @@ export default function Dashboard() {
           <div className="hidden md:flex flex-col">
             {/* Hero */}
             <div className="flex-shrink-0 p-8  text-center">
-              <h1
-                className="text-3xl md:text-4xl font-semibold text-[var(--studywise-gray-900)]"
-                data-testid="text-dashboard-title"
-              >
-                Welcome to StudyWise AI
-              </h1>
-              <p className="text-base text-[var(--studywise-gray-600)] mt-2">
-                Paste your notes to generate a quiz
-              </p>
+                <h1
+                  className="text-3xl md:text-4xl font-semibold text-[var(--studywise-gray-900)]"
+                  data-testid="text-dashboard-title"
+                >
+                  Create Your Perfect Study Test
+                </h1>
+                <p className="text-base text-[var(--studywise-gray-600)] mt-2">
+                  Upload your study materials or paste notes to generate personalized practice questions
+                </p>
             </div>
 
             {/* Content area with centered card and external generate */}
@@ -196,8 +196,8 @@ export default function Dashboard() {
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       onInput={adjustTextareaHeight}
-                      placeholder="What do you want to know?"
-                      aria-label="Notes input"
+                      placeholder="Paste your study notes, textbook content, or lecture materials here..."
+                      aria-label="Study materials input"
                       className="flex-1 min-h-[140px] md:min-h-[180px] max-h-[60vh] resize-none bg-transparent outline-none placeholder:text-gray-400 text-gray-900 px-2 py-1"
                     />
                   </div>
