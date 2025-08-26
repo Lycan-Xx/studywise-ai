@@ -321,3 +321,42 @@ textarea {
     bottom: 12px;
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+/* Make sure mobile container fits the visible viewport; fallback to 100vh when unsupported */
+@supports not (height: 100dvh) {
+  .h-\[100dvh\] {
+    height: 100vh;
+  }
+}
+
+/* Slightly larger default touch targets for option cards */
+.min-h-\[56px\] {
+  min-height: 56px;
+}
+
+/* Ensure bottom fixed nav doesn't overlap system gestures on very small screens */
+@media (max-width: 480px) {
+  .fixed.left-0.right-0.bottom-0 {
+    bottom: 10px;
+  }
+}
+
+/* Modal question index: smooth scrolling on touch */
+.relative p, .relative div {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* subtle shadow variant used for mobile option selection */
+.shadow-sm {
+  box-shadow: 0 6px 14px rgba(18, 18, 18, 0.04);
+}
