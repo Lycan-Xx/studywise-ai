@@ -1,8 +1,20 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { TestWizard } from "./TestWizard";
-import { ArrowLeft, Save } from "lucide-react";
+import { TestTaking } from "./TestTaking";
+import { ArrowLeft, Save, Play } from "lucide-react";
+import { useTestSessionStore } from "@/stores";
 
 interface NotePreviewProps {
   testId: string;
@@ -11,12 +23,31 @@ interface NotePreviewProps {
   initialNotes: string;
   onClose: () => void;
   onSave: (testId: string, notes: string) => void;
+  onSubmit?: (answers: Record<number, string>) => void;
+  onShowResults?: (answers: Record<number, string>) => void;
 }
 
-export function NotePreview({ testId, title, subject, initialNotes, onClose, onSave }: NotePreviewProps) {
+export function NotePreview({ 
+  testId, 
+  title, 
+  subject, 
+  initialNotes, 
+  onClose, 
+  onSave, 
+  onSubmit, 
+  onShowResults 
+}: NotePreviewProps) {
   const [notes, setNotes] = useState(initialNotes);
   const [showWizard, setShowWizard] = useState(false);
+  const [showResumeTest, setShowResumeTest] = useState(false);
+  const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+
+  const { 
+    hasSavedSession, 
+    getSavedSessionByTestId, 
+    resumeTest 
+  } = useTestSessionStore();
 
   const handleNotesChange = (value: string) => {
     setNotes(value);
@@ -36,6 +67,50 @@ export function NotePreview({ testId, title, subject, initialNotes, onClose, onS
     }
     setShowWizard(true);
   };
+
+  const handleResumeTest = () => {
+    setShowResumeDialog(true);
+  };
+
+  const handleConfirmResume = () => {
+    const savedSession = getSavedSessionByTestId(testId);
+    if (savedSession) {
+      resumeTest(savedSession);
+      setShowResumeDialog(false);
+      setShowResumeTest(true);
+    }
+  };
+
+  const handleTestSubmit = (answers: Record<number, string>) => {
+    if (onSubmit) {
+      onSubmit(answers);
+    }
+  };
+
+  const handleShowResults = (answers: Record<number, string>) => {
+    if (onShowResults) {
+      onShowResults(answers);
+    }
+  };
+
+  if (showResumeTest) {
+    const savedSession = getSavedSessionByTestId(testId);
+    if (savedSession) {
+      return (
+        <TestTaking
+          testTitle={savedSession.testTitle}
+          questions={savedSession.questions}
+          timeLimit={savedSession.timeLimit}
+          onSubmit={handleTestSubmit}
+          onBack={() => {
+            setShowResumeTest(false);
+            onClose(); // This will take us back to the library
+          }}
+          onShowResults={handleShowResults}
+        />
+      );
+    }
+  }
 
   if (showWizard) {
     return (
@@ -70,6 +145,16 @@ export function NotePreview({ testId, title, subject, initialNotes, onClose, onS
           </div>
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
+          {hasSavedSession(testId) && (
+            <Button
+              onClick={handleResumeTest}
+              variant="outline"
+              className="border-blue-200 text-blue-600 hover:bg-blue-50 px-6 py-3 flex items-center gap-2 flex-1 sm:flex-none"
+            >
+              <Play className="w-4 h-4" />
+              Resume Test
+            </Button>
+          )}
           <Button
             onClick={handleStartTest}
             className="bg-primary hover:bg-blue-600 px-6 py-3 flex-1 sm:flex-none"
@@ -118,6 +203,48 @@ export function NotePreview({ testId, title, subject, initialNotes, onClose, onS
           )}
         </div>
       </div>
+
+      {/* Resume Test Confirmation Dialog */}
+      <AlertDialog open={showResumeDialog} onOpenChange={setShowResumeDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Resume Test</AlertDialogTitle>
+            <AlertDialogDescription>
+              {(() => {
+                const savedSession = getSavedSessionByTestId(testId);
+                if (!savedSession) return "No saved session found.";
+                
+                const savedDate = new Date(savedSession.savedAt).toLocaleDateString();
+                const timeSpent = savedSession.startedAt ? 
+                  Math.round((new Date(savedSession.savedAt).getTime() - new Date(savedSession.startedAt).getTime()) / 60000) : 0;
+                
+                return (
+                  <div className="space-y-2">
+                    <p>Would you like to resume the test you left?</p>
+                    <div className="bg-gray-50 p-3 rounded-lg text-sm space-y-1">
+                      <p><strong>Test:</strong> {savedSession.testTitle}</p>
+                      <p><strong>Saved on:</strong> {savedDate}</p>
+                      <p><strong>Progress:</strong> {savedSession.questionsAnswered} of {savedSession.totalQuestions} questions answered</p>
+                      {savedSession.timeRemaining && (
+                        <p><strong>Time remaining:</strong> {Math.floor(savedSession.timeRemaining / 60)}:{(savedSession.timeRemaining % 60).toString().padStart(2, '0')}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmResume}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Resume Test
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
