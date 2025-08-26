@@ -40,10 +40,14 @@ export default function Library() {
   
   const { 
     startTest,
+    resumeTest,
     submitTest,
     currentSession,
     getCurrentQuestion,
-    getProgress
+    getProgress,
+    hasSavedSession,
+    getSavedSessionByTestId,
+    savedSessions
   } = useTestSessionStore();
   
   const { currentResult } = useResultsStore();
@@ -52,6 +56,12 @@ export default function Library() {
   useEffect(() => {
     loadTests();
   }, [loadTests]);
+
+  // Force re-render when returning to library (to update badges)
+  useEffect(() => {
+    // This effect will run when saved sessions change
+    console.log('Saved sessions updated:', savedSessions.length);
+  }, [savedSessions]);
 
   const handleTestClick = (testId: string) => {
     setSelectedTest(testId);
@@ -182,6 +192,8 @@ export default function Library() {
         initialNotes={selectedTestData.notes}
         onClose={() => setSelectedTest(null)}
         onSave={handleSaveNotes}
+        onSubmit={handleTestSubmit}
+        onShowResults={handleShowResults}
       />
     );
   }
@@ -241,9 +253,16 @@ export default function Library() {
           >
             <CardContent className="p-6">
               <div className="mb-4">
-                <h3 className="font-semibold text-studywise-gray-900 mb-2 text-lg" data-testid={`text-test-title-${test.id}`}>
-                  {test.title}
-                </h3>
+                <div className="flex items-start justify-between mb-2">
+                  <h3 className="font-semibold text-studywise-gray-900 text-lg" data-testid={`text-test-title-${test.id}`}>
+                    {test.title}
+                  </h3>
+                  {hasSavedSession(test.id) && (
+                    <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
+                      In Progress
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-studywise-gray-600 mb-2 line-clamp-2" data-testid={`text-test-notes-${test.id}`}>
                   {getNotesPreview(test.notes)}
                 </p>

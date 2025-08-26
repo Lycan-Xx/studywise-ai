@@ -27,6 +27,7 @@ export interface SavedTest {
   notes: string;
   gradient?: string;
   image?: string;
+  hasSavedSession?: boolean; // Indicates if there's a saved test session
 }
 
 export interface TestResult {
@@ -43,6 +44,7 @@ export interface TestResult {
 }
 
 export interface TestSession {
+  id: string;
   testId: string;
   testTitle: string;
   questions: Question[];
@@ -52,4 +54,19 @@ export interface TestSession {
   timeRemaining: number | null; // in seconds
   startedAt: string;
   isSubmitted: boolean;
+}
+
+export interface SavedTestSession {
+  id: string;
+  testId: string;
+  testTitle: string;
+  questions: Question[];
+  currentQuestionIndex: number;
+  userAnswers: Record<number, string>;
+  timeLimit: number | null;
+  timeRemaining: number | null;
+  startedAt: string;
+  savedAt: string;
+  questionsAnswered: number;
+  totalQuestions: number;
 }
