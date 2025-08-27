@@ -17,8 +17,10 @@ import { TestSettings } from "@/components/test/TestSettings";
 import { TestTaking } from "@/components/test/TestTaking";
 import { TestResults } from "@/components/test/TestResults";
 import { useLibraryStore, useTestSessionStore, useResultsStore } from "@/stores";
+import { useLocation } from "wouter";
 
 export default function Library() {
+  const [location] = useLocation();
   const [selectedTest, setSelectedTest] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [testToDelete, setTestToDelete] = useState<string | null>(null);
@@ -27,6 +29,7 @@ export default function Library() {
   const [showTest, setShowTest] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [testTimeLimit, setTestTimeLimit] = useState<number | null>(null);
+  const [highlightText, setHighlightText] = useState<string | null>(null);
 
   // Zustand stores
   const { 
@@ -48,10 +51,22 @@ export default function Library() {
   
   const { currentResult } = useResultsStore();
 
-  // Load tests on component mount
+  // Load tests on component mount and handle query parameters
   useEffect(() => {
     loadTests();
-  }, [loadTests]);
+
+    // Check for query parameters to auto-open test and highlight text
+    const params = new URLSearchParams(location.split('?')[1] || '');
+    const openTestId = params.get('open');
+    const highlightQuery = params.get('q');
+
+    if (openTestId) {
+      setSelectedTest(openTestId);
+    }
+    if (highlightQuery) {
+      setHighlightText(decodeURIComponent(highlightQuery));
+    }
+  }, [loadTests, location]);
 
   const handleTestClick = (testId: string) => {
     setSelectedTest(testId);
@@ -138,6 +153,7 @@ export default function Library() {
     return (
       <TestResults
         testTitle={currentResult.testTitle}
+        testId={currentResult.testId}
         questions={currentResult.questions}
         userAnswers={currentResult.userAnswers}
         correctAnswers={currentResult.correctAnswers}
@@ -180,7 +196,11 @@ export default function Library() {
         title={selectedTestData.title}
         subject={selectedTestData.subject}
         initialNotes={selectedTestData.notes}
-        onClose={() => setSelectedTest(null)}
+        highlightText={highlightText}
+        onClose={() => {
+          setSelectedTest(null);
+          setHighlightText(null);
+        }}
         onSave={handleSaveNotes}
       />
     );

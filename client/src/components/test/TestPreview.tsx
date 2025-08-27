@@ -97,6 +97,7 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
     return (
       <TestResults
         testTitle={currentResult.testTitle}
+        testId={currentResult.testId}
         questions={currentResult.questions}
         userAnswers={currentResult.userAnswers}
         correctAnswers={currentResult.correctAnswers}

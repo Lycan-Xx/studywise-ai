@@ -1,18 +1,19 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, X, List } from "lucide-react";
+import { Check, X, List, ExternalLink } from "lucide-react";
 import { useLocation } from "wouter";
 import { Question } from "@/types";
 
 interface TestResultsProps {
   testTitle: string;
+  testId?: string;
   questions: Question[];
   userAnswers: Record<number, string>;
   correctAnswers: Record<number, string>;
   onBack: () => void;
 }
 
-export function TestResults({ testTitle, questions, userAnswers, correctAnswers, onBack }: TestResultsProps) {
+export function TestResults({ testTitle, testId, questions, userAnswers, correctAnswers, onBack }: TestResultsProps) {
   const [, setLocation] = useLocation();
 
   // Calculate score
@@ -21,6 +22,16 @@ export function TestResults({ testTitle, questions, userAnswers, correctAnswers,
 
   const handleBackToLibrary = () => {
     setLocation("/library");
+  };
+
+  const handleViewInNotes = (question: Question) => {
+    if (!testId || !question.sourceText) return;
+    
+    const params = new URLSearchParams({
+      open: testId,
+      q: encodeURIComponent(question.sourceText.substring(0, 50))
+    });
+    setLocation(`/library?${params.toString()}`);
   };
 
   return (
@@ -103,9 +114,22 @@ export function TestResults({ testTitle, questions, userAnswers, correctAnswers,
                         )}
                       </div>
                       
-                      <p className="text-studywise-gray-700">
+                      <p className="text-studywise-gray-700 mb-3">
                         {question.question}
                       </p>
+
+                      {/* Source Link */}
+                      {testId && question.sourceText && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewInNotes(question)}
+                          className="text-xs text-primary hover:text-primary/80 p-0 h-auto font-normal"
+                        >
+                          <ExternalLink className="w-3 h-3 mr-1" />
+                          View in Notes
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>

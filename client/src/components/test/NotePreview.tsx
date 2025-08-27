@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { TestWizard } from "./TestWizard";
@@ -9,15 +9,39 @@ interface NotePreviewProps {
   title: string;
   subject: string;
   initialNotes: string;
+  highlightText?: string | null;
   onClose: () => void;
   onSave: (testId: string, notes: string) => void;
 }
 
-export function NotePreview({ testId, title, subject, initialNotes, onClose, onSave }: NotePreviewProps) {
+export function NotePreview({ testId, title, subject, initialNotes, highlightText, onClose, onSave }: NotePreviewProps) {
   const [notes, setNotes] = useState(initialNotes);
   const [showWizard, setShowWizard] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [lastSaved, setLastSaved] = useState<string>(initialNotes);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Handle text highlighting when component mounts or highlightText changes
+  useEffect(() => {
+    if (highlightText && textareaRef.current) {
+      const textarea = textareaRef.current;
+      const text = textarea.value;
+      
+      // Find the text to highlight
+      const index = text.toLowerCase().indexOf(highlightText.toLowerCase());
+      
+      if (index !== -1) {
+        // Focus the textarea and select the found text
+        textarea.focus();
+        textarea.setSelectionRange(index, index + highlightText.length);
+        
+        // Scroll to make the selection visible
+        textarea.scrollTop = Math.max(0, 
+          (index / text.length) * textarea.scrollHeight - textarea.clientHeight / 2
+        );
+      }
+    }
+  }, [highlightText]);
 
   const handleNotesChange = (value: string) => {
     setNotes(value);
@@ -88,6 +112,7 @@ export function NotePreview({ testId, title, subject, initialNotes, onClose, onS
         <div className="mb-8">
           <div className="relative">
             <Textarea
+              ref={textareaRef}
               value={notes}
               onChange={(e) => handleNotesChange(e.target.value)}
               placeholder="Edit your study notes here. All changes are automatically saved when you create a test..."
