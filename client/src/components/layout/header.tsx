@@ -46,7 +46,7 @@ export function Header(): JSX.Element {
     <header className="px-4 md:px-8 py-3">
       {/* DESKTOP */}
       <div className="hidden md:block">
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="rounded-xl border border-gray-400 bg-white shadow-sm">
           <nav className="grid grid-cols-3 items-center max-w-[1200px] mx-auto h-16">
             {/* LEFT */}
             <div className="flex items-center gap-6 pl-4">

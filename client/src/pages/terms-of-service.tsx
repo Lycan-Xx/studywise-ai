@@ -13,7 +13,7 @@ export default function TermsOfService() {
             <Link href="/">
               <Button variant="outline" size="sm" className="flex items-center gap-2">
                 <ArrowLeft className="w-4 h-4" />
-                <span className="hidden sm:inline">Back to Home</span>
+                <span className="hidden sm:inline">Return</span>
               </Button>
             </Link>
             

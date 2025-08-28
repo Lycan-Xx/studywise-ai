@@ -531,7 +531,7 @@ export function TestTaking({
                             }}
                             className="bg-primary hover:bg-blue-600 w-full"
                         >
-                            Back to Library
+                            Return to Library
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
