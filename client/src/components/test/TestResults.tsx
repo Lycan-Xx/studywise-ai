@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Check, X, List, ExternalLink } from "lucide-react";
 import { useLocation } from "wouter";
 import { Question } from "@/types";
+import { SourcePreviewModal } from "./SourcePreviewModal";
 
 interface TestResultsProps {
   testTitle: string;
@@ -10,11 +12,14 @@ interface TestResultsProps {
   questions: Question[];
   userAnswers: Record<number, string>;
   correctAnswers: Record<number, string>;
+  notes?: string;
   onBack: () => void;
 }
 
-export function TestResults({ testTitle, testId, questions, userAnswers, correctAnswers, onBack }: TestResultsProps) {
+export function TestResults({ testTitle, testId, questions, userAnswers, correctAnswers, notes = "", onBack }: TestResultsProps) {
   const [, setLocation] = useLocation();
+  const [sourceModalOpen, setSourceModalOpen] = useState(false);
+  const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
 
   // Calculate score
   const totalQuestions = questions.length;
@@ -25,13 +30,8 @@ export function TestResults({ testTitle, testId, questions, userAnswers, correct
   };
 
   const handleViewInNotes = (question: Question) => {
-    if (!testId || !question.sourceText) return;
-    
-    const params = new URLSearchParams({
-      open: testId,
-      q: encodeURIComponent(question.sourceText.substring(0, 50))
-    });
-    setLocation(`/library?${params.toString()}`);
+    setSelectedQuestion(question);
+    setSourceModalOpen(true);
   };
 
   return (
@@ -119,7 +119,7 @@ export function TestResults({ testTitle, testId, questions, userAnswers, correct
                       </p>
 
                       {/* Source Link */}
-                      {testId && question.sourceText && (
+                      {question.sourceText && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -127,7 +127,7 @@ export function TestResults({ testTitle, testId, questions, userAnswers, correct
                           className="text-xs text-primary hover:text-primary/80 p-0 h-auto font-normal"
                         >
                           <ExternalLink className="w-3 h-3 mr-1" />
-                          View in Notes
+                          View Source in Notes
                         </Button>
                       )}
                     </div>
@@ -169,6 +169,22 @@ export function TestResults({ testTitle, testId, questions, userAnswers, correct
           </Button>
         </div>
       </div>
+
+      {/* Source Preview Modal */}
+      {selectedQuestion && (
+        <SourcePreviewModal
+          isOpen={sourceModalOpen}
+          onClose={() => {
+            setSourceModalOpen(false);
+            setSelectedQuestion(null);
+          }}
+          notes={notes}
+          sourceText={selectedQuestion.sourceText}
+          sourceOffset={selectedQuestion.sourceOffset}
+          sourceLength={selectedQuestion.sourceLength}
+          questionText={selectedQuestion.question}
+        />
+      )}
     </div>
   );
 }

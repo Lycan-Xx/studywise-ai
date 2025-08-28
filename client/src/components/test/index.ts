@@ -8,3 +8,4 @@ export { NotePreview } from './NotePreview';
 export { TestSettings } from './TestSettings';
 export { TestTaking } from './TestTaking';
 export { TestResults } from './TestResults';
+export { SourcePreviewModal } from './SourcePreviewModal';
