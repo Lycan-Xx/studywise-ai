@@ -37,22 +37,25 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
   const [lastSaved, setLastSaved] = useState<string>(initialNotes);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const { hasSavedSession, getSavedSessionByTestId, resumeTest } = useTestSessionStore();
+
   // Handle text highlighting when component mounts or highlightText changes
   useEffect(() => {
     if (highlightText && textareaRef.current) {
       const textarea = textareaRef.current;
       const text = textarea.value;
-      
+
       // Find the text to highlight
       const index = text.toLowerCase().indexOf(highlightText.toLowerCase());
-      
+
       if (index !== -1) {
         // Focus the textarea and select the found text
         textarea.focus();
         textarea.setSelectionRange(index, index + highlightText.length);
-        
+
         // Scroll to make the selection visible
-        textarea.scrollTop = Math.max(0, 
+        textarea.scrollTop = Math.max(
+          0,
           (index / text.length) * textarea.scrollHeight - textarea.clientHeight / 2
         );
       }
@@ -85,11 +88,13 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
 
   const handleConfirmResume = () => {
     const savedSession = getSavedSessionByTestId(testId);
-    if (savedSession) {
-      resumeTest(savedSession);
-      setShowResumeDialog(false);
-      setShowResumeTest(true);
+    if (!savedSession) {
+      console.error("No saved session found for testId:", testId);
+      return;
     }
+    resumeTest(savedSession);
+    setShowResumeDialog(false);
+    setShowResumeTest(true);
   };
 
   const handleTestSubmit = (answers: Record<number, string>) => {
@@ -226,20 +231,34 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
               {(() => {
                 const savedSession = getSavedSessionByTestId(testId);
                 if (!savedSession) return "No saved session found.";
-                
+
                 const savedDate = new Date(savedSession.savedAt).toLocaleDateString();
-                const timeSpent = savedSession.startedAt ? 
-                  Math.round((new Date(savedSession.savedAt).getTime() - new Date(savedSession.startedAt).getTime()) / 60000) : 0;
-                
+                const timeSpent = savedSession.startedAt
+                  ? Math.round(
+                      (new Date(savedSession.savedAt).getTime() -
+                        new Date(savedSession.startedAt).getTime()) /
+                        60000
+                    )
+                  : 0;
+
                 return (
                   <div className="space-y-2">
                     <p>Would you like to resume the test you left?</p>
                     <div className="bg-gray-50 p-3 rounded-lg text-sm space-y-1">
-                      <p><strong>Test:</strong> {savedSession.testTitle}</p>
-                      <p><strong>Saved on:</strong> {savedDate}</p>
-                      <p><strong>Progress:</strong> {savedSession.questionsAnswered} of {savedSession.totalQuestions} questions answered</p>
+                      <p>
+                        <strong>Test:</strong> {savedSession.testTitle}
+                      </p>
+                      <p>
+                        <strong>Saved on:</strong> {savedDate}
+                      </p>
+                      <p>
+                        <strong>Progress:</strong> {savedSession.questionsAnswered} of {savedSession.totalQuestions} questions answered
+                      </p>
                       {savedSession.timeRemaining && (
-                        <p><strong>Time remaining:</strong> {Math.floor(savedSession.timeRemaining / 60)}:{(savedSession.timeRemaining % 60).toString().padStart(2, '0')}</p>
+                        <p>
+                          <strong>Time remaining:</strong> {Math.floor(savedSession.timeRemaining / 60)}:
+                          {(savedSession.timeRemaining % 60).toString().padStart(2, "0")}
+                        </p>
                       )}
                     </div>
                   </div>

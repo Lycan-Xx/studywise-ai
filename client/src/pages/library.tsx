@@ -92,12 +92,16 @@ export default function Library() {
   const handleStartTestWithSettings = (timeLimit: number | null) => {
     if (startingTest) {
       const test = getTestById(startingTest);
-      if (test) {
-        startTest(test.id, test.title, test.questions, timeLimit);
-        setTestTimeLimit(timeLimit);
-        setShowTestSettings(false);
-        setShowTest(true);
+      if (!test) {
+        console.error("Test data not found for testId:", startingTest);
+        return;
       }
+      startTest(test.id, test.title, test.questions, timeLimit);
+      setTestTimeLimit(timeLimit);
+      setShowTestSettings(false);
+      setShowTest(true);
+    } else {
+      console.error("Starting test is null");
     }
   };
 
@@ -193,18 +197,23 @@ export default function Library() {
   // Show TestTaking if test is started - allow data from either flow
   if (showTest && (startingTestData || currentResult)) {
     const testData = startingTestData || currentResult;
-    if (testData) {
-      return (
-        <TestTaking
-          testTitle={testData.testTitle || testData.title}
-          questions={testData.questions}
-          timeLimit={testTimeLimit}
-          onSubmit={handleTestSubmit}
-          onBack={handleBackToLibrary}
-          onShowResults={handleShowResults}
-        />
-      );
+    if (!testData) {
+      console.error("Test data is undefined");
+      return null;
     }
+
+    const testTitle = 'testTitle' in testData ? testData.testTitle : testData.title;
+
+    return (
+      <TestTaking
+        testTitle={testTitle}
+        questions={testData.questions}
+        timeLimit={testTimeLimit}
+        onSubmit={handleTestSubmit}
+        onBack={handleBackToLibrary}
+        onShowResults={handleShowResults}
+      />
+    );
   }
 
   // Show TestSettings if user clicked Start Test
