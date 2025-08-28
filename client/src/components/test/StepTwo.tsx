@@ -25,11 +25,11 @@ export function StepTwo({ config, updateConfig, onNext, onBack }: StepTwoProps) 
   return (
     <div>
       <div className="mb-8">
-        <h3 className="text-lg font-medium text-studywise-gray-900 mb-4">
-          Question Type
+        <h3 className="text-xl font-semibold text-studywise-gray-900 mb-4">
+          How should students be tested?
         </h3>
         <p className="text-studywise-gray-600 mb-6">
-          Choose the type of questions you'd like in your test
+          Select the question format that best suits your study goals
         </p>
         
         <div className="space-y-4">
@@ -72,9 +72,10 @@ export function StepTwo({ config, updateConfig, onNext, onBack }: StepTwoProps) 
         </Button>
         <Button 
           onClick={onNext}
-          className="bg-primary hover:bg-blue-600"
+          size="lg"
+          className="bg-primary hover:bg-primary/90 px-8"
         >
-          Next
+          Continue
         </Button>
       </div>
     </div>
