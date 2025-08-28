@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { TestConfig } from "@/types";
-import { List } from "lucide-react";
+import { List, ExternalLink } from "lucide-react";
 import { TestSettings } from "./TestSettings";
 import { TestTaking } from "./TestTaking";
 import { TestResults } from "./TestResults";
+import { SourcePreviewModal } from "./SourcePreviewModal";
 import { useTestWorkflow, useResultsStore, useTestStore } from "@/stores";
 
 interface TestPreviewProps {
@@ -20,6 +21,8 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
   const [showTest, setShowTest] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [testTimeLimit, setTestTimeLimit] = useState<number | null>(null);
+  const [sourceModalOpen, setSourceModalOpen] = useState(false);
+  const [selectedQuestion, setSelectedQuestion] = useState<any>(null);
 
   // Use workflow hook for coordinated store operations
   const { generateAndSaveTest, completeTest } = useTestWorkflow();
@@ -92,6 +95,11 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
     }
   };
 
+  const handleViewSource = (question: any) => {
+    setSelectedQuestion(question);
+    setSourceModalOpen(true);
+  };
+
   // Show TestResults if test is completed
   if (showResults && currentResult) {
     return (
@@ -101,6 +109,7 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
         questions={currentResult.questions}
         userAnswers={currentResult.userAnswers}
         correctAnswers={currentResult.correctAnswers}
+        notes={notes}
         onBack={handleResultsBack}
       />
     );
@@ -200,6 +209,21 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
                         <div key={idx} className="mb-1">• {option}</div>
                       ))}
                     </div>
+                    
+                    {/* Source Link */}
+                    {question.sourceText && (
+                      <div className="mt-3 pt-3 border-t border-studywise-gray-200">
+                        <Button
+                          onClick={() => handleViewSource(question)}
+                          variant="ghost"
+                          size="sm"
+                          className="text-primary hover:text-primary/80 p-0 h-auto font-normal"
+                        >
+                          <ExternalLink className="w-3 h-3 mr-1" />
+                          View source in notes
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -243,6 +267,22 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
           Start Practice Test
         </Button>
       </div>
+
+      {/* Source Preview Modal */}
+      {selectedQuestion && (
+        <SourcePreviewModal
+          isOpen={sourceModalOpen}
+          onClose={() => {
+            setSourceModalOpen(false);
+            setSelectedQuestion(null);
+          }}
+          notes={notes}
+          sourceText={selectedQuestion.sourceText}
+          sourceOffset={selectedQuestion.sourceOffset}
+          sourceLength={selectedQuestion.sourceLength}
+          questionText={selectedQuestion.question}
+        />
+      )}
     </div>
   );
 }
