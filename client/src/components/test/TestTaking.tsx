@@ -69,11 +69,9 @@ export function TestTaking({
 
   // initialize test session
   useEffect(() => {
-    if (!currentSession) {
-      console.error("No current session found. Test cannot be started.");
-      return;
+    if (!currentSession && questions.length > 0) {
+      startTest(Date.now().toString(), testTitle, questions, timeLimit);
     }
-    startTest(Date.now().toString(), testTitle, questions, timeLimit);
   }, [testTitle, questions, timeLimit, startTest, currentSession]);
 
   // Full-screen overlay and scroll lock

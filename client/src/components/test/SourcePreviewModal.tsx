@@ -65,14 +65,7 @@ export function SourcePreviewModal({
             <DialogTitle className="text-xl font-semibold text-studywise-gray-900">
               Source Reference
             </DialogTitle>
-            <Button
-              onClick={onClose}
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+
           </div>
           <div className="text-sm text-studywise-gray-600 mt-2">
             <span className="font-medium">Question:</span> {questionText}
