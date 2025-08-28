@@ -17,8 +17,10 @@ import { TestSettings } from "@/components/test/TestSettings";
 import { TestTaking } from "@/components/test/TestTaking";
 import { TestResults } from "@/components/test/TestResults";
 import { useLibraryStore, useTestSessionStore, useResultsStore } from "@/stores";
+import { useLocation } from "wouter";
 
 export default function Library() {
+  const [location] = useLocation();
   const [selectedTest, setSelectedTest] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [testToDelete, setTestToDelete] = useState<string | null>(null);
@@ -27,6 +29,7 @@ export default function Library() {
   const [showTest, setShowTest] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [testTimeLimit, setTestTimeLimit] = useState<number | null>(null);
+  const [highlightText, setHighlightText] = useState<string | null>(null);
 
   // Zustand stores
   const { 
@@ -42,6 +45,7 @@ export default function Library() {
     startTest,
     resumeTest,
     submitTest,
+    resetSession,
     currentSession,
     getCurrentQuestion,
     getProgress,
@@ -52,10 +56,22 @@ export default function Library() {
   
   const { currentResult } = useResultsStore();
 
-  // Load tests on component mount
+  // Load tests on component mount and handle query parameters
   useEffect(() => {
     loadTests();
-  }, [loadTests]);
+
+    // Check for query parameters to auto-open test and highlight text
+    const params = new URLSearchParams(location.split('?')[1] || '');
+    const openTestId = params.get('open');
+    const highlightQuery = params.get('q');
+
+    if (openTestId) {
+      setSelectedTest(openTestId);
+    }
+    if (highlightQuery) {
+      setHighlightText(decodeURIComponent(highlightQuery));
+    }
+  }, [loadTests, location]);
 
   // Force re-render when returning to library (to update badges)
   useEffect(() => {
@@ -107,6 +123,22 @@ export default function Library() {
     setTestTimeLimit(null);
   };
 
+  // Retake functionality - uses currentResult to restart the exact same test
+  const handleRetake = () => {
+    if (currentResult) {
+      // Reset and start a new session with the same test data
+      resetSession();
+      startTest(
+        currentResult.testId, 
+        currentResult.testTitle, 
+        currentResult.questions, 
+        testTimeLimit
+      );
+      setShowResults(false);
+      setShowTest(true);
+    }
+  };
+
   const handleDeleteClick = (testId: string) => {
     setTestToDelete(testId);
     setDeleteDialogOpen(true);
@@ -148,26 +180,31 @@ export default function Library() {
     return (
       <TestResults
         testTitle={currentResult.testTitle}
+        testId={currentResult.testId}
         questions={currentResult.questions}
         userAnswers={currentResult.userAnswers}
         correctAnswers={currentResult.correctAnswers}
-        onBack={handleBackToLibrary}
+        notes={selectedTestData?.notes || ""}
+        onRetake={handleRetake}
       />
     );
   }
 
-  // Show TestTaking if test is started
-  if (showTest && startingTestData) {
-    return (
-      <TestTaking
-        testTitle={startingTestData.title}
-        questions={startingTestData.questions}
-        timeLimit={testTimeLimit}
-        onSubmit={handleTestSubmit}
-        onBack={handleBackToLibrary}
-        onShowResults={handleShowResults}
-      />
-    );
+  // Show TestTaking if test is started - allow data from either flow
+  if (showTest && (startingTestData || currentResult)) {
+    const testData = startingTestData || currentResult;
+    if (testData) {
+      return (
+        <TestTaking
+          testTitle={testData.testTitle || testData.title}
+          questions={testData.questions}
+          timeLimit={testTimeLimit}
+          onSubmit={handleTestSubmit}
+          onBack={handleBackToLibrary}
+          onShowResults={handleShowResults}
+        />
+      );
+    }
   }
 
   // Show TestSettings if user clicked Start Test
@@ -190,7 +227,11 @@ export default function Library() {
         title={selectedTestData.title}
         subject={selectedTestData.subject}
         initialNotes={selectedTestData.notes}
-        onClose={() => setSelectedTest(null)}
+        highlightText={highlightText}
+        onClose={() => {
+          setSelectedTest(null);
+          setHighlightText(null);
+        }}
         onSave={handleSaveNotes}
         onSubmit={handleTestSubmit}
         onShowResults={handleShowResults}
@@ -228,15 +269,19 @@ export default function Library() {
     <div>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-studywise-gray-900 mb-2" data-testid="text-library-title">
-          My Notes
+          My Study Library
         </h1>
       </div>
 
       {/* Empty state */}
       {savedTests.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-studywise-gray-600 mb-4">No tests saved yet.</p>
-          <Button onClick={() => window.location.href = '/dashboard'}>
+          <p className="text-studywise-gray-600 mb-4">No study materials saved yet. Start by creating your first test!</p>
+          <Button 
+            onClick={() => window.location.href = '/dashboard'}
+            size="lg"
+            className="bg-primary hover:bg-primary/90"
+          >
             Create Your First Test
           </Button>
         </div>

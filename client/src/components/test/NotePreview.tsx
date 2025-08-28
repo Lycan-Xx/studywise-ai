@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -21,41 +21,52 @@ interface NotePreviewProps {
   title: string;
   subject: string;
   initialNotes: string;
+  highlightText?: string | null;
   onClose: () => void;
   onSave: (testId: string, notes: string) => void;
   onSubmit?: (answers: Record<number, string>) => void;
   onShowResults?: (answers: Record<number, string>) => void;
 }
 
-export function NotePreview({ 
-  testId, 
-  title, 
-  subject, 
-  initialNotes, 
-  onClose, 
-  onSave, 
-  onSubmit, 
-  onShowResults 
-}: NotePreviewProps) {
+export function NotePreview({ testId, title, subject, initialNotes, highlightText, onClose, onSave }: NotePreviewProps) {
   const [notes, setNotes] = useState(initialNotes);
   const [showWizard, setShowWizard] = useState(false);
   const [showResumeTest, setShowResumeTest] = useState(false);
   const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [lastSaved, setLastSaved] = useState<string>(initialNotes);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const { 
-    hasSavedSession, 
-    getSavedSessionByTestId, 
-    resumeTest 
-  } = useTestSessionStore();
+  // Handle text highlighting when component mounts or highlightText changes
+  useEffect(() => {
+    if (highlightText && textareaRef.current) {
+      const textarea = textareaRef.current;
+      const text = textarea.value;
+      
+      // Find the text to highlight
+      const index = text.toLowerCase().indexOf(highlightText.toLowerCase());
+      
+      if (index !== -1) {
+        // Focus the textarea and select the found text
+        textarea.focus();
+        textarea.setSelectionRange(index, index + highlightText.length);
+        
+        // Scroll to make the selection visible
+        textarea.scrollTop = Math.max(0, 
+          (index / text.length) * textarea.scrollHeight - textarea.clientHeight / 2
+        );
+      }
+    }
+  }, [highlightText]);
 
   const handleNotesChange = (value: string) => {
     setNotes(value);
-    setHasChanges(value !== initialNotes);
+    setHasChanges(value !== lastSaved);
   };
 
   const handleSave = () => {
     onSave(testId, notes);
+    setLastSaved(notes);
     setHasChanges(false);
   };
 
@@ -157,9 +168,10 @@ export function NotePreview({
           )}
           <Button
             onClick={handleStartTest}
-            className="bg-primary hover:bg-blue-600 px-6 py-3 flex-1 sm:flex-none"
+            size="lg"
+            className="bg-primary hover:bg-primary/90 px-8 py-3 flex-1 sm:flex-none"
           >
-            Start Test
+            Create Practice Test
           </Button>
         </div>
       </div>
@@ -170,9 +182,10 @@ export function NotePreview({
         <div className="mb-8">
           <div className="relative">
             <Textarea
+              ref={textareaRef}
               value={notes}
               onChange={(e) => handleNotesChange(e.target.value)}
-              placeholder="Enter your study notes here or upload a file to get started..."
+              placeholder="Edit your study notes here. All changes are automatically saved when you create a test..."
               className="w-full h-96 resize-none border-2 border-studywise-gray-300 rounded-2xl p-6 text-base leading-relaxed focus:ring-2 focus:ring-primary focus:border-transparent pr-20"
               maxLength={maxLength}
             />

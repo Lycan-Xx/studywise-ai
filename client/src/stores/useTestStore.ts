@@ -79,15 +79,34 @@ const mockGenerateQuestions = (config: TestConfig, notes: string): Question[] =>
   const questionPool = config.questionType === 'mcq' ? mcqQuestions : trueFalseQuestions;
   const questions: Question[] = [];
 
+  // Generate more realistic source text snippets
+  const sampleParagraphs = [
+    "Mitochondria are membrane-bound organelles found in most eukaryotic cells. They are often called the 'powerhouses' of the cell because they generate most of the cell's supply of adenosine triphosphate (ATP), which is used as a source of chemical energy.",
+    "User interface design principles emphasize clarity, consistency, and efficiency over complexity. A well-designed interface should be intuitive and help users accomplish their goals without unnecessary confusion or cognitive load.",
+    "Photosynthesis is the process by which plants convert light energy, usually from the sun, into chemical energy stored in glucose. This process is fundamental to life on Earth as it produces the oxygen we breathe.",
+    "Object-oriented programming (OOP) is a programming paradigm based on the concept of objects, which can contain data (attributes) and code (methods). This approach allows for better code organization and reusability.",
+    "Gold is a chemical element with the symbol Au (from Latin aurum) and atomic number 79. It is a dense, soft, malleable metal that has been valued by humans throughout history."
+  ];
+
   for (let i = 1; i <= config.numberOfQuestions; i++) {
     const questionData = questionPool[(i - 1) % questionPool.length];
+    const paragraphIndex = (i - 1) % sampleParagraphs.length;
+    const sourceText = sampleParagraphs[paragraphIndex];
+    
+    // Calculate realistic source position
+    const noteChunks = Math.ceil(notes.length / 500);
+    const chunkIndex = (i - 1) % noteChunks;
+    const sourceOffset = Math.floor((notes.length * chunkIndex) / noteChunks);
+    
     questions.push({
       id: i,
       type: config.questionType,
       question: questionData.question,
       options: questionData.options,
       correctAnswer: questionData.correctAnswer,
-      sourceText: notes.substring(0, 100) + "..." // Mock source reference
+      sourceText: sourceText,
+      sourceOffset: sourceOffset,
+      sourceLength: sourceText.length
     });
   }
 

@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { TestConfig } from "@/types";
-import { List } from "lucide-react";
+import { List, ExternalLink } from "lucide-react";
 import { TestSettings } from "./TestSettings";
 import { TestTaking } from "./TestTaking";
 import { TestResults } from "./TestResults";
-import { useTestWorkflow, useResultsStore, useTestStore } from "@/stores";
+import { SourcePreviewModal } from "./SourcePreviewModal";
+import { useTestWorkflow, useResultsStore, useTestStore, useTestSessionStore } from "@/stores";
 
 interface TestPreviewProps {
   config: TestConfig;
@@ -13,18 +14,19 @@ interface TestPreviewProps {
   onClose: () => void;
 }
 
-
-
 export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [showTest, setShowTest] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [testTimeLimit, setTestTimeLimit] = useState<number | null>(null);
+  const [sourceModalOpen, setSourceModalOpen] = useState(false);
+  const [selectedQuestion, setSelectedQuestion] = useState<any>(null);
 
   // Use workflow hook for coordinated store operations
   const { generateAndSaveTest, completeTest } = useTestWorkflow();
   const { generatedQuestions, isGenerating, generateQuestions } = useTestStore();
   const { currentResult } = useResultsStore();
+  const { startTest, resetSession } = useTestSessionStore();
 
   // Generate questions when component mounts or config changes
   useEffect(() => {
@@ -83,6 +85,22 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
     setShowSettings(false);
   };
 
+  // Retake functionality for TestPreview context
+  const handleRetake = () => {
+    if (currentResult) {
+      // Reset session and start fresh test with same data
+      resetSession();
+      startTest(
+        currentResult.testId,
+        currentResult.testTitle, 
+        currentResult.questions, 
+        testTimeLimit
+      );
+      setShowResults(false);
+      setShowTest(true);
+    }
+  };
+
   const handleSaveToLibrary = async () => {
     try {
       await generateAndSaveTest(config, notes, `${config.subject} Test`);
@@ -92,15 +110,22 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
     }
   };
 
+  const handleViewSource = (question: any) => {
+    setSelectedQuestion(question);
+    setSourceModalOpen(true);
+  };
+
   // Show TestResults if test is completed
   if (showResults && currentResult) {
     return (
       <TestResults
         testTitle={currentResult.testTitle}
+        testId={currentResult.testId}
         questions={currentResult.questions}
         userAnswers={currentResult.userAnswers}
         correctAnswers={currentResult.correctAnswers}
-        onBack={handleResultsBack}
+        notes={notes}
+        onRetake={handleRetake}
       />
     );
   }
@@ -141,10 +166,10 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-studywise-gray-900 mb-2">
-          Test Preview
+          Your Test is Ready!
         </h1>
         <p className="text-studywise-gray-600">
-          Review the questions generated from your notes before starting the test.
+          Here's a preview of your personalized practice test. Review the questions below or start testing immediately.
         </p>
       </div>
 
@@ -199,6 +224,21 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
                         <div key={idx} className="mb-1">• {option}</div>
                       ))}
                     </div>
+                    
+                    {/* Source Link */}
+                    {question.sourceText && (
+                      <div className="mt-3 pt-3 border-t border-studywise-gray-200">
+                        <Button
+                          onClick={() => handleViewSource(question)}
+                          variant="ghost"
+                          size="sm"
+                          className="text-primary hover:text-primary/80 p-0 h-auto font-normal"
+                        >
+                          <ExternalLink className="w-3 h-3 mr-1" />
+                          View source in notes
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -219,26 +259,45 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
           <Button
             onClick={handleSaveToLibrary}
             variant="outline"
-            className="px-6"
+            size="lg"
+            className="px-8"
           >
-            Save to Library
+            Save for Later
           </Button>
           <Button
             onClick={onClose}
             variant="outline"
-            className="px-6"
+            size="lg"
+            className="px-8"
           >
-            Generate New Test
+            Create Different Test
           </Button>
         </div>
 
         <Button
           onClick={handleStartTest}
-          className="bg-primary hover:bg-blue-600 px-8"
+          size="lg"
+          className="bg-primary hover:bg-primary/90 px-12"
         >
-          Start Test
+          Start Practice Test
         </Button>
       </div>
+
+      {/* Source Preview Modal */}
+      {selectedQuestion && (
+        <SourcePreviewModal
+          isOpen={sourceModalOpen}
+          onClose={() => {
+            setSourceModalOpen(false);
+            setSelectedQuestion(null);
+          }}
+          notes={notes}
+          sourceText={selectedQuestion.sourceText}
+          sourceOffset={selectedQuestion.sourceOffset}
+          sourceLength={selectedQuestion.sourceLength}
+          questionText={selectedQuestion.question}
+        />
+      )}
     </div>
   );
 }

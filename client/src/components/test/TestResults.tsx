@@ -1,19 +1,25 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, X, List } from "lucide-react";
+import { Check, X, List, ExternalLink } from "lucide-react";
 import { useLocation } from "wouter";
 import { Question } from "@/types";
+import { SourcePreviewModal } from "./SourcePreviewModal";
 
 interface TestResultsProps {
   testTitle: string;
+  testId?: string;
   questions: Question[];
   userAnswers: Record<number, string>;
   correctAnswers: Record<number, string>;
-  onBack: () => void;
+  notes?: string;
+  onRetake: () => void; // Changed from onBack to onRetake
 }
 
-export function TestResults({ testTitle, questions, userAnswers, correctAnswers, onBack }: TestResultsProps) {
+export function TestResults({ testTitle, testId, questions, userAnswers, correctAnswers, notes = "", onRetake }: TestResultsProps) {
   const [, setLocation] = useLocation();
+  const [sourceModalOpen, setSourceModalOpen] = useState(false);
+  const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
 
   // Calculate score
   const totalQuestions = questions.length;
@@ -21,6 +27,11 @@ export function TestResults({ testTitle, questions, userAnswers, correctAnswers,
 
   const handleBackToLibrary = () => {
     setLocation("/library");
+  };
+
+  const handleViewInNotes = (question: Question) => {
+    setSelectedQuestion(question);
+    setSourceModalOpen(true);
   };
 
   return (
@@ -33,22 +44,27 @@ export function TestResults({ testTitle, questions, userAnswers, correctAnswers,
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-studywise-gray-900 mb-2">
-          Test Results
+          How Did You Do?
         </h1>
         <p className="text-studywise-gray-600">
-          Review your performance on the test and see which questions you answered correctly or incorrectly.
+          Here's your performance breakdown. Review each question to understand what you got right and where you can improve.
         </p>
       </div>
 
       {/* Summary */}
       <div className="mb-8">
         <h2 className="text-xl font-semibold text-studywise-gray-900 mb-4">
-          Summary
+          Your Score
         </h2>
-        <div className="bg-studywise-gray-50 rounded-lg p-4">
-          <p className="text-lg font-medium text-studywise-gray-900">
-            Total Score: {correctCount}/{totalQuestions}
-          </p>
+        <div className="bg-studywise-gray-50 rounded-lg p-6">
+          <div className="text-center">
+            <p className="text-3xl font-bold text-studywise-gray-900 mb-2">
+              {correctCount}/{totalQuestions}
+            </p>
+            <p className="text-lg text-studywise-gray-600">
+              {Math.round((correctCount/totalQuestions) * 100)}% Correct
+            </p>
+          </div>
         </div>
       </div>
 
@@ -98,9 +114,22 @@ export function TestResults({ testTitle, questions, userAnswers, correctAnswers,
                         )}
                       </div>
                       
-                      <p className="text-studywise-gray-700">
+                      <p className="text-studywise-gray-700 mb-3">
                         {question.question}
                       </p>
+
+                      {/* Source Link */}
+                      {question.sourceText && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewInNotes(question)}
+                          className="text-xs text-primary hover:text-primary/80 p-0 h-auto font-normal"
+                        >
+                          <ExternalLink className="w-3 h-3 mr-1" />
+                          View Source in Notes
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -122,13 +151,40 @@ export function TestResults({ testTitle, questions, userAnswers, correctAnswers,
 
       {/* Back to Library Button */}
       <div className="flex justify-start">
-        <Button 
-          onClick={handleBackToLibrary}
-          className="bg-primary hover:bg-blue-600 px-6"
-        >
-          Return to Library
-        </Button>
+        <div className="flex gap-4">
+          <Button 
+            onClick={handleBackToLibrary}
+            size="lg"
+            className="bg-primary hover:bg-primary/90 px-8"
+          >
+            Return to Library
+          </Button>
+          <Button 
+            onClick={onRetake}
+            variant="outline"
+            size="lg"
+            className="px-8"
+          >
+            Retake Test
+          </Button>
+        </div>
       </div>
+
+      {/* Source Preview Modal */}
+      {selectedQuestion && (
+        <SourcePreviewModal
+          isOpen={sourceModalOpen}
+          onClose={() => {
+            setSourceModalOpen(false);
+            setSelectedQuestion(null);
+          }}
+          notes={notes}
+          sourceText={selectedQuestion.sourceText}
+          sourceOffset={selectedQuestion.sourceOffset}
+          sourceLength={selectedQuestion.sourceLength}
+          questionText={selectedQuestion.question}
+        />
+      )}
     </div>
   );
 }

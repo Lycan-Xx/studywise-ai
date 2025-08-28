@@ -22,11 +22,11 @@ export function StepThree({ config, updateConfig, onNext, onBack }: StepThreePro
   return (
     <div>
       <div className="mb-8">
-        <h3 className="text-lg font-medium text-studywise-gray-900 mb-4">
-          Number of Questions
+        <h3 className="text-xl font-semibold text-studywise-gray-900 mb-4">
+          How many questions do you want?
         </h3>
         <p className="text-studywise-gray-600 mb-6">
-          How many questions would you like in your test?
+          Choose the length of your practice test - more questions provide better coverage
         </p>
         
         {/* Quick Select Options */}
@@ -89,9 +89,10 @@ export function StepThree({ config, updateConfig, onNext, onBack }: StepThreePro
         </Button>
         <Button 
           onClick={onNext}
-          className="bg-primary hover:bg-blue-600"
+          size="lg"
+          className="bg-primary hover:bg-primary/90 px-8"
         >
-          Generate Test
+          Generate My Test
         </Button>
       </div>
     </div>

@@ -14,6 +14,8 @@ export interface Question {
   options: string[];
   correctAnswer?: string;
   sourceText?: string; // Reference to original notes
+  sourceOffset?: number; // Starting position in notes
+  sourceLength?: number; // Length of source text
 }
 
 export interface SavedTest {
