@@ -6,15 +6,13 @@ import { TestSettings } from "./TestSettings";
 import { TestTaking } from "./TestTaking";
 import { TestResults } from "./TestResults";
 import { SourcePreviewModal } from "./SourcePreviewModal";
-import { useTestWorkflow, useResultsStore, useTestStore } from "@/stores";
+import { useTestWorkflow, useResultsStore, useTestStore, useTestSessionStore } from "@/stores";
 
 interface TestPreviewProps {
   config: TestConfig;
   notes: string;
   onClose: () => void;
 }
-
-
 
 export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
   const [showSettings, setShowSettings] = useState(false);
@@ -28,6 +26,7 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
   const { generateAndSaveTest, completeTest } = useTestWorkflow();
   const { generatedQuestions, isGenerating, generateQuestions } = useTestStore();
   const { currentResult } = useResultsStore();
+  const { startTest, resetSession } = useTestSessionStore();
 
   // Generate questions when component mounts or config changes
   useEffect(() => {
@@ -86,6 +85,22 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
     setShowSettings(false);
   };
 
+  // Retake functionality for TestPreview context
+  const handleRetake = () => {
+    if (currentResult) {
+      // Reset session and start fresh test with same data
+      resetSession();
+      startTest(
+        currentResult.testId,
+        currentResult.testTitle, 
+        currentResult.questions, 
+        testTimeLimit
+      );
+      setShowResults(false);
+      setShowTest(true);
+    }
+  };
+
   const handleSaveToLibrary = async () => {
     try {
       await generateAndSaveTest(config, notes, `${config.subject} Test`);
@@ -110,7 +125,7 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
         userAnswers={currentResult.userAnswers}
         correctAnswers={currentResult.correctAnswers}
         notes={notes}
-        onBack={handleResultsBack}
+        onRetake={handleRetake}
       />
     );
   }
