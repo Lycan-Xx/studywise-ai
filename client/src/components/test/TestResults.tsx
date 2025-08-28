@@ -13,10 +13,10 @@ interface TestResultsProps {
   userAnswers: Record<number, string>;
   correctAnswers: Record<number, string>;
   notes?: string;
-  onBack: () => void;
+  onRetake: () => void; // Changed from onBack to onRetake
 }
 
-export function TestResults({ testTitle, testId, questions, userAnswers, correctAnswers, notes = "", onBack }: TestResultsProps) {
+export function TestResults({ testTitle, testId, questions, userAnswers, correctAnswers, notes = "", onRetake }: TestResultsProps) {
   const [, setLocation] = useLocation();
   const [sourceModalOpen, setSourceModalOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
@@ -160,12 +160,12 @@ export function TestResults({ testTitle, testId, questions, userAnswers, correct
             Back to Library
           </Button>
           <Button 
-            onClick={onBack}
+            onClick={onRetake}
             variant="outline"
             size="lg"
             className="px-8"
           >
-            Study Again
+            Retake Test
           </Button>
         </div>
       </div>
