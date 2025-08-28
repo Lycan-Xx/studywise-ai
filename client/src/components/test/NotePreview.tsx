@@ -136,7 +136,7 @@ export function NotePreview({
             className="flex items-center gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Back to Library</span>
+            <span className="hidden sm:inline">Return to Library</span>
           </Button>
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-studywise-gray-900">

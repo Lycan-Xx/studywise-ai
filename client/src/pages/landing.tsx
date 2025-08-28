@@ -7,8 +7,8 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-studywise-bg">
       {/* Floating Pill Navbar */}
-      <nav className="fixed top-4 left-4 right-4 z-50">
-        <div className="max-w-6xl mx-auto floating-navbar border border-studywise-gray-200 rounded-full px-4 sm:px-6 py-3 shadow-lg">
+      <nav className="fixed top-3 left-4 right-4 z-50">
+        <div className="max-w-6xl mx-auto floating-navbar border border-studywise-gray-200 rounded-2xl px-4 sm:px-8 py-3 shadow-lg">
           <div className="flex items-center justify-between">
             {/* Left spacer for balance - hidden on mobile */}
             <div className="hidden sm:flex flex-1"></div>
@@ -27,7 +27,7 @@ export default function Landing() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="rounded-full border-studywise-gray-300 hover:bg-studywise-gray-50 px-4 sm:px-6 text-sm"
+                  className="rounded-2xl border-studywise-gray-400 hover:bg-studywise-gray-50 px-4 sm:px-6 text-sm"
                 >
                   Log In
                 </Button>
@@ -40,12 +40,7 @@ export default function Landing() {
       {/* Hero Section - The Hook */}
       <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8" data-testid="section-hero">
         <div className="max-w-4xl mx-auto text-center relative">
-          {/* Background decoration */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute top-10 left-10 w-16 h-16 border border-studywise-gray-200 rounded-full opacity-20"></div>
-            <div className="absolute top-32 right-20 w-8 h-8 bg-studywise-gray-100 rounded opacity-30"></div>
-            <div className="absolute bottom-20 left-1/4 w-12 h-12 border border-studywise-gray-200 opacity-20" style={{ clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }}></div>
-          </div>
+
 
           {/* Brain icon */}
           <div className="mb-8 flex justify-center">
@@ -79,13 +74,7 @@ export default function Landing() {
             </Button>
           </Link>
 
-          {/* Social Proof */}
-          <div className="mt-16 p-6 bg-white/50 rounded-xl border border-studywise-gray-200 max-w-2xl mx-auto">
-            <p className="text-studywise-gray-600 italic" data-testid="text-testimonial">
-              "This app saved me so much time. I actually understood the material and my grades shot up."
-            </p>
-            <p className="text-studywise-gray-500 text-sm mt-2">- Maria S., College Student</p>
-          </div>
+
         </div>
       </section>
 
@@ -121,7 +110,7 @@ export default function Landing() {
                 <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Wand2 className="w-8 h-8 text-purple-600" />
                 </div>
-                <h3 className="text-xl font-semibold text-studywise-gray-900 mb-4">2. We Craft Your Perfect Test</h3>
+                <h3 className="text-xl font-semibold text-studywise-gray-900 mb-4">2. We Craft You a Perfect Test</h3>
                 <p className="text-studywise-gray-600">
                   Just tell our AI wizard what you want to focus on: a subject, a few topics, or specific question types. We'll handle the rest.
                 </p>
@@ -136,7 +125,7 @@ export default function Landing() {
                 </div>
                 <h3 className="text-xl font-semibold text-studywise-gray-900 mb-4">3. Take Your Test & Learn</h3>
                 <p className="text-studywise-gray-600">
-                  Get instant results and see where every answer comes from, with a direct link back to the source sentence in your original notes.
+                  Get instant results and see where every answer comes from, with a direct refrence link back to the source sentence in your original notes.
                 </p>
               </CardContent>
             </Card>

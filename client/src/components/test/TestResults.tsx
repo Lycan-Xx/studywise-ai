@@ -126,7 +126,7 @@ export function TestResults({ testTitle, questions, userAnswers, correctAnswers,
           onClick={handleBackToLibrary}
           className="bg-primary hover:bg-blue-600 px-6"
         >
-          Back to Library
+          Return to Library
         </Button>
       </div>
     </div>
