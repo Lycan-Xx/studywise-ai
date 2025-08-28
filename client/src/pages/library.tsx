@@ -44,6 +44,7 @@ export default function Library() {
   const { 
     startTest,
     submitTest,
+    resetSession,
     currentSession,
     getCurrentQuestion,
     getProgress
@@ -112,6 +113,22 @@ export default function Library() {
     setTestTimeLimit(null);
   };
 
+  // Retake functionality - uses currentResult to restart the exact same test
+  const handleRetake = () => {
+    if (currentResult) {
+      // Reset and start a new session with the same test data
+      resetSession();
+      startTest(
+        currentResult.testId, 
+        currentResult.testTitle, 
+        currentResult.questions, 
+        testTimeLimit
+      );
+      setShowResults(false);
+      setShowTest(true);
+    }
+  };
+
   const handleDeleteClick = (testId: string) => {
     setTestToDelete(testId);
     setDeleteDialogOpen(true);
@@ -157,23 +174,27 @@ export default function Library() {
         questions={currentResult.questions}
         userAnswers={currentResult.userAnswers}
         correctAnswers={currentResult.correctAnswers}
-        onBack={handleBackToLibrary}
+        notes={selectedTestData?.notes || ""}
+        onRetake={handleRetake}
       />
     );
   }
 
-  // Show TestTaking if test is started
-  if (showTest && startingTestData) {
-    return (
-      <TestTaking
-        testTitle={startingTestData.title}
-        questions={startingTestData.questions}
-        timeLimit={testTimeLimit}
-        onSubmit={handleTestSubmit}
-        onBack={handleBackToLibrary}
-        onShowResults={handleShowResults}
-      />
-    );
+  // Show TestTaking if test is started - allow data from either flow
+  if (showTest && (startingTestData || currentResult)) {
+    const testData = startingTestData || currentResult;
+    if (testData) {
+      return (
+        <TestTaking
+          testTitle={testData.testTitle || testData.title}
+          questions={testData.questions}
+          timeLimit={testTimeLimit}
+          onSubmit={handleTestSubmit}
+          onBack={handleBackToLibrary}
+          onShowResults={handleShowResults}
+        />
+      );
+    }
   }
 
   // Show TestSettings if user clicked Start Test
