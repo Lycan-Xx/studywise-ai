@@ -14,6 +14,7 @@ import {
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useTestSessionStore } from "@/stores";
 import { Question } from "@/types";
+import { motion, AnimatePresence } from "framer-motion";
 
 /**
  * Updated TestTaking with:
@@ -50,9 +51,6 @@ export function TestTaking({
   const [showSaveForLaterDialog, setShowSaveForLaterDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // local transition state to animate question changes
-  const [transitioning, setTransitioning] = useState(false);
-  const transitionTimeoutRef = useRef<number | null>(null);
 
   const {
     currentSession,
@@ -260,26 +258,6 @@ export function TestTaking({
     // if you want a "close after jump" UX for mobile only, you could check window.innerWidth here
   };
 
-  // ---------- Transition on question change ----------
-  useEffect(() => {
-    // whenever the current question changes, trigger a brief transition
-    // clear previous timer
-    if (transitionTimeoutRef.current) {
-      clearTimeout(transitionTimeoutRef.current);
-      transitionTimeoutRef.current = null;
-    }
-    setTransitioning(true);
-    transitionTimeoutRef.current = window.setTimeout(() => {
-      setTransitioning(false);
-      transitionTimeoutRef.current = null;
-    }, 260); // transition duration
-    return () => {
-      if (transitionTimeoutRef.current) {
-        clearTimeout(transitionTimeoutRef.current);
-        transitionTimeoutRef.current = null;
-      }
-    };
-  }, [currentQuestion?.id, currentQuestion?.question, progress.current]);
 
   // ---------- RENDER ----------
   const content = (
@@ -326,58 +304,63 @@ export function TestTaking({
 
           {/* Scrollable question area */}
           <div className="flex-1 overflow-y-auto px-4 py-6 pb-40">
-            {currentQuestion && (
-              <div
-                className={`space-y-5 transition-all duration-300 ease-in-out transform ${
-                  transitioning ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"
-                }`}
-              >
-                <h2 className="text-lg font-medium text-studywise-gray-900 leading-relaxed">
-                  {currentQuestion.question}
-                </h2>
+            <AnimatePresence mode="wait">
+              {currentQuestion && (
+                <motion.div
+                  key={currentQuestion.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                  className="space-y-5"
+                >
+                  <h2 className="text-lg font-medium text-studywise-gray-900 leading-relaxed">
+                    {currentQuestion.question}
+                  </h2>
 
-                <div className="space-y-3">
-                  {currentQuestion.options.map((option, index) => {
-                    const selected = answers[currentQuestion.id] === option;
-                    return (
-                      <div
-                        key={index}
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => {
-                          handleAnswerSelect(option);
-                          ensureVisible(e.currentTarget as HTMLElement);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
+                  <div className="space-y-3">
+                    {currentQuestion.options.map((option, index) => {
+                      const selected = answers[currentQuestion.id] === option;
+                      return (
+                        <div
+                          key={index}
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => {
                             handleAnswerSelect(option);
-                          }
-                        }}
-                        className={`border rounded-xl p-4 cursor-pointer transition-all active:scale-[0.98] flex items-start gap-3 min-h-[56px] ${
-                          selected
-                            ? "border-primary bg-blue-50 shadow-sm"
-                            : "border-gray-200 hover:border-gray-300 active:border-gray-400 bg-white"
-                        } ${isSubmitting ? "pointer-events-none opacity-50" : ""}`}
-                      >
-                        <div className="flex items-start mt-0.5">
-                          <input
-                            type="radio"
-                            checked={selected}
-                            onChange={() => handleAnswerSelect(option)}
-                            disabled={isSubmitting}
-                            className="w-5 h-5 text-primary border-gray-300 focus:ring-primary mt-0.5"
-                            aria-checked={selected}
-                            aria-label={`Select option ${index + 1}`}
-                          />
+                            ensureVisible(e.currentTarget as HTMLElement);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              handleAnswerSelect(option);
+                            }
+                          }}
+                          className={`border rounded-xl p-4 cursor-pointer transition-all active:scale-[0.98] flex items-start gap-3 min-h-[56px] ${
+                            selected
+                              ? "border-primary bg-blue-50 shadow-sm"
+                              : "border-gray-200 hover:border-gray-300 active:border-gray-400 bg-white"
+                          } ${isSubmitting ? "pointer-events-none opacity-50" : ""}`}
+                        >
+                          <div className="flex items-start mt-0.5">
+                            <input
+                              type="radio"
+                              checked={selected}
+                              onChange={() => handleAnswerSelect(option)}
+                              disabled={isSubmitting}
+                              className="w-5 h-5 text-primary border-gray-300 focus:ring-primary mt-0.5"
+                              aria-checked={selected}
+                              aria-label={`Select option ${index + 1}`}
+                            />
+                          </div>
+                          <label className="flex-1 text-studywise-gray-900 cursor-pointer leading-relaxed">{option}</label>
                         </div>
-                        <label className="flex-1 text-studywise-gray-900 cursor-pointer leading-relaxed">{option}</label>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Bottom navigation */}
@@ -465,10 +448,18 @@ export function TestTaking({
           </div>
 
           {/* Question card with transition */}
-          {currentQuestion && (
-            <Card className="mb-8">
-              <CardContent className={`p-8 transition-all duration-300 transform ${transitioning ? "opacity-0 -translate-y-2" : "opacity-100 translate-y-0"}`}>
-                <h2 className="text-lg font-medium text-studywise-gray-900 mb-6">{currentQuestion.question}</h2>
+          <AnimatePresence mode="wait">
+            {currentQuestion && (
+              <motion.div
+                key={currentQuestion.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+              >
+                <Card className="mb-8">
+                  <CardContent className="p-8">
+                    <h2 className="text-lg font-medium text-studywise-gray-900 mb-6">{currentQuestion.question}</h2>
 
                 <div className="space-y-3">
                   {currentQuestion.options.map((option, index) => {
@@ -505,9 +496,11 @@ export function TestTaking({
                     );
                   })}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Desktop navigation */}
           <div className="flex justify-between items-center">
@@ -629,12 +622,12 @@ export function TestTaking({
                       key={i}
                       onClick={() => handleJumpTo(i)}
                       disabled={isSubmitting}
-                      className={`h-12 w-12 rounded-full flex items-center justify-center font-semibold text-sm transition-colors border-2 ${
+                      className={`h-12 w-12 rounded-xl flex items-center justify-center font-semibold text-sm bg-gray-200 transition-colors border-2 border-gray-400 ${
                         isCurrent
-                          ? "bg-primary/20 border-primary text-primary-foreground"
+                          ? "bg-primary/20 border-primary text-primary"
                           : answered
-                          ? "bg-green-500 border-green-500 text-green-700 font-bold"
-                          : "bg-transparent border-border hover:bg-accent"
+                          ? "bg-green-200 border-green-500 text-black font-bold"
+                          : "bg-transparent border-border hover:bg-accent text-foreground"
                       } disabled:opacity-50`}
                     >
                       {i + 1}
@@ -645,15 +638,15 @@ export function TestTaking({
 
               <div className="mt-6 flex justify-between text-sm text-studywise-gray-600">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-green-100 rounded"></div>
+                  <div className="w-8 h-8 bg-green-200 border border-green-500 rounded-sm"></div>
                   <span>Answered</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-primary rounded"></div>
+                  <div className="w-8 h-8 bg-gray-100 border border-primary rounded-sm"></div>
                   <span>Current</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-gray-100 rounded"></div>
+                  <div className="w-8 h-8 bg-gray-100 border border-gray-400 rounded-sm"></div>
                   <span>Not answered</span>
                 </div>
               </div>
