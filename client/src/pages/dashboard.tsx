@@ -1,79 +1,103 @@
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Sparkles, Paperclip, ArrowUp, Plus } from "lucide-react";
+import { ArrowUp, Paperclip, Plus } from "lucide-react";
 import { TestWizard } from "@/components/test";
-
-/**
- * Dashboard component — responsive UI:
- * - Desktop: centered hero, rounded card with upload + textarea, generate button OUTSIDE the card to the right.
- * - Mobile: giant centered headline, bottom-fixed floating pill containing upload (+), textarea, send (arrow up).
- *
- * Accessible labels included. Textarea auto-resizes and has different min/max per screen size.
- */
+import { DocumentProcessor } from "@/utils/documentProcessor";
+import { GlobalWorkerOptions } from "pdfjs-dist";
 
 export default function Dashboard() {
+  // Configure pdfjs-dist to use a local worker file
+  GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
+
   const [notes, setNotes] = useState("");
   const [showWizard, setShowWizard] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
+  const maxLength = 50000;
+
+  // Trigger the quiz wizard
   const handleGenerateQuiz = () => {
     if (!notes.trim()) return;
     setShowWizard(true);
   };
 
+  // Programmatically open file input
   const handleFileUpload = () => {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle manual file selection
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result;
-        if (typeof result === "string") setNotes(result);
-      };
-      reader.onerror = () => console.error("Failed to read file");
-      reader.readAsText(file);
+    if (file) await processFile(file);
+    // Reset input so same file can be uploaded again
+    event.target.value = "";
+  };
+
+  // Process a single file
+  const processFile = async (file: File) => {
+    const fileName = file.name;
+    try {
+      const documentContent = await DocumentProcessor.processFile(file);
+      if (documentContent) {
+        const separator = `\n\n--- Document Content (${fileName}) ---\n\n`;
+        setNotes(prev => prev.trim() ? `${prev}${separator}${documentContent}` : documentContent);
+      }
+    } catch (error) {
+      console.error(error);
+      alert(error instanceof Error ? error.message : `Failed to process ${fileName}`);
     }
   };
 
-  // Auto-resize textarea with viewport-aware min/max
+  // Drag-and-drop handlers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDragOver) setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
+      setIsDragOver(false);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    const supportedFiles = files.filter(file => DocumentProcessor.isSupported(file));
+
+    if (!supportedFiles.length) {
+      console.warn("No supported files found. Please upload .txt, .md, .docx, or .pdf files.");
+      return;
+    }
+
+    await processFile(supportedFiles[0]);
+  };
+
+  // Adjust textarea height dynamically
   const adjustTextareaHeight = () => {
     const ta = textareaRef.current;
     if (!ta) return;
 
-    // reset to auto to measure scrollHeight
     ta.style.height = "auto";
-
-    // compute min/max according to screen width
     const vw = window.innerWidth || 1024;
     const vh = window.innerHeight || 800;
-
-    // Digit-by-digit safe arithmetic for min/max
-    // mobile breakpoint < 768
-    let minPx = 48; // mobile default min
-    // Account for header (~70px) + bottom padding (~24px) + some buffer (~50px)
-    let maxPx = Math.round(vh * 0.25); // mobile max 25vh to avoid header overlap
-
-    if (vw >= 768) {
-      // desktop
-      minPx = 140; // desktop min ~140px
-      maxPx = Math.round(vh * 0.6); // desktop max 60vh
-    }
-
-    // measure natural content height
-    const contentHeight = ta.scrollHeight;
-
-    // clamp
-    const newHeight = Math.max(minPx, Math.min(contentHeight, maxPx));
+    const minPx = vw < 768 ? 48 : 140;
+    const maxPx = vw < 768 ? Math.round(vh * 0.25) : Math.round(vh * 0.6);
+    const newHeight = Math.max(minPx, Math.min(ta.scrollHeight, maxPx));
     ta.style.height = `${newHeight}px`;
   };
 
   useEffect(() => {
     adjustTextareaHeight();
-    // Recalculate on orientation changes and resize
     const onResize = () => adjustTextareaHeight();
     window.addEventListener("resize", onResize);
     window.addEventListener("orientationchange", onResize);
@@ -81,14 +105,10 @@ export default function Dashboard() {
       window.removeEventListener("resize", onResize);
       window.removeEventListener("orientationchange", onResize);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notes]);
 
-  // When focusing on the textarea on mobile, ensure it's visible above the keyboard
   const handleFocus = () => {
-    const vw = window.innerWidth || 1024;
-    if (vw < 768) {
-      // small delay to let keyboard open
+    if ((window.innerWidth || 1024) < 768) {
       setTimeout(() => {
         textareaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 300);
@@ -96,137 +116,115 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="h-full md:h-auto flex flex-col ">
+    <div className="h-full md:h-auto flex flex-col">
       {!showWizard ? (
         <>
-          {/* MOBILE VERSION */}
+          {/* MOBILE */}
           <div className="md:hidden flex flex-col h-[100dvh] overflow-hidden">
-            {/* Hero: giant centered headline near top */}
             <div className="flex-1 flex items-start justify-start pt-12 px-6 pb-32">
-                <h1
-                  className="mx-auto text-[3.6rem] leading-tight font-light text-[var(--studywise-gray-900)]"
-                  style={{ lineHeight: 1 }}
-                >
-                  Turn your notes into smart tests
-                </h1>
+              <h1 className="mx-auto text-[3.6rem] leading-tight font-light text-center">
+                Turn your notes into smart tests
+              </h1>
             </div>
 
-            {/* Bottom floating pill input - fixed - minimal chrome */}
             <div className="fixed left-4 right-4 bottom-6 z-50">
-              <div className="bg-white rounded-full border border-gray-400 shadow-lg flex items-center gap-3 px-4 py-3">
-                {/* Upload (plus) */}
-                <button
-                  onClick={handleFileUpload}
-                  aria-label="Upload notes"
-                  className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center border border-gray-400 active:scale-95 transition-transform"
-                >
-                  <Plus className="w-6 h-6 text-studywise-gray-700" />
+              <div className={`bg-white rounded-full border shadow-lg flex items-center gap-3 px-4 py-3 ${isDragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-400'}`}>
+                <button onClick={handleFileUpload} className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center border border-gray-400">
+                  <Plus className="w-6 h-6 text-gray-700" />
                 </button>
 
-                {/* Single-line textarea that can expand up to mobile max */}
-                  <textarea
-                    ref={textareaRef}
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    onInput={adjustTextareaHeight}
-                    onFocus={handleFocus}
-                    placeholder="Paste your notes here to get started..."
-                    aria-label="Study notes input"
-                    className="flex-1 min-h-[48px] max-h-[40vh] resize-none bg-transparent outline-none placeholder:text-gray-400 text-base text-gray-900"
-                  />
+                <div className="flex-1 relative">
+  <textarea
+    ref={textareaRef}
+    value={notes}
+    onChange={(e) => setNotes(e.target.value)}
+    onInput={adjustTextareaHeight}
+    onFocus={handleFocus}
+    onDragOver={handleDragOver}
+    onDragLeave={handleDragLeave}
+    onDrop={handleDrop}
+    placeholder={isDragOver ? "Drop your file here..." : "Paste or upload your notes here to get started..."}
+    maxLength={maxLength}
+    className={`w-full min-h-[48px] max-h-[40vh] resize-none bg-transparent outline-none placeholder:text-gray-400 text-base text-gray-900 pr-16 transition-colors
+      ${isDragOver ? 'bg-blue-50 border border-blue-400' : 'border border-gray-200'}`}
+  />
+  {/* Optional overlay message */}
+  {isDragOver && (
+    <div className="absolute inset-0 flex items-center justify-center bg-blue-100 bg-opacity-50 pointer-events-none rounded-full text-blue-600 text-center">
+      Drop your file
+    </div>
+  )}
+  {notes.length > 0 && (
+    <div className="absolute bottom-1 right-1 text-xs text-gray-400 bg-white px-1 rounded">
+      {notes.length}/{maxLength}
+    </div>
+  )}
+</div>
 
-                {/* Send / up arrow (same icon used on desktop generate) */}
-                <button
-                  onClick={handleGenerateQuiz}
-                  aria-label="Send"
-                  disabled={!notes.trim()}
-                  className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all active:scale-95 ${notes.trim()
-                      ? "bg-[var(--studywise-primary)] text-white border-transparent"
-                      : "bg-white text-gray-400 border-gray-200 cursor-not-allowed"
-                    }`}
-                >
+
+                <button onClick={handleGenerateQuiz} disabled={!notes.trim()} className={`w-10 h-10 rounded-full border flex items-center justify-center ${notes.trim() ? "bg-blue-600 text-white border-transparent" : "bg-white text-gray-400 border-gray-200 cursor-not-allowed"}`}>
                   <ArrowUp className="w-4 h-4" />
                 </button>
               </div>
+              <input ref={fileInputRef} type="file" accept=".txt,.md,.doc,.docx,.pdf" onChange={handleFileChange} className="hidden" />
             </div>
-
-            {/* Hidden file input shared by both upload buttons */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".txt,.md,.doc,.docx"
-              onChange={handleFileChange}
-              className="hidden"
-            />
           </div>
 
-          {/* DESKTOP VERSION */}
+          {/* DESKTOP */}
           <div className="hidden md:flex flex-col">
-            {/* Hero */}
-            <div className="flex-shrink-0 p-8  text-center">
-                <h1
-                  className="text-3xl md:text-4xl font-semibold text-[var(--studywise-gray-900)]"
-                  data-testid="text-dashboard-title"
-                >
-                  Create Your Perfect Study Test
-                </h1>
-                <p className="text-base text-[var(--studywise-gray-600)] mt-2">
-                  Upload your study materials or paste notes to generate personalized practice questions
-                </p>
+            <div className="flex-shrink-0 p-8 text-center">
+              <h1 className="text-3xl md:text-4xl font-semibold">
+                Transform your study materials into intelligent practice tests that adapt to how you learn
+              </h1>
             </div>
-
-            {/* Content area with centered card and external generate */}
-            <div className="flex-1 flex justify-center items-start ">
-              <div className="w-full max-w-6xl p-8 flex items-start justify-center">
-                <div className="flex items-start gap-4 w-full">
-                  {/* Card: upload + textarea */}
-                  <div className="flex-1 bg-white rounded-2xl border border-black shadow-sm p-6 flex items-start gap-4">
-                    {/* Upload (paperclip) */}
-                    <button
-                      onClick={handleFileUpload}
-                      aria-label="Upload notes"
-                      className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100 active:scale-95 transition-transform"
-                    >
+            <div className="flex-1 flex justify-center items-center">
+              <div className="w-full max-w-3xl px-8">
+                <div className={`bg-white rounded-2xl border border-black shadow-sm p-6 relative ${isDragOver ? 'bg-blue-50 border-blue-400' : ''}`}>
+                  <div className="flex items-start gap-4">
+                    <button onClick={handleFileUpload} className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100">
                       <Paperclip className="w-6 h-6 text-gray-600" />
                     </button>
 
-                    {/* Multi-line textarea */}
-                    <textarea
-                      ref={textareaRef}
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      onInput={adjustTextareaHeight}
-                      placeholder="Paste your study notes, textbook content, or lecture materials here..."
-                      aria-label="Study materials input"
-                      className="flex-1 min-h-[140px] md:min-h-[180px] max-h-[60vh] resize-none bg-transparent outline-none placeholder:text-gray-400 text-gray-900 px-2 py-1"
-                    />
-                  </div>
 
-                  {/* Generate button OUTSIDE the card (aligned vertically) */}
-                  <div className="flex items-start">
-                    <button
-                      onClick={handleGenerateQuiz}
-                      aria-label="Generate test"
-                      disabled={!notes.trim()}
-                      className={`ml-3 mt-6 h-12 px-4 rounded-full flex items-center gap-2 transition-shadow active:scale-95 ${notes.trim()
-                          ? "bg-[var(--studywise-primary)] text-white border-transparent shadow-sm"
-                          : "bg-white text-gray-400 border border-gray-200 cursor-not-allowed"
-                        }`}
-                    >
-                      <ArrowUp className="w-4 h-4" />
-                      <span className="hidden lg:inline">Generate Test</span>
-                    </button>
+                    <div className="flex-1 relative">
+  <textarea
+    ref={textareaRef}
+    value={notes}
+    onChange={(e) => setNotes(e.target.value)}
+    onInput={adjustTextareaHeight}
+    onDragOver={handleDragOver}
+    onDragLeave={handleDragLeave}
+    onDrop={handleDrop}
+    placeholder={isDragOver ? "Drop your document here..." : "Paste or upload your study notes, textbook content, or lecture materials here..."}
+    maxLength={maxLength}
+    className={`w-full min-h-[140px] md:min-h-[180px] max-h-[60vh] resize-none
+      bg-transparent placeholder:text-gray-400 text-gray-900 px-2 py-1 pr-20
+      outline-none focus:outline-none focus:ring-0
+      
+      ${isDragOver ? 'bg-blue-50 border border-blue-400 rounded-xl' : ''}`}
+  />
+  {/* Overlay for drag feedback */}
+  {isDragOver && (
+    <div className="absolute inset-0 flex items-center justify-center bg-blue-100 bg-opacity-50 pointer-events-none rounded-2xl text-blue-600 text-center">
+      Drop your document here
+    </div>
+  )}
+  <div className="absolute bottom-2 right-2 text-sm text-gray-500 bg-white px-2 py-1 rounded">
+    {notes.length}/{maxLength}
+  </div>
+</div>
+
+
+
                   </div>
                 </div>
-
-                {/* Hidden file input (again for desktop flow) */}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".txt,.md,.doc,.docx"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
+                <div className="flex justify-end mt-4">
+                  <button onClick={handleGenerateQuiz} disabled={!notes.trim()} className={`h-12 px-4 rounded-xl flex items-center gap-2 ${notes.trim() ? "bg-blue-600 text-white border-transparent" : "bg-white text-gray-400 border border-gray-200 cursor-not-allowed"}`}>
+                    <ArrowUp className="w-4 h-4" />
+                    <span className="hidden lg:inline">Generate</span>
+                  </button>
+                </div>
+                <input ref={fileInputRef} type="file" accept=".txt,.md,.doc,.docx,.pdf" onChange={handleFileChange} className="hidden" />
               </div>
             </div>
           </div>

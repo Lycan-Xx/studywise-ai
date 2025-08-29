@@ -244,6 +244,7 @@ export default function Library() {
         onSave={handleSaveNotes}
         onSubmit={handleTestSubmit}
         onShowResults={handleShowResults}
+        onStartTest={handleStartTest}
       />
     );
   }
@@ -347,13 +348,12 @@ export default function Library() {
                   size="sm"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleStartTest(test.id);
+                    handleTestClick(test.id);
                   }}
-                  className="flex-1 border-primary text-primary hover:bg-blue-50 hover:border-blue-600 flex items-center gap-2"
-                  data-testid={`button-start-test-${test.id}`}
+                  className="flex-1 border-studywise-gray-300 text-studywise-gray-700 hover:bg-studywise-gray-50 hover:border-studywise-gray-400 flex items-center gap-2"
+                  data-testid={`button-view-test-${test.id}`}
                 >
-                  <Play className="w-4 h-4" />
-                  Start Test
+                  View Notes
                 </Button>
               </div>
             </CardContent>
@@ -365,9 +365,9 @@ export default function Library() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Test</AlertDialogTitle>
+            <AlertDialogTitle>Delete Note</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this test? This action cannot be undone and will permanently remove the test and all its questions.
+              Are you sure you want to delete the note and it's generated questions? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -378,7 +378,7 @@ export default function Library() {
               onClick={handleConfirmDelete}
               className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
             >
-              Delete Test
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

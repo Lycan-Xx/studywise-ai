@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { TestWizard } from "./TestWizard";
 import { TestTaking } from "./TestTaking";
-import { ArrowLeft, Save, Play } from "lucide-react";
+import { ArrowLeft, Save, Play, Paperclip } from "lucide-react";
 import { useTestSessionStore } from "@/stores";
 
 interface NotePreviewProps {
@@ -26,16 +26,20 @@ interface NotePreviewProps {
   onSave: (testId: string, notes: string) => void;
   onSubmit?: (answers: Record<number, string>) => void;
   onShowResults?: (answers: Record<number, string>) => void;
+  onStartTest?: (testId: string) => void;
 }
 
-export function NotePreview({ testId, title, subject, initialNotes, highlightText, onClose, onSave }: NotePreviewProps) {
+export function NotePreview({ testId, title, subject, initialNotes, highlightText, onClose, onSave, onStartTest }: NotePreviewProps) {
   const [notes, setNotes] = useState(initialNotes);
   const [showWizard, setShowWizard] = useState(false);
   const [showResumeTest, setShowResumeTest] = useState(false);
   const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [lastSaved, setLastSaved] = useState<string>(initialNotes);
+  const [hasBeenModifiedAndSaved, setHasBeenModifiedAndSaved] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { hasSavedSession, getSavedSessionByTestId, resumeTest } = useTestSessionStore();
 
@@ -71,15 +75,39 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
     onSave(testId, notes);
     setLastSaved(notes);
     setHasChanges(false);
+
+    // If the notes were modified from the original, mark as needing regeneration
+    if (notes !== initialNotes) {
+      setHasBeenModifiedAndSaved(true);
+    }
   };
 
-  const handleStartTest = () => {
+  const handleCreateTest = () => {
+    if (hasChanges) {
+      // Auto-save before starting test
+      onSave(testId, notes);
+      setHasChanges(false);
+
+      // If the notes were modified from the original, mark as needing regeneration
+      if (notes !== initialNotes) {
+        setHasBeenModifiedAndSaved(true);
+      }
+    }
+
+    // Reset the modification flag since we're generating new questions
+    setHasBeenModifiedAndSaved(false);
+    setShowWizard(true);
+  };
+
+  const handleStartExistingTest = () => {
     if (hasChanges) {
       // Auto-save before starting test
       onSave(testId, notes);
       setHasChanges(false);
     }
-    setShowWizard(true);
+    if (onStartTest) {
+      onStartTest(testId);
+    }
   };
 
   const handleResumeTest = () => {
@@ -106,6 +134,59 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
   const handleShowResults = (answers: Record<number, string>) => {
     if (onShowResults) {
       onShowResults(answers);
+    }
+  };
+
+  const handleFileUpload = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      processFile(file);
+    }
+  };
+
+  const processFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result;
+      if (typeof result === "string") {
+        setNotes(result);
+        setHasChanges(true);
+      }
+    };
+    reader.onerror = () => console.error("Failed to read file");
+    reader.readAsText(file);
+  };
+
+  // Drag and drop handlers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    const textFile = files.find(file => 
+      file.type === "text/plain" || 
+      file.name.endsWith(".txt") || 
+      file.name.endsWith(".md") ||
+      file.name.endsWith(".doc") ||
+      file.name.endsWith(".docx")
+    );
+    
+    if (textFile) {
+      processFile(textFile);
     }
   };
 
@@ -144,16 +225,18 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-        <div className="flex items-center gap-4">
-          <Button
-            onClick={onClose}
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Return to Library</span>
-          </Button>
+        <div className="flex flex-col gap-4">
+          <div>
+            <Button
+              onClick={onClose}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Return to Library</span>
+            </Button>
+          </div>
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-studywise-gray-900">
               {title}
@@ -172,37 +255,101 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
             </Button>
           )}
           <Button
-            onClick={handleStartTest}
+            onClick={handleStartExistingTest}
+            variant="outline"
             size="lg"
-            className="bg-primary hover:bg-primary/90 px-8 py-3 flex-1 sm:flex-none"
+            disabled={hasBeenModifiedAndSaved}
+            className={`border-2 px-6 py-3 flex items-center gap-2 flex-1 sm:flex-none transition-colors ${hasBeenModifiedAndSaved
+              ? 'border-gray-300 text-gray-400 cursor-not-allowed bg-gray-50'
+              : 'border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+              }`}
           >
-            Create Practice Test
+            <Play className="w-4 h-4" />
+            Start Test
+          </Button>
+          <Button
+            onClick={handleCreateTest}
+            size="lg"
+            disabled={!hasBeenModifiedAndSaved && notes === initialNotes}
+            className={`px-8 py-3 flex-1 sm:flex-none transition-colors ${!hasBeenModifiedAndSaved && notes === initialNotes
+              ? 'bg-gray-400 hover:bg-gray-400 cursor-not-allowed text-gray-200'
+              : 'bg-slate-900 hover:bg-slate-800 text-white'
+              }`}
+          >
+            Update Practice Questions
           </Button>
         </div>
       </div>
-
       {/* Main Content */}
       <div className="max-w-5xl mx-auto">
-        {/* Text Area with Character Counter */}
+        {/* Notes Updated Message */}
+        {hasBeenModifiedAndSaved && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-blue-800 flex items-start gap-2">
+              <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></span>
+              <span>
+                <strong>Notes updated!</strong> Your previously generated test questions may no longer match your notes.
+                Please update to generate new practice test to ensure questions reflect your current content.
+              </span>
+            </p>
+          </div>
+        )}
+
+        {/* Text Area with Upload Button and Character Counter */}
         <div className="mb-8">
-          <div className="relative">
-            <Textarea
-              ref={textareaRef}
-              value={notes}
-              onChange={(e) => handleNotesChange(e.target.value)}
-              placeholder="Edit your study notes here. All changes are automatically saved when you create a test..."
-              className="w-full h-96 resize-none border-2 border-studywise-gray-300 rounded-2xl p-6 text-base leading-relaxed focus:ring-2 focus:ring-primary focus:border-transparent pr-20"
-              maxLength={maxLength}
-            />
-            {/* Character Counter */}
-            <div className="absolute bottom-4 right-4 text-sm text-studywise-gray-500 bg-white px-2 py-1 rounded">
-              {characterCount.toLocaleString()}/{maxLength.toLocaleString()}
+          <div className={`relative transition-colors ${isDragOver ? 'bg-blue-50' : ''}`}>
+            <div className="flex items-start gap-4 border-2 border-black rounded-2xl p-6">
+              {/* Upload Button */}
+              <button
+                onClick={handleFileUpload}
+                className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+                title="Upload file"
+              >
+                <Paperclip className="w-5 h-5 text-gray-600" />
+              </button>
+              {/* Textarea */}
+              <div className="flex-1 relative">
+                <Textarea
+                  ref={textareaRef}
+                  value={notes}
+                  onChange={(e) => handleNotesChange(e.target.value)}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  placeholder="Edit your study notes here. Drag and drop files or use the upload button..."
+                  className="w-full h-80 resize-none border-0 bg-transparent text-base leading-relaxed focus:ring-0 focus:outline-none focus-visible:ring-0 shadow-none pr-20 p-0 [&:focus]:shadow-none [&:focus-visible]:shadow-none"
+                  maxLength={maxLength}
+                />
+                {/* Character Counter */}
+                <div className="absolute bottom-2 right-2 text-sm text-studywise-gray-500 bg-white px-2 py-1 rounded shadow-sm">
+                  {characterCount.toLocaleString()}/{maxLength.toLocaleString()}
+                </div>
+              </div>
             </div>
+
+            {/* Drag overlay */}
+            {isDragOver && (
+              <div className="absolute inset-0 bg-blue-100 bg-opacity-50 border-2 border-dashed border-blue-400 rounded-2xl flex items-center justify-center">
+                <div className="text-blue-600 text-center">
+                  <Paperclip className="w-8 h-8 mx-auto mb-2" />
+                  <p className="font-medium">Drop your file here</p>
+                </div>
+              </div>
+            )}
+
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".txt,.md,.doc,.docx"
+              onChange={handleFileChange}
+              className="hidden"
+            />
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+        <div className="flex flex-col gap-4 justify-center items-center">
           <Button
             onClick={handleSave}
             disabled={!hasChanges}
@@ -235,10 +382,10 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
                 const savedDate = new Date(savedSession.savedAt).toLocaleDateString();
                 const timeSpent = savedSession.startedAt
                   ? Math.round(
-                      (new Date(savedSession.savedAt).getTime() -
-                        new Date(savedSession.startedAt).getTime()) /
-                        60000
-                    )
+                    (new Date(savedSession.savedAt).getTime() -
+                      new Date(savedSession.startedAt).getTime()) /
+                    60000
+                  )
                   : 0;
 
                 return (
