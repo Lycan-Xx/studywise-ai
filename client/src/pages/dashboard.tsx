@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowUp, Paperclip, Plus } from "lucide-react";
 import { TestWizard } from "@/components/test";
 import { DocumentProcessor } from "@/utils/documentProcessor";
-import { GlobalWorkerOptions } from "pdfjs-dist";
+import * as pdfjsLib from "pdfjs-dist";
 
 export default function Dashboard() {
-  // Configure pdfjs-dist to use a local worker file
-  GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
+  // PDF.js worker is now configured in DocumentProcessor.ts
+  // to ensure consistent configuration across the application
 
   const [notes, setNotes] = useState("");
   const [showWizard, setShowWizard] = useState(false);
@@ -134,33 +134,32 @@ export default function Dashboard() {
                 </button>
 
                 <div className="flex-1 relative">
-  <textarea
-    ref={textareaRef}
-    value={notes}
-    onChange={(e) => setNotes(e.target.value)}
-    onInput={adjustTextareaHeight}
-    onFocus={handleFocus}
-    onDragOver={handleDragOver}
-    onDragLeave={handleDragLeave}
-    onDrop={handleDrop}
-    placeholder={isDragOver ? "Drop your file here..." : "Paste or upload your notes here to get started..."}
-    maxLength={maxLength}
-    className={`w-full min-h-[48px] max-h-[40vh] resize-none bg-transparent outline-none placeholder:text-gray-400 text-base text-gray-900 pr-16 transition-colors
-      ${isDragOver ? 'bg-blue-50 border border-blue-400' : 'border border-gray-200'}`}
-  />
-  {/* Optional overlay message */}
-  {isDragOver && (
-    <div className="absolute inset-0 flex items-center justify-center bg-blue-100 bg-opacity-50 pointer-events-none rounded-full text-blue-600 text-center">
-      Drop your file
-    </div>
-  )}
-  {notes.length > 0 && (
-    <div className="absolute bottom-1 right-1 text-xs text-gray-400 bg-white px-1 rounded">
-      {notes.length}/{maxLength}
-    </div>
-  )}
-</div>
-
+                  <textarea
+                    ref={textareaRef}
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    onInput={adjustTextareaHeight}
+                    onFocus={handleFocus}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    placeholder={isDragOver ? "Drop your file here..." : "Paste or upload your notes here to get started..."}
+                    maxLength={maxLength}
+                    className={`w-full min-h-[48px] max-h-[40vh] resize-none bg-transparent outline-none placeholder:text-gray-400 text-base text-gray-900 pr-16 transition-colors
+                      ${isDragOver ? 'bg-blue-50 border border-blue-400' : 'border border-gray-200'}`}
+                  />
+                  {/* Optional overlay message */}
+                  {isDragOver && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-blue-100 bg-opacity-50 pointer-events-none rounded-full text-blue-600 text-center">
+                      Drop your file
+                    </div>
+                  )}
+                  {notes.length > 0 && (
+                    <div className="absolute bottom-1 right-1 text-xs text-gray-400 bg-white px-1 rounded">
+                      {notes.length}/{maxLength}
+                    </div>
+                  )}
+                </div>
 
                 <button onClick={handleGenerateQuiz} disabled={!notes.trim()} className={`w-10 h-10 rounded-full border flex items-center justify-center ${notes.trim() ? "bg-blue-600 text-white border-transparent" : "bg-white text-gray-400 border-gray-200 cursor-not-allowed"}`}>
                   <ArrowUp className="w-4 h-4" />
@@ -185,37 +184,33 @@ export default function Dashboard() {
                       <Paperclip className="w-6 h-6 text-gray-600" />
                     </button>
 
-
                     <div className="flex-1 relative">
-  <textarea
-    ref={textareaRef}
-    value={notes}
-    onChange={(e) => setNotes(e.target.value)}
-    onInput={adjustTextareaHeight}
-    onDragOver={handleDragOver}
-    onDragLeave={handleDragLeave}
-    onDrop={handleDrop}
-    placeholder={isDragOver ? "Drop your document here..." : "Paste or upload your study notes, textbook content, or lecture materials here..."}
-    maxLength={maxLength}
-    className={`w-full min-h-[140px] md:min-h-[180px] max-h-[60vh] resize-none
-      bg-transparent placeholder:text-gray-400 text-gray-900 px-2 py-1 pr-20
-      outline-none focus:outline-none focus:ring-0
-      
-      ${isDragOver ? 'bg-blue-50 border border-blue-400 rounded-xl' : ''}`}
-  />
-  {/* Overlay for drag feedback */}
-  {isDragOver && (
-    <div className="absolute inset-0 flex items-center justify-center bg-blue-100 bg-opacity-50 pointer-events-none rounded-2xl text-blue-600 text-center">
-      Drop your document here
-    </div>
-  )}
-  <div className="absolute bottom-2 right-2 text-sm text-gray-500 bg-white px-2 py-1 rounded">
-    {notes.length}/{maxLength}
-  </div>
-</div>
-
-
-
+                      <textarea
+                        ref={textareaRef}
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        onInput={adjustTextareaHeight}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        placeholder={isDragOver ? "Drop your document here..." : "Paste or upload your study notes, textbook content, or lecture materials here..."}
+                        maxLength={maxLength}
+                        className={`w-full min-h-[140px] md:min-h-[180px] max-h-[60vh] resize-none
+                          bg-transparent placeholder:text-gray-400 text-gray-900 px-2 py-1 pr-20
+                          outline-none focus:outline-none focus:ring-0
+                          
+                          ${isDragOver ? 'bg-blue-50 border border-blue-400 rounded-xl' : ''}`}
+                      />
+                      {/* Overlay for drag feedback */}
+                      {isDragOver && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-blue-100 bg-opacity-50 pointer-events-none rounded-2xl text-blue-600 text-center">
+                          Drop your document here
+                        </div>
+                      )}
+                      <div className="absolute bottom-2 right-2 text-sm text-gray-500 bg-white px-2 py-1 rounded">
+                        {notes.length}/{maxLength}
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div className="flex justify-end mt-4">
