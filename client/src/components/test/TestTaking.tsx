@@ -629,12 +629,12 @@ export function TestTaking({
                       key={i}
                       onClick={() => handleJumpTo(i)}
                       disabled={isSubmitting}
-                      className={`py-3 px-2 rounded-lg text-sm font-medium transition-all ${
+                      className={`h-12 w-12 rounded-full flex items-center justify-center font-semibold text-sm transition-colors border-2 ${
                         isCurrent
-                          ? "bg-primary text-white shadow-md"
+                          ? "bg-primary/20 border-primary text-primary-foreground"
                           : answered
-                          ? "bg-green-100 text-green-800 hover:bg-green-200"
-                          : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                          ? "bg-green-500 border-green-500 text-green-700 font-bold"
+                          : "bg-transparent border-border hover:bg-accent"
                       } disabled:opacity-50`}
                     >
                       {i + 1}
