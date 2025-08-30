@@ -32,8 +32,8 @@ interface NotePreviewProps {
 export function NotePreview({ testId, title, subject, initialNotes, highlightText, onClose, onSave, onStartTest }: NotePreviewProps) {
   const [notes, setNotes] = useState(initialNotes);
   const [showWizard, setShowWizard] = useState(false);
-  const [showResumeTest, setShowResumeTest] = useState(false);
-  const [showResumeDialog, setShowResumeDialog] = useState(false);
+  // const [showResumeTest, setShowResumeTest] = useState(false);
+  // const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [lastSaved, setLastSaved] = useState<string>(initialNotes);
   const [hasBeenModifiedAndSaved, setHasBeenModifiedAndSaved] = useState(false);
@@ -41,7 +41,7 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { hasSavedSession, getSavedSessionByTestId, resumeTest } = useTestSessionStore();
+  // const { hasSavedSession, getSavedSessionByTestId, resumeTest } = useTestSessionStore();
 
   // Handle text highlighting when component mounts or highlightText changes
   useEffect(() => {
@@ -110,7 +110,7 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
     }
   };
 
-  const handleResumeTest = () => {
+  /* const handleResumeTest = () => {
     setShowResumeDialog(true);
   };
 
@@ -123,7 +123,7 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
     resumeTest(savedSession);
     setShowResumeDialog(false);
     setShowResumeTest(true);
-  };
+  }; */
 
   const handleTestSubmit = (answers: Record<number, string>) => {
     if (onSubmit) {
@@ -190,25 +190,6 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
     }
   };
 
-  if (showResumeTest) {
-    const savedSession = getSavedSessionByTestId(testId);
-    if (savedSession) {
-      return (
-        <TestTaking
-          testTitle={savedSession.testTitle}
-          questions={savedSession.questions}
-          timeLimit={savedSession.timeLimit}
-          onSubmit={handleTestSubmit}
-          onBack={() => {
-            setShowResumeTest(false);
-            onClose(); // This will take us back to the library
-          }}
-          onShowResults={handleShowResults}
-        />
-      );
-    }
-  }
-
   if (showWizard) {
     return (
       <TestWizard
@@ -244,7 +225,7 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
           </div>
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
-          {hasSavedSession(testId) && (
+          {/* {hasSavedSession(testId) && (
             <Button
               onClick={handleResumeTest}
               variant="outline"
@@ -253,7 +234,7 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
               <Play className="w-4 h-4" />
               Resume Test
             </Button>
-          )}
+          )} */}
           <Button
             onClick={handleStartExistingTest}
             variant="outline"
@@ -370,7 +351,7 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
       </div>
 
       {/* Resume Test Confirmation Dialog */}
-      <AlertDialog open={showResumeDialog} onOpenChange={setShowResumeDialog}>
+      {/* <AlertDialog open={showResumeDialog} onOpenChange={setShowResumeDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Resume Test</AlertDialogTitle>
@@ -423,7 +404,7 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
+      </AlertDialog> */}
     </div>
   );
 }

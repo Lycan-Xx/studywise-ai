@@ -13,10 +13,11 @@ interface TestResultsProps {
   userAnswers: Record<number, string>;
   correctAnswers: Record<number, string>;
   notes?: string;
-  onRetake: () => void; // Changed from onBack to onRetake
+  onRetake: () => void;
+  onBackToLibrary: () => void;
 }
 
-export function TestResults({ testTitle, testId, questions, userAnswers, correctAnswers, notes = "", onRetake }: TestResultsProps) {
+export function TestResults({ testTitle, testId, questions, userAnswers, correctAnswers, notes = "", onRetake, onBackToLibrary }: TestResultsProps) {
   const [, setLocation] = useLocation();
   const [sourceModalOpen, setSourceModalOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
@@ -24,10 +25,6 @@ export function TestResults({ testTitle, testId, questions, userAnswers, correct
   // Calculate score
   const totalQuestions = questions.length;
   const correctCount = questions.filter(q => userAnswers[q.id] === correctAnswers[q.id]).length;
-
-  const handleBackToLibrary = () => {
-    setLocation("/library");
-  };
 
   const handleViewInNotes = (question: Question) => {
     setSelectedQuestion(question);
@@ -153,7 +150,7 @@ export function TestResults({ testTitle, testId, questions, userAnswers, correct
       <div className="flex justify-start">
         <div className="flex gap-4">
           <Button 
-            onClick={handleBackToLibrary}
+            onClick={onBackToLibrary}
             size="lg"
             className="bg-primary hover:bg-primary/90 px-8"
           >
@@ -185,6 +182,9 @@ export function TestResults({ testTitle, testId, questions, userAnswers, correct
           questionText={selectedQuestion.question}
         />
       )}
+    </div>
+  );
+}
     </div>
   );
 }
