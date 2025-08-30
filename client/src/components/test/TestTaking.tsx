@@ -33,9 +33,9 @@ interface TestTakingProps {
   onShowResults: (answers: Record<number, string>) => void;
 }
 
-function saveTestForLater() {
+/* function saveTestForLater() {
   return true;
-}
+} */
 
 export function TestTaking({
   testTitle,
@@ -48,7 +48,7 @@ export function TestTaking({
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showResultDialog, setShowResultDialog] = useState(false);
   const [showQuestionIndex, setShowQuestionIndex] = useState(false);
-  const [showSaveForLaterDialog, setShowSaveForLaterDialog] = useState(false);
+  // const [showSaveForLaterDialog, setShowSaveForLaterDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
 
@@ -185,11 +185,11 @@ export function TestTaking({
     setShowSubmitDialog(true);
   };
 
-  const handleSaveForLater = () => {
+  /* const handleSaveForLater = () => {
     if (isSubmitting) return;
     const saved = saveTestForLater();
     if (saved) setShowSaveForLaterDialog(true);
-  };
+  }; */
 
   const handleConfirmSubmit = async () => {
     if (isSubmitting) return;

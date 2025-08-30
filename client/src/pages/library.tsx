@@ -43,15 +43,15 @@ export default function Library() {
   
   const { 
     startTest,
-    resumeTest,
+    // resumeTest,
     submitTest,
     resetSession,
     currentSession,
     getCurrentQuestion,
     getProgress,
-    hasSavedSession,
-    getSavedSessionByTestId,
-    savedSessions
+    // hasSavedSession,
+    // getSavedSessionByTestId,
+    // savedSessions
   } = useTestSessionStore();
   
   const { currentResult } = useResultsStore();
@@ -74,10 +74,10 @@ export default function Library() {
   }, [loadTests, location]);
 
   // Force re-render when returning to library (to update badges)
-  useEffect(() => {
+  /* useEffect(() => {
     // This effect will run when saved sessions change
     console.log('Saved sessions updated:', savedSessions.length);
-  }, [savedSessions]);
+  }, [savedSessions]); */
 
   const handleTestClick = (testId: string) => {
     setSelectedTest(testId);
@@ -190,6 +190,7 @@ export default function Library() {
         correctAnswers={currentResult.correctAnswers}
         notes={selectedTestData?.notes || ""}
         onRetake={handleRetake}
+        onBackToLibrary={handleBackToLibrary}
       />
     );
   }
@@ -312,11 +313,11 @@ export default function Library() {
                   <h3 className="font-semibold text-studywise-gray-900 text-lg" data-testid={`text-test-title-${test.id}`}>
                     {test.title}
                   </h3>
-                  {hasSavedSession(test.id) && (
+                  {/* {hasSavedSession(test.id) && (
                     <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
                       In Progress
                     </span>
-                  )}
+                  )} */}
                 </div>
                 <p className="text-sm text-studywise-gray-600 mb-2 line-clamp-2" data-testid={`text-test-notes-${test.id}`}>
                   {getNotesPreview(test.notes)}
