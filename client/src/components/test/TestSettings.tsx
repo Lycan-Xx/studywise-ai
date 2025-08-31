@@ -81,16 +81,7 @@ export function TestSettings({ testTitle, questionCount, onStartTest, onBack }: 
                       {option.description}
                     </p>
                   </div>
-                  <div className="ml-4">
-                    <div className={`w-4 h-4 rounded-full border-2 ${selectedTimeLimit === option.value
-                      ? 'border-primary bg-primary'
-                      : 'border-studywise-gray-300'
-                      }`}>
-                      {selectedTimeLimit === option.value && (
-                        <div className="w-full h-full rounded-full bg-white scale-50"></div>
-                      )}
-                    </div>
-                  </div>
+                  {/* Removed radio button */}
                 </div>
               </CardContent>
             </Card>

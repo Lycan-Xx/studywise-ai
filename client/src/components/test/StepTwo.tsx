@@ -38,32 +38,48 @@ export function StepTwo({ config, updateConfig, onNext, onBack }: StepTwoProps) 
           Select the question format that best suits your study goals
         </p>
        
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
-          {questionTypes.map((type) => (
-            <button
-              key={type.id}
-              onClick={() => updateConfig({ questionType: type.id })}
-              className={`aspect-square p-6 border rounded-lg text-center transition-all flex flex-col justify-center items-center ${
-                config.questionType === type.id
-                  ? 'border-primary bg-blue-50 text-primary font-medium'
-                  : 'border-studywise-gray-300 hover:border-studywise-gray-400 text-studywise-gray-700'
-              }`}
-            >
-              <div className="text-4xl font-bold mb-3">
-                {type.initials}
-              </div>
-              <h4 className="text-sm font-semibold mb-2 leading-tight">
-                {type.title}
-              </h4>
-              <p className="text-xs text-studywise-gray-600 mb-3 leading-relaxed">
-                {type.description}
-              </p>
-              <div className="text-xs text-studywise-gray-500 italic px-2 leading-tight">
-                Example: {type.example}
-              </div>
-            </button>
-          ))}
-        </div>
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
+  {questionTypes.map((type) => (
+    <button
+      key={type.id}
+      onClick={() => updateConfig({ questionType: type.id })}
+      className={`
+        w-full  // Full width on mobile
+        sm:aspect-square  // Square aspect only on desktop
+        h-[200px]  // Fixed height on mobile
+        sm:h-auto  // Revert to original height on desktop
+        p-4 
+        sm:p-6 
+        border 
+        rounded-lg 
+        text-center 
+        transition-all 
+        flex 
+        flex-col 
+        justify-center 
+        items-center
+        ${
+          config.questionType === type.id
+            ? 'border-primary bg-blue-50 text-primary font-medium'
+            : 'border-studywise-gray-300 hover:border-studywise-gray-400 text-studywise-gray-700'
+        }`}
+    >
+      <div className="text-4xl font-bold mb-3">
+        {type.initials}
+      </div>
+      <h4 className="text-sm font-semibold mb-2 leading-tight">
+        {type.title}
+      </h4>
+      <p className="text-xs text-studywise-gray-600 mb-3 leading-relaxed">
+        {type.description}
+      </p>
+      <div className="text-xs text-studywise-gray-500 italic px-2 leading-tight">
+        Example: {type.example}
+      </div>
+    </button>
+  ))}
+</div>
+
       </div>
       
       <div className="flex justify-between mt-8">
