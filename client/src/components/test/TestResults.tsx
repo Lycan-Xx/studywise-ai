@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Check, X, List, ExternalLink } from "lucide-react";
-import { useLocation } from "wouter";
+import { Link } from "wouter";
 import { Question } from "@/types";
 import { SourcePreviewModal } from "./SourcePreviewModal";
 
@@ -18,7 +18,6 @@ interface TestResultsProps {
 }
 
 export function TestResults({ testTitle, testId, questions, userAnswers, correctAnswers, notes = "", onRetake, onBackToLibrary }: TestResultsProps) {
-  const [, setLocation] = useLocation();
   const [sourceModalOpen, setSourceModalOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
 
@@ -149,13 +148,14 @@ export function TestResults({ testTitle, testId, questions, userAnswers, correct
       {/* Back to Library Button */}
       <div className="flex justify-start">
         <div className="flex gap-4">
-          <Button 
-            onClick={onBackToLibrary}
-            size="lg"
-            className="px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white"
-          >
-            Return to Library
-          </Button>
+          <Link href="/library">
+            <Button 
+              size="lg"
+              className="px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white"
+            >
+              Return to Library
+            </Button>
+          </Link>
           <Button 
             onClick={onRetake}
             variant="outline"
