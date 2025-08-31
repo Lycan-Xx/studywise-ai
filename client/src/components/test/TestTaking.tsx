@@ -273,8 +273,8 @@ export function TestTaking({
                 <Button
                   onClick={() => setShowQuestionIndex(true)}
                   disabled={isSubmitting}
-                  size="sm"
-                  className="px-3 py-1 rounded-md"
+                  size="lg"
+                  className="px-6 py-3 rounded-md"
                 >
                   Jump ({progress.current}/{progress.total})
                 </Button>
@@ -371,8 +371,8 @@ export function TestTaking({
                   onClick={handlePrevious}
                   disabled={!canGoPrevious() || isSubmitting}
                   variant="outline"
-                  size="sm"
-                  className="min-w-[64px] px-3 border-2 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                  size="lg"
+                  className="min-w-[64px] px-6 py-3 border-2 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
@@ -380,8 +380,8 @@ export function TestTaking({
                 <Button
                   onClick={handleNext}
                   disabled={!canGoNext() || isSubmitting}
-                  size="sm"
-                  className="flex-1 bg-slate-900 hover:bg-slate-800 text-white"
+                  size="lg"
+                  className="flex-1 px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white"
                 >
                   Next
                   <ChevronRight className="w-4 h-4 ml-2" />
@@ -394,8 +394,8 @@ export function TestTaking({
                     handleSubmitClick();
                   }}
                   disabled={isSubmitting}
-                  size="sm"
-                  className="ml-2 bg-green-200 hover:bg-green-500 border border-green-600 text-gray-700 hover:text-gray-800"
+                  size="lg"
+                  className="ml-2 px-6 py-3 bg-green-200 hover:bg-green-500 border border-green-600 text-gray-700 hover:text-gray-800"
                 >
                   {isSubmitting ? "Submitting..." : "Submit"}
                 </Button>
