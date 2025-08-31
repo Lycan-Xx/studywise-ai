@@ -91,6 +91,7 @@ export function TestWizard({ notes, onClose }: TestWizardProps) {
           updateConfig={updateConfig}
           onNext={handleNext}
           onBack={handleBack}
+          isGenerating={isGenerating}
         />
       )}
     </div>

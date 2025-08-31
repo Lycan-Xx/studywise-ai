@@ -7,9 +7,10 @@ interface StepThreeProps {
   updateConfig: (updates: Partial<TestConfig>) => void;
   onNext: () => void;
   onBack: () => void;
+  isGenerating: boolean;
 }
 
-export function StepThree({ config, updateConfig, onNext, onBack }: StepThreeProps) {
+export function StepThree({ config, updateConfig, onNext, onBack, isGenerating }: StepThreeProps) {
   const questionCounts = [5, 10, 15, 20, 25, 30];
 
   const handleCustomCount = (increment: boolean) => {
@@ -83,16 +84,25 @@ export function StepThree({ config, updateConfig, onNext, onBack }: StepThreePro
 
       </div>
 
-      <div className="flex justify-between">
-        <Button onClick={onBack} variant="outline">
+      <div className="flex justify-between mt-8">
+        <Button
+          onClick={onBack}
+          variant="outline"
+          size="lg"
+          className="border-2 px-6 py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+        >
           Back
         </Button>
-        <Button 
+        <Button
           onClick={onNext}
           size="lg"
-          className="bg-primary hover:bg-primary/90 px-8"
+          disabled={config.numberOfQuestions <= 0 || isGenerating}
+          className={`px-8 py-3 transition-colors ${config.numberOfQuestions <= 0 || isGenerating
+              ? 'bg-gray-400 hover:bg-gray-400 cursor-not-allowed text-gray-200'
+              : 'bg-slate-900 hover:bg-slate-800 text-white'
+            }`}
         >
-          Generate My Test
+          {isGenerating ? "Generating..." : "Generate Test"}
         </Button>
       </div>
     </div>

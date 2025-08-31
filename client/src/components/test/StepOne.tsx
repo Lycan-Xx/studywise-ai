@@ -90,7 +90,7 @@ export function StepOne({ config, updateConfig, onNext, onBack }: StepOneProps) 
             onKeyDown={(e) => e.key === 'Enter' && addTopic()}
             className="flex-1"
           />
-          <Button onClick={addTopic} variant="outline">
+          <Button onClick={addTopic} variant="outline" className="border-2 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50 px-4 py-2">
             Add
           </Button>
         </div>
@@ -116,14 +116,22 @@ export function StepOne({ config, updateConfig, onNext, onBack }: StepOneProps) 
       </div>
 
       <div className="flex justify-between">
-        <Button onClick={onBack} variant="outline">
+        <Button
+          onClick={onBack}
+          variant="outline"
+          size="lg"
+          className="border-2 px-6 py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+        >
           Back
         </Button>
         <Button
           onClick={onNext}
           disabled={!canProceed}
           size="lg"
-          className="bg-primary hover:bg-primary/90 px-8"
+          className={`px-8 py-3 transition-colors ${!canProceed
+              ? 'bg-gray-400 hover:bg-gray-400 cursor-not-allowed text-gray-200'
+              : 'bg-slate-900 hover:bg-slate-800 text-white'
+            }`}
         >
           Continue
         </Button>

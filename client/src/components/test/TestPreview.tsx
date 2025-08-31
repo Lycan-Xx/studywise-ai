@@ -260,7 +260,7 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
             onClick={handleSaveToLibrary}
             variant="outline"
             size="lg"
-            className="px-8"
+            className="border-2 px-6 py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50"
           >
             Save for Later
           </Button>
@@ -268,16 +268,16 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
             onClick={onClose}
             variant="outline"
             size="lg"
-            className="px-8"
+            className="border-2 px-6 py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50"
           >
-            Create Different Test
+            Regenerate Questions
           </Button>
         </div>
 
         <Button
           onClick={handleStartTest}
           size="lg"
-          className="bg-primary hover:bg-primary/90 px-12"
+          className="px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white"
         >
           Start Practice Test
         </Button>

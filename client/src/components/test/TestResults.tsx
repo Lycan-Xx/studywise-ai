@@ -152,7 +152,7 @@ export function TestResults({ testTitle, testId, questions, userAnswers, correct
           <Button 
             onClick={onBackToLibrary}
             size="lg"
-            className="bg-primary hover:bg-primary/90 px-8"
+            className="px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white"
           >
             Return to Library
           </Button>
@@ -160,7 +160,7 @@ export function TestResults({ testTitle, testId, questions, userAnswers, correct
             onClick={onRetake}
             variant="outline"
             size="lg"
-            className="px-8"
+            className="border-2 px-6 py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50"
           >
             Retake Test
           </Button>
@@ -182,9 +182,6 @@ export function TestResults({ testTitle, testId, questions, userAnswers, correct
           questionText={selectedQuestion.question}
         />
       )}
-    </div>
-  );
-}
     </div>
   );
 }
