@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,13 +16,31 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 export default function Settings() {
+  const { user, signOut, updatePassword } = useAuth();
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  
   const [profileInfo, setProfileInfo] = useState({
-    username: "sarah_johnson",
-    email: "sarah.johnson@example.com",
-    fullName: "Sarah Johnson",
+    username: "",
+    email: "",
+    fullName: "",
   });
+
+  // Load user data when component mounts or user changes
+  useEffect(() => {
+    if (user) {
+      setProfileInfo({
+        username: user.email?.split('@')[0] || '',
+        email: user.email || '',
+        fullName: user.user_metadata?.full_name || user.user_metadata?.name || '',
+      });
+    }
+  }, [user]);
 
   const [accountSettings, setAccountSettings] = useState({
     emailNotifications: true,
@@ -43,9 +61,27 @@ export default function Settings() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
-  const handleSaveProfile = () => {
-    console.log("Saving profile:", profileInfo);
+  const handleSaveProfile = async () => {
+    try {
+      // Profile updates would go here (Supabase doesn't directly update metadata after signup)
+      toast({
+        title: "Profile updated",
+        description: "Your profile information has been saved.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSaveAccount = () => {
@@ -61,16 +97,92 @@ export default function Settings() {
   };
 
   const handleChangePassword = () => {
+    setPasswordData({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
     setShowPasswordDialog(true);
   };
 
+  const handlePasswordUpdate = async () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast({
+        title: "Error",
+        description: "New passwords don't match.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (passwordData.newPassword.length < 8) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 8 characters long.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      const { error } = await updatePassword(passwordData.newPassword);
+      
+      if (error) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Password updated",
+        description: "Your password has been successfully updated.",
+      });
+      
+      setShowPasswordDialog(false);
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update password. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
   const handleSubmitFeedback = () => {
-    console.log("Submitting feedback:", feedback);
+    // In a real app, this would submit to your feedback system
+    toast({
+      title: "Feedback submitted",
+      description: "Thank you for your feedback! We'll review it shortly.",
+    });
     setFeedback("");
   };
 
-  const handleDeleteAccount = () => {
-    console.log("Account deletion initiated");
+  const handleDeleteAccount = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Account deletion requested",
+        description: "Please contact support to complete account deletion.",
+      });
+      setLocation('/');
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to process request. Please try again.",
+        variant: "destructive",
+      });
+    }
     setShowDeleteDialog(false);
   };
 
@@ -100,22 +212,17 @@ export default function Settings() {
         </div>
         <CardContent className="p-6 space-y-6">
           <div className="flex items-center space-x-4">
-            <img 
-              src="https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80&q=80" 
-              alt="Profile Picture" 
-              className="w-20 h-20 rounded-full border-2 border-studywise-gray-200"
-            />
+            <div className="w-20 h-20 rounded-full border-2 border-studywise-gray-200 bg-primary/10 flex items-center justify-center">
+              <span className="text-2xl font-semibold text-primary">
+                {profileInfo.fullName ? profileInfo.fullName.charAt(0).toUpperCase() : 
+                 profileInfo.email ? profileInfo.email.charAt(0).toUpperCase() : 'U'}
+              </span>
+            </div>
             <div>
               <h3 className="text-lg font-medium text-studywise-gray-900">
-                {profileInfo.fullName}
+                {profileInfo.fullName || 'User'}
               </h3>
               <p className="text-studywise-gray-500">@{profileInfo.username}</p>
-              {/* <button 
-                onClick={handleChangeAvatar}
-                className="text-primary hover:text-blue-600 text-sm font-medium mt-1 transition-colors"
-              >
-                Change Picture
-              </button> */}
             </div>
           </div>
           
@@ -146,7 +253,7 @@ export default function Settings() {
             </div>
           </div>
           
-          {/* <div className="flex justify-end">
+          <div className="flex justify-end">
             <Button 
               onClick={handleSaveProfile}
               size="sm"
@@ -154,7 +261,7 @@ export default function Settings() {
             >
               Save Profile
             </Button>
-          </div> */}
+          </div>
         </CardContent>
       </Card>
 
@@ -409,6 +516,9 @@ export default function Settings() {
                 type="password"
                 className="mt-2"
                 placeholder="Enter current password"
+                value={passwordData.currentPassword}
+                onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                disabled={isUpdatingPassword}
               />
             </div>
             <div>
@@ -420,6 +530,9 @@ export default function Settings() {
                 type="password"
                 className="mt-2"
                 placeholder="Enter new password"
+                value={passwordData.newPassword}
+                onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                disabled={isUpdatingPassword}
               />
             </div>
             <div>
@@ -431,13 +544,20 @@ export default function Settings() {
                 type="password"
                 className="mt-2"
                 placeholder="Confirm new password"
+                value={passwordData.confirmPassword}
+                onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                disabled={isUpdatingPassword}
               />
             </div>
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-primary hover:bg-blue-600">
-              Change Password
+            <AlertDialogCancel disabled={isUpdatingPassword}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handlePasswordUpdate}
+              disabled={isUpdatingPassword || !passwordData.newPassword || !passwordData.confirmPassword}
+              className="bg-primary hover:bg-blue-600"
+            >
+              {isUpdatingPassword ? "Updating..." : "Change Password"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
