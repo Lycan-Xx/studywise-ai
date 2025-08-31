@@ -3,6 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { Layout } from "@/components/layout/layout";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
@@ -13,6 +14,7 @@ import PrivacyPolicy from "@/pages/privacy-policy";
 import TermsOfService from "@/pages/terms-of-service";
 import NotFound from "@/pages/not-found";;
 import AuthRoot from "@/auth/AuthRoot";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 function Router() {
   return (
@@ -22,16 +24,16 @@ function Router() {
       <Route path="/terms-of-service" component={TermsOfService} />
       <Route path="/auth" component={AuthRoot} />
       <Route path="/dashboard">
-        <Layout><Dashboard /></Layout>
+        <ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>
       </Route>
       <Route path="/library">
-        <Layout><Library /></Layout>
+        <ProtectedRoute><Layout><Library /></Layout></ProtectedRoute>
       </Route>
       <Route path="/results">
-        <Layout><Results /></Layout>
+        <ProtectedRoute><Layout><Results /></Layout></ProtectedRoute>
       </Route>
       <Route path="/settings">
-        <Layout><Settings /></Layout>
+        <ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>
       </Route>
       <Route>
         <Layout><NotFound /></Layout>
@@ -43,10 +45,12 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
