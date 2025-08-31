@@ -1,4 +1,3 @@
-
 -- Enable necessary extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
@@ -107,6 +106,30 @@ ALTER TABLE public.test_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.flashcards ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.study_materials ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies to avoid conflicts
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can view own tests" ON public.tests;
+DROP POLICY IF EXISTS "Users can create own tests" ON public.tests;
+DROP POLICY IF EXISTS "Users can update own tests" ON public.tests;
+DROP POLICY IF EXISTS "Users can delete own tests" ON public.tests;
+DROP POLICY IF EXISTS "Users can view own test questions" ON public.questions;
+DROP POLICY IF EXISTS "Users can create questions for own tests" ON public.questions;
+DROP POLICY IF EXISTS "Users can view own test sessions" ON public.test_sessions;
+DROP POLICY IF EXISTS "Users can create own test sessions" ON public.test_sessions;
+DROP POLICY IF EXISTS "Users can update own test sessions" ON public.test_sessions;
+DROP POLICY IF EXISTS "Users can view own test results" ON public.test_results;
+DROP POLICY IF EXISTS "Users can create own test results" ON public.test_results;
+DROP POLICY IF EXISTS "Users can view own flashcards" ON public.flashcards;
+DROP POLICY IF EXISTS "Users can create own flashcards" ON public.flashcards;
+DROP POLICY IF EXISTS "Users can update own flashcards" ON public.flashcards;
+DROP POLICY IF EXISTS "Users can delete own flashcards" ON public.flashcards;
+DROP POLICY IF EXISTS "Users can view own study materials" ON public.study_materials;
+DROP POLICY IF EXISTS "Users can create own study materials" ON public.study_materials;
+DROP POLICY IF EXISTS "Users can update own study materials" ON public.study_materials;
+DROP POLICY IF EXISTS "Users can delete own study materials" ON public.study_materials;
+
 -- Profiles policies
 CREATE POLICY "Users can view own profile" ON public.profiles
   FOR SELECT USING (auth.uid() = id);
@@ -191,6 +214,13 @@ CREATE POLICY "Users can update own study materials" ON public.study_materials
 
 CREATE POLICY "Users can delete own study materials" ON public.study_materials
   FOR DELETE USING (auth.uid() = user_id);
+
+-- Drop existing triggers to avoid conflicts
+DROP TRIGGER IF EXISTS handle_profiles_updated_at ON public.profiles;
+DROP TRIGGER IF EXISTS handle_tests_updated_at ON public.tests;
+DROP TRIGGER IF EXISTS handle_flashcards_updated_at ON public.flashcards;
+DROP TRIGGER IF EXISTS handle_study_materials_updated_at ON public.study_materials;
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 
 -- Functions and triggers for updated_at timestamps
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
