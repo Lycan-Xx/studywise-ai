@@ -15,6 +15,7 @@ import NotFound from "@/pages/not-found";
 import SignIn from "@/auth/SignIn";
 import SignUp from "@/auth/SignUp";
 import ResetPassword from "@/auth/ResetPassword";
+import AuthRoot from "@/auth/AuthRoot";
 
 function Router() {
   return (
@@ -25,6 +26,7 @@ function Router() {
       <Route path="/auth/signin" component={SignIn} />
       <Route path="/auth/signup" component={SignUp} />
       <Route path="/auth/reset-password" component={ResetPassword} />
+      <Route path="/auth" component={AuthRoot} />
       <Route path="/dashboard">
         <Layout><Dashboard /></Layout>
       </Route>

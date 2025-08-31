@@ -120,11 +120,19 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
+    <div 
+      className="min-h-screen w-full bg-cover bg-center bg-no-repeat relative flex"
+      style={{
+        backgroundImage: 'url("https://picsum.photos/1920/1080?random=3")',
+      }}
+    >
+      {/* Background overlay */}
+      <div className="absolute inset-0 bg-black bg-opacity-40" />
+
       {/* Left side - Authentication Card */}
-      <div className="flex-1 flex items-center justify-center p-4 md:p-8">
-        <Card className="w-full max-w-md bg-white rounded-3xl shadow-xl border-0">
-          <CardContent className="p-8">
+      <div className="flex-1 flex items-center justify-center p-4 md:p-8 relative z-10">
+        <Card className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border-0">
+          <CardContent className="p-10">
             {/* Header */}
             <div className="text-center mb-8">
               <Link href="/" className="inline-flex items-center justify-center mb-6">
@@ -156,7 +164,7 @@ export default function ResetPassword() {
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       placeholder="you@example.com"
-                      className="w-full pl-10 pr-4 py-3 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                      className="w-full pl-10 pr-4 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
                       disabled={isLoading}
                     />
                   </div>
@@ -168,7 +176,7 @@ export default function ResetPassword() {
                 <Button
                   onClick={handleEmailSubmit}
                   disabled={!formData.email || isLoading}
-                  className="w-full bg-primary hover:bg-blue-600 py-3 rounded-xl font-medium"
+                  className="w-full bg-primary hover:bg-blue-600 py-4 rounded-xl font-medium text-base"
                 >
                   {isLoading ? "Sending..." : "Send Reset Link"}
                 </Button>
@@ -211,7 +219,7 @@ export default function ResetPassword() {
                     value={formData.verificationCode}
                     onChange={(e) => setFormData({ ...formData, verificationCode: e.target.value })}
                     placeholder="Enter 6-digit code"
-                    className="w-full px-4 py-3 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-center text-lg tracking-widest"
+                    className="w-full px-4 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-center text-lg tracking-widest"
                     maxLength={6}
                     disabled={isLoading}
                   />
@@ -223,7 +231,7 @@ export default function ResetPassword() {
                 <Button
                   onClick={handleVerificationSubmit}
                   disabled={formData.verificationCode.length !== 6 || isLoading}
-                  className="w-full bg-primary hover:bg-blue-600 py-3 rounded-xl font-medium"
+                  className="w-full bg-primary hover:bg-blue-600 py-4 rounded-xl font-medium text-base"
                 >
                   {isLoading ? "Verifying..." : "Verify Code"}
                 </Button>
@@ -275,7 +283,7 @@ export default function ResetPassword() {
                       value={formData.newPassword}
                       onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
                       placeholder="Create a secure password"
-                      className="w-full pl-10 pr-12 py-3 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                      className="w-full pl-10 pr-12 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
                       disabled={isLoading}
                     />
                     <button
@@ -322,7 +330,7 @@ export default function ResetPassword() {
                       value={formData.confirmPassword}
                       onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                       placeholder="Confirm your password"
-                      className="w-full pl-10 pr-12 py-3 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                      className="w-full pl-10 pr-12 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
                       disabled={isLoading}
                     />
                     <button
@@ -356,7 +364,7 @@ export default function ResetPassword() {
                 <Button
                   onClick={handlePasswordSubmit}
                   disabled={!isPasswordValid || !passwordsMatch || isLoading}
-                  className="w-full bg-primary hover:bg-blue-600 py-3 rounded-xl font-medium"
+                  className="w-full bg-primary hover:bg-blue-600 py-4 rounded-xl font-medium text-base"
                 >
                   {isLoading ? "Updating..." : "Update Password"}
                 </Button>
@@ -380,7 +388,7 @@ export default function ResetPassword() {
                 </div>
 
                 <Link href="/signin">
-                  <Button className="w-full bg-primary hover:bg-blue-600 py-3 rounded-xl font-medium">
+                  <Button className="w-full bg-primary hover:bg-blue-600 py-4 rounded-xl font-medium text-base">
                     Sign In
                   </Button>
                 </Link>
@@ -404,27 +412,17 @@ export default function ResetPassword() {
         </Card>
       </div>
 
-      {/* Right side - Background with message */}
-      <div className="hidden lg:flex flex-1 relative">
-        <div
-          className="w-full h-full bg-cover bg-center relative"
-          style={{
-            backgroundImage: 'url("https://picsum.photos/800/1200?random=3")',
-          }}
-        >
-          <div className="absolute inset-0 bg-black bg-opacity-40" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center text-white px-8">
-              <h2 className="text-5xl md:text-6xl font-light leading-tight mb-4">
-                Every setback
-                <br />
-                is a comeback
-              </h2>
-              <p className="text-xl opacity-90 max-w-md">
-                Reset your password and get back to mastering your studies
-              </p>
-            </div>
-          </div>
+      {/* Right side - Background text */}
+      <div className="hidden lg:flex flex-1 items-center justify-center relative z-10">
+        <div className="text-center text-white px-8">
+          <h2 className="text-5xl xl:text-6xl font-light leading-tight mb-4">
+            Every setback
+            <br />
+            is a comeback
+          </h2>
+          <p className="text-xl opacity-90 max-w-md">
+            Reset your password and get back to mastering your studies
+          </p>
         </div>
       </div>
     </div>

@@ -64,11 +64,19 @@ export default function SignIn() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
+    <div 
+      className="min-h-screen w-full bg-cover bg-center bg-no-repeat relative flex"
+      style={{
+        backgroundImage: 'url("https://picsum.photos/1920/1080?random=2")',
+      }}
+    >
+      {/* Background overlay */}
+      <div className="absolute inset-0 bg-black bg-opacity-40" />
+      
       {/* Left side - Authentication Card */}
-      <div className="flex-1 flex items-center justify-center p-4 md:p-8">
-        <Card className="w-full max-w-md bg-white rounded-3xl shadow-xl border-0">
-          <CardContent className="p-8">
+      <div className="flex-1 flex items-center justify-center p-4 md:p-8 relative z-10">
+        <Card className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border-0">
+          <CardContent className="p-10">
             {/* Header */}
             <div className="text-center mb-8">
               <Link href="/" className="inline-flex items-center justify-center mb-6">
@@ -92,7 +100,7 @@ export default function SignIn() {
             )}
 
             {/* Email/Password Login */}
-            <div className="space-y-4 mb-6">
+            <div className="space-y-5 mb-6">
               <div>
                 <label className="block text-sm font-medium text-studywise-gray-700 mb-2">
                   Email
@@ -104,7 +112,7 @@ export default function SignIn() {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="you@example.com"
-                    className="w-full pl-10 pr-4 py-3 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    className="w-full pl-10 pr-4 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
                     disabled={isLoading || isGoogleLoading}
                   />
                 </div>
@@ -121,7 +129,7 @@ export default function SignIn() {
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     placeholder="Enter your password"
-                    className="w-full pl-10 pr-12 py-3 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    className="w-full pl-10 pr-12 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
                     disabled={isLoading || isGoogleLoading}
                   />
                   <button
@@ -142,7 +150,7 @@ export default function SignIn() {
               <Button
                 onClick={handleEmailLogin}
                 disabled={!formData.email || !formData.password || isLoading || isGoogleLoading}
-                className="w-full bg-primary hover:bg-blue-600 py-3 rounded-xl font-medium"
+                className="w-full bg-primary hover:bg-blue-600 py-4 rounded-xl font-medium text-base"
               >
                 {isLoading ? "Signing in..." : "Sign In"}
               </Button>
@@ -163,7 +171,7 @@ export default function SignIn() {
               onClick={handleGoogleLogin}
               disabled={isLoading || isGoogleLoading}
               variant="outline"
-              className="w-full py-3 rounded-xl font-medium border-studywise-gray-300 hover:bg-gray-50"
+              className="w-full py-4 rounded-xl font-medium border-studywise-gray-300 hover:bg-gray-50 text-base"
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                 <path fill="#4285f4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -206,27 +214,17 @@ export default function SignIn() {
         </Card>
       </div>
 
-      {/* Right side - Background with message */}
-      <div className="hidden lg:flex flex-1 relative">
-        <div
-          className="w-full h-full bg-cover bg-center relative"
-          style={{
-            backgroundImage: 'url("https://picsum.photos/800/1200?random=2")',
-          }}
-        >
-          <div className="absolute inset-0 bg-black bg-opacity-40" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center text-white px-8">
-              <h2 className="text-5xl md:text-6xl font-light leading-tight mb-4">
-                Ready to ace
-                <br />
-                your next test?
-              </h2>
-              <p className="text-xl opacity-90 max-w-md">
-                Pick up right where you left off and continue mastering your material
-              </p>
-            </div>
-          </div>
+      {/* Right side - Background text */}
+      <div className="hidden lg:flex flex-1 items-center justify-center relative z-10">
+        <div className="text-center text-white px-8">
+          <h2 className="text-5xl xl:text-6xl font-light leading-tight mb-4">
+            Ready to ace
+            <br />
+            your next test?
+          </h2>
+          <p className="text-xl opacity-90 max-w-md">
+            Pick up right where you left off and continue mastering your material
+          </p>
         </div>
       </div>
     </div>

@@ -93,11 +93,19 @@ export default function SignUp() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
+    <div 
+      className="min-h-screen w-full bg-cover bg-center bg-no-repeat relative flex"
+      style={{
+        backgroundImage: 'url("https://picsum.photos/1920/1080?random=1")',
+      }}
+    >
+      {/* Background overlay */}
+      <div className="absolute inset-0 bg-black bg-opacity-40" />
+
       {/* Left side - Authentication Card */}
-      <div className="flex-1 flex items-center justify-center p-4 md:p-8">
-        <Card className="w-full max-w-md bg-white rounded-3xl shadow-xl border-0">
-          <CardContent className="p-8">
+      <div className="flex-1 flex items-center justify-center p-4 md:p-8 relative z-10">
+        <Card className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border-0">
+          <CardContent className="p-10">
             {/* Header */}
             <div className="text-center mb-8">
               <Link href="/" className="inline-flex items-center justify-center mb-6">
@@ -144,7 +152,7 @@ export default function SignUp() {
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       placeholder="you@example.com"
-                      className="w-full pl-10 pr-4 py-3 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                      className="w-full pl-10 pr-4 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
                       required
                     />
                   </div>
@@ -156,7 +164,7 @@ export default function SignUp() {
                 <Button
                   onClick={handleEmailSubmit}
                   disabled={!formData.email || isLoading}
-                  className="w-full bg-primary hover:bg-blue-600 py-3 rounded-xl font-medium"
+                  className="w-full bg-primary hover:bg-blue-600 py-4 rounded-xl font-medium text-base"
                 >
                   {isLoading ? "Checking..." : "Continue"}
                 </Button>
@@ -204,7 +212,7 @@ export default function SignUp() {
                       value={formData.fullName}
                       onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                       placeholder="Sarah Johnson"
-                      className="w-full pl-10 pr-4 py-3 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                      className="w-full pl-10 pr-4 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
                       required
                     />
                   </div>
@@ -220,7 +228,7 @@ export default function SignUp() {
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                       placeholder="Create a secure password"
-                      className="w-full pl-4 pr-12 py-3 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                      className="w-full pl-4 pr-12 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
                       required
                     />
                     <button
@@ -256,7 +264,7 @@ export default function SignUp() {
                 <Button
                   onClick={handleProfileSubmit}
                   disabled={!formData.fullName || !isPasswordValid}
-                  className="w-full bg-primary hover:bg-blue-600 py-3 rounded-xl font-medium"
+                  className="w-full bg-primary hover:bg-blue-600 py-4 rounded-xl font-medium text-base"
                 >
                   Continue
                 </Button>
@@ -319,7 +327,7 @@ export default function SignUp() {
                 <Button
                   onClick={handleGoalSubmit}
                   disabled={!formData.learningGoal || isLoading}
-                  className="w-full bg-primary hover:bg-blue-600 py-3 rounded-xl font-medium"
+                  className="w-full bg-primary hover:bg-blue-600 py-4 rounded-xl font-medium text-base"
                 >
                   {isLoading ? "Creating Account..." : "Finish & Create Account"}
                 </Button>
@@ -341,27 +349,17 @@ export default function SignUp() {
         </Card>
       </div>
 
-      {/* Right side - Background with message */}
-      <div className="hidden lg:flex flex-1 relative">
-        <div
-          className="w-full h-full bg-cover bg-center relative"
-          style={{
-            backgroundImage: 'url("https://picsum.photos/800/1200?random=1")',
-          }}
-        >
-          <div className="absolute inset-0 bg-black bg-opacity-40" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center text-white px-8">
-              <h2 className="text-5xl md:text-6xl font-light leading-tight mb-4">
-                Transform your
-                <br />
-                study habits
-              </h2>
-              <p className="text-xl opacity-90 max-w-md">
-                Join thousands of students who've already discovered the power of active learning
-              </p>
-            </div>
-          </div>
+      {/* Right side - Background text */}
+      <div className="hidden lg:flex flex-1 items-center justify-center relative z-10">
+        <div className="text-center text-white px-8">
+          <h2 className="text-5xl xl:text-6xl font-light leading-tight mb-4">
+            Transform your
+            <br />
+            study habits
+          </h2>
+          <p className="text-xl opacity-90 max-w-md">
+            Join thousands of students who've already discovered the power of active learning
+          </p>
         </div>
       </div>
     </div>
