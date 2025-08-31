@@ -129,18 +129,23 @@ export function Header(): JSX.Element {
           {/* Slide-in panel from the right */}
           <aside
             id="mobile-nav-panel"
-            className={`fixed right-0 top-0 h-full w-72 z-[60] transform transition-transform duration-300 bg-white shadow-xl flex flex-col ${isMenuOpen ? "translate-x-0" : "translate-x-full"
+            className={`fixed right-0 top-0 h-full w-72 z-[60] transform transition-transform duration-300 bg-white shadow-xl flex flex-col rounded-xl border border-gray-400 ${isMenuOpen ? "translate-x-0" : "translate-x-full"
               }`}
             role="dialog"
             aria-modal="true"
           >
+            {/* Navigation Links */}
             <div className="p-6 flex flex-col gap-2">
               {navItems.map((it, idx) => (
                 <Link
                   href={it.to}
                   key={it.to}
                   ref={idx === 0 ? firstMobileLinkRef : undefined}
-                  className="py-3 text-lg font-medium focus:outline-none"
+                  className={`py-4 px-4 rounded-lg text-lg font-medium focus:outline-none transition-all duration-200 ${
+                    isActive(it.to) 
+                      ? "border-2 border-primary" 
+                      : "text-studywise-gray-600 hover:bg-gray-50 hover:text-studywise-gray-900"
+                  }`}
                   onClick={closeMenu}
                   aria-current={isActive(it.to) ? "page" : undefined}
                 >
@@ -149,11 +154,26 @@ export function Header(): JSX.Element {
               ))}
             </div>
 
-            {/* bottom profile */}
+            {/* Bottom profile */}
             <div className="mt-auto p-6 border-t border-gray-100">
-              <Link href="/settings" className="flex items-center gap-3" onClick={closeMenu}>
-                <div className="w-10 h-10 rounded-md border border-gray-200 flex items-center justify-center">
-                  <FaUserCircle size={22} />
+              <Link 
+                href="/settings" 
+                className={`flex items-center gap-3 p-4 rounded-lg transition-all duration-200 ${
+                  isActive("/settings") 
+                    ? "bg-primary text-white" 
+                    : "text-studywise-gray-600 hover:bg-gray-50 hover:text-studywise-gray-900"
+                }`}
+                onClick={closeMenu}
+              >
+                <div className={`w-10 h-10 rounded-md border flex items-center justify-center ${
+                  isActive("/settings") 
+                    ? "border-white/20 bg-white/10" 
+                    : "border-gray-200 bg-white"
+                }`}>
+                  <FaUserCircle 
+                    size={22} 
+                    className={isActive("/settings") ? "text-white" : "text-studywise-gray-800"} 
+                  />
                 </div>
                 <span className="font-medium">Settings</span>
               </Link>

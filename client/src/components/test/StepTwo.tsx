@@ -12,62 +12,60 @@ export function StepTwo({ config, updateConfig, onNext, onBack }: StepTwoProps) 
   const questionTypes = [
     {
       id: 'mcq' as const,
-      title: 'Multiple Choice Questions (MCQ)',
-      description: 'Questions with multiple answer options where one is correct'
+      title: 'Multiple Choice Questions',
+      initials: 'MCQ',
+      description: 'Choose from multiple options',
+      example: 'What is 2+2? A) 3 B) 4 C) 5'
     },
     {
       id: 'true-false' as const,
       title: 'True or False',
-      description: 'Questions that can be answered with either true or false'
+      initials: 'T/F',
+      description: 'Answer true or false only',
+      example: 'The sun rises in the east. True/False'
     }
   ];
 
-  const canProceed = config.questionType !== undefined; // Example condition, update as needed
+  const canProceed = config.questionType !== undefined;
 
   return (
     <div>
       <div className="mb-8">
-        <h3 className="text-xl font-semibold text-studywise-gray-900 mb-4">
+        <h3 className="text-xl font-semibold text-studywise-gray-900 mb-4 text-center">
           How should students be tested?
         </h3>
-        <p className="text-studywise-gray-600 mb-6">
+        <p className="text-studywise-gray-600 mb-8 text-center">
           Select the question format that best suits your study goals
         </p>
-        
-        <div className="space-y-4">
+       
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
           {questionTypes.map((type) => (
-            <div
+            <button
               key={type.id}
-              className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                config.questionType === type.id
-                  ? 'border-primary bg-blue-50'
-                  : 'border-studywise-gray-300 hover:border-studywise-gray-400'
-              }`}
               onClick={() => updateConfig({ questionType: type.id })}
+              className={`aspect-square p-6 border rounded-lg text-center transition-all flex flex-col justify-center items-center ${
+                config.questionType === type.id
+                  ? 'border-primary bg-blue-50 text-primary font-medium'
+                  : 'border-studywise-gray-300 hover:border-studywise-gray-400 text-studywise-gray-700'
+              }`}
             >
-              <div className="flex items-start">
-                <div className="flex items-center h-5">
-                  <input
-                    type="radio"
-                    checked={config.questionType === type.id}
-                    onChange={() => updateConfig({ questionType: type.id })}
-                    className="w-4 h-4 text-primary border-studywise-gray-300 focus:ring-primary"
-                  />
-                </div>
-                <div className="ml-3">
-                  <h4 className="text-sm font-medium text-studywise-gray-900">
-                    {type.title}
-                  </h4>
-                  <p className="text-sm text-studywise-gray-600 mt-1">
-                    {type.description}
-                  </p>
-                </div>
+              <div className="text-4xl font-bold mb-3">
+                {type.initials}
               </div>
-            </div>
+              <h4 className="text-sm font-semibold mb-2 leading-tight">
+                {type.title}
+              </h4>
+              <p className="text-xs text-studywise-gray-600 mb-3 leading-relaxed">
+                {type.description}
+              </p>
+              <div className="text-xs text-studywise-gray-500 italic px-2 leading-tight">
+                Example: {type.example}
+              </div>
+            </button>
           ))}
         </div>
       </div>
-
+      
       <div className="flex justify-between mt-8">
         <Button
           onClick={onBack}
