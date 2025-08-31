@@ -214,7 +214,7 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div className="flex justify-end mt-4">
-                  <button onClick={handleGenerateQuiz} disabled={!notes.trim()} className={`h-12 px-4 rounded-xl flex items-center gap-2 ${notes.trim() ? "bg-blue-600 text-white border-transparent" : "bg-white text-gray-400 border border-gray-200 cursor-not-allowed"}`}>
+                  <button onClick={handleGenerateQuiz} disabled={!notes.trim()} className={`h-12 px-4 rounded-xl flex items-center gap-2 ${notes.trim() ? "bg-primary text-white border-transparent" : "bg-white text-gray-400 border border-gray-200 cursor-not-allowed"}`}>
                     <ArrowUp className="w-4 h-4" />
                     <span className="hidden lg:inline">Generate</span>
                   </button>
