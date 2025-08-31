@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { devtools } from 'zustand/middleware';
-import { TestConfig, Question } from '@/types';
+import { devtools, persist } from 'zustand/middleware';
+import type { TestConfig, Question, Test } from '@/types';
+import { aiService, type GenerateQuestionsOptions } from '@/services/aiService';
 
 interface TestStore {
   // State
@@ -92,12 +93,12 @@ const mockGenerateQuestions = (config: TestConfig, notes: string): Question[] =>
     const questionData = questionPool[(i - 1) % questionPool.length];
     const paragraphIndex = (i - 1) % sampleParagraphs.length;
     const sourceText = sampleParagraphs[paragraphIndex];
-    
+
     // Calculate realistic source position
     const noteChunks = Math.ceil(notes.length / 500);
     const chunkIndex = (i - 1) % noteChunks;
     const sourceOffset = Math.floor((notes.length * chunkIndex) / noteChunks);
-    
+
     questions.push({
       id: i,
       type: config.questionType,
@@ -133,23 +134,42 @@ export const useTestStore = create<TestStore>()(
         set({ currentConfig: config }, false, 'setConfig');
       },
 
-      generateQuestions: async (config, notes) => {
-        set({ isGenerating: true, error: null }, false, 'generateQuestions/start');
-        
+      generateQuestions: async (config: TestConfig, notes: string) => {
+        set({ isGenerating: true, error: null });
         try {
-          // Simulate API delay
-          await new Promise(resolve => setTimeout(resolve, 1500));
-          
-          const questions = mockGenerateQuestions(config, notes);
+          const options: GenerateQuestionsOptions = {
+            content: notes,
+            difficulty: config.difficulty,
+            questionCount: config.questionCount,
+            questionTypes: config.questionTypes,
+            subject: config.subject,
+            focus: config.focus,
+          };
+
+          const response = await aiService.generateQuestions(options);
+
+          // Convert AI response to our Question format
+          const questions: Question[] = response.questions.map(q => ({
+            id: q.id,
+            type: q.type as Question['type'],
+            question: q.question,
+            options: q.options,
+            correctAnswer: q.correctAnswer,
+            explanation: q.explanation,
+            difficulty: q.difficulty as TestConfig['difficulty'],
+            points: q.points,
+          }));
+
           set({ 
-            generatedQuestions: questions, 
+            generatedQuestions: questions,
             isGenerating: false 
-          }, false, 'generateQuestions/success');
+          });
         } catch (error) {
+          console.error('Question generation failed:', error);
           set({ 
-            error: error instanceof Error ? error.message : 'Failed to generate questions',
+            error: 'Failed to generate questions. Please try again.',
             isGenerating: false 
-          }, false, 'generateQuestions/error');
+          });
         }
       },
 

@@ -1,12 +1,15 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Brain, Mail, Lock, Eye, EyeOff, User, ArrowLeft, Check, CheckCircle } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AuthRoot() {
-  const [authMode, setAuthMode] = useState("signin"); // signin, signup, reset
+  const [authMode, setAuthMode] = useState("signin");
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     email: "",
@@ -21,11 +24,32 @@ export default function AuthRoot() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  const { signIn, signUp, signOut, resetPassword, updatePassword, signInWithGoogle, user } = useAuth();
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (user) {
+      setLocation('/dashboard');
+    }
+  }, [user, setLocation]);
+
+  // Check for auth mode from URL params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get('mode');
+    if (mode === 'reset') {
+      setAuthMode('reset');
+      setCurrentStep(3); // Go to new password step
+    }
+  }, []);
 
   // Animation variants
   const cardVariants = {
-    initial: (direction) => ({
+    initial: (direction: number) => ({
       x: direction > 0 ? 300 : -300,
       opacity: 0,
       scale: 0.95
@@ -41,7 +65,7 @@ export default function AuthRoot() {
         duration: 0.5
       }
     },
-    exit: (direction) => ({
+    exit: (direction: number) => ({
       x: direction > 0 ? -300 : 300,
       opacity: 0,
       scale: 0.95,
@@ -67,11 +91,7 @@ export default function AuthRoot() {
   };
 
   // Reset form when switching modes
-  const switchAuthMode = (mode) => {
-    const currentModeIndex = ["signin", "signup", "reset"].indexOf(authMode);
-    const newModeIndex = ["signin", "signup", "reset"].indexOf(mode);
-    const direction = newModeIndex > currentModeIndex ? 1 : -1;
-    
+  const switchAuthMode = (mode: string) => {
     setAuthMode(mode);
     setCurrentStep(1);
     setFormData({
@@ -89,7 +109,7 @@ export default function AuthRoot() {
   };
 
   // Password validation
-  const validatePassword = (password) => {
+  const validatePassword = (password: string) => {
     const minLength = password.length >= 8;
     const hasNumber = /\d/.test(password);
     const hasUppercase = /[A-Z]/.test(password);
@@ -142,15 +162,23 @@ export default function AuthRoot() {
   const handleSignIn = async () => {
     setIsLoading(true);
     setErrors({});
+    
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      if (formData.email === "wrong@example.com") {
-        setErrors({ general: "Incorrect email or password" });
+      const { error } = await signIn(formData.email, formData.password);
+      
+      if (error) {
+        setErrors({ general: error.message });
         return;
       }
-      console.log("Login successful:", formData);
+      
+      toast({
+        title: "Welcome back!",
+        description: "You've been successfully signed in.",
+      });
+      
+      setLocation('/dashboard');
     } catch (error) {
-      setErrors({ general: "Something went wrong. Please try again." });
+      setErrors({ general: "An unexpected error occurred. Please try again." });
     } finally {
       setIsLoading(false);
     }
@@ -158,9 +186,14 @@ export default function AuthRoot() {
 
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);
+    setErrors({});
+    
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      console.log("Google login successful");
+      const { error } = await signInWithGoogle();
+      
+      if (error) {
+        setErrors({ general: error.message });
+      }
     } catch (error) {
       setErrors({ general: "Google sign-in failed. Please try again." });
     } finally {
@@ -171,12 +204,14 @@ export default function AuthRoot() {
   const handleSignUpEmail = async () => {
     setIsLoading(true);
     setErrors({});
+    
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      if (formData.email === "existing@example.com") {
-        setErrors({ email: "This email is already registered. Would you like to sign in instead?" });
+      // Just validate email format and move to next step
+      if (!formData.email.includes('@')) {
+        setErrors({ email: "Please enter a valid email address" });
         return;
       }
+      
       setCurrentStep(2);
     } catch (error) {
       setErrors({ email: "Something went wrong. Please try again." });
@@ -192,9 +227,25 @@ export default function AuthRoot() {
 
   const handleSignUpComplete = async () => {
     setIsLoading(true);
+    setErrors({});
+    
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log("Account created:", formData);
+      const { error } = await signUp(formData.email, formData.password, {
+        full_name: formData.fullName,
+        learning_goal: formData.learningGoal
+      });
+      
+      if (error) {
+        setErrors({ general: error.message });
+        return;
+      }
+      
+      toast({
+        title: "Account created!",
+        description: "Please check your email to verify your account.",
+      });
+      
+      setAuthMode('signin');
     } catch (error) {
       setErrors({ general: "Failed to create account. Please try again." });
     } finally {
@@ -205,32 +256,23 @@ export default function AuthRoot() {
   const handleResetEmail = async () => {
     setIsLoading(true);
     setErrors({});
+    
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      if (formData.email === "notfound@example.com") {
-        setErrors({ email: "No account found with this email address." });
+      const { error } = await resetPassword(formData.email);
+      
+      if (error) {
+        setErrors({ email: error.message });
         return;
       }
+      
+      toast({
+        title: "Reset email sent!",
+        description: "Check your email for password reset instructions.",
+      });
+      
       setCurrentStep(2);
     } catch (error) {
       setErrors({ email: "Failed to send reset email. Please try again." });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleResetVerify = async () => {
-    setIsLoading(true);
-    setErrors({});
-    try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-      if (formData.verificationCode !== "123456") {
-        setErrors({ code: "Invalid verification code. Please check your email and try again." });
-        return;
-      }
-      setCurrentStep(3);
-    } catch (error) {
-      setErrors({ code: "Verification failed. Please try again." });
     } finally {
       setIsLoading(false);
     }
@@ -240,8 +282,15 @@ export default function AuthRoot() {
     if (!isPasswordValid || !passwordsMatch) return;
     setIsLoading(true);
     setErrors({});
+    
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { error } = await updatePassword(formData.newPassword);
+      
+      if (error) {
+        setErrors({ password: error.message });
+        return;
+      }
+      
       setCurrentStep(4);
     } catch (error) {
       setErrors({ password: "Failed to update password. Please try again." });
@@ -292,7 +341,6 @@ export default function AuthRoot() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2, duration: 0.5 }}
                   >
-                    {/* Overall progress bar */}
                     <div className="w-full bg-gray-100 rounded-full h-2 mb-2">
                       <motion.div 
                         className="bg-gradient-to-r from-slate-800 to-slate-900 h-2 rounded-full shadow-sm" 
@@ -460,7 +508,7 @@ export default function AuthRoot() {
                       </div>
                     )}
 
-{/* SIGN UP CONTENT */}
+                    {/* SIGN UP CONTENT */}
                     {authMode === "signup" && (
                       <div className="space-y-6">
                         {/* Step 1 - Email */}
@@ -534,7 +582,7 @@ export default function AuthRoot() {
                           </>
                         )}
 
-                        {/* Step 2 - Profile (Name & Password) */}
+                        {/* Step 2 - Profile */}
                         {currentStep === 2 && (
                           <>
                             <div className="flex items-center mb-6">
@@ -800,99 +848,56 @@ export default function AuthRoot() {
                           </>
                         )}
 
-                        {/* Step 2 - Verify Code */}
+                        {/* Step 2 - Email Sent */}
                         {currentStep === 2 && (
-                          <>
-                            <div className="flex items-center mb-6">
-                              <motion.button 
-                                onClick={() => setCurrentStep(1)} 
-                                className="mr-4 p-2 hover:bg-gray-100 rounded-full transition-colors duration-200" 
-                                disabled={isLoading}
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                              >
-                                <ArrowLeft className="w-5 h-5 text-studywise-gray-600" />
-                              </motion.button>
-                              <div>
-                                <h1 className="text-2xl font-bold text-studywise-gray-900">Check your email</h1>
-                                <p className="text-studywise-gray-600">We sent a verification code to {formData.email}</p>
-                              </div>
-                            </div>
-
+                          <motion.div 
+                            className="space-y-6 text-center"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.5 }}
+                          >
+                            <motion.div 
+                              className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6"
+                              initial={{ scale: 0, rotate: -180 }}
+                              animate={{ scale: 1, rotate: 0 }}
+                              transition={{ delay: 0.2, duration: 0.6, type: "spring", stiffness: 200 }}
+                            >
+                              <Mail className="w-8 h-8 text-blue-600" />
+                            </motion.div>
+                            
                             <motion.div
                               initial={{ opacity: 0, y: 20 }}
                               animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: 0.1 }}
+                              transition={{ delay: 0.4 }}
                             >
-                              <label className="block text-sm font-medium text-studywise-gray-700 mb-2">Verification Code</label>
-                              <input
-                                type="text"
-                                value={formData.verificationCode}
-                                onChange={(e) => setFormData({ ...formData, verificationCode: e.target.value })}
-                                placeholder="Enter 6-digit code"
-                                className="w-full px-4 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-center text-lg tracking-widest transition-all duration-200"
-                                maxLength={6}
-                                disabled={isLoading}
-                              />
-                              {errors.code && (
-                                <motion.p 
-                                  initial={{ opacity: 0, y: -10 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  className="mt-2 text-sm text-red-600"
-                                >
-                                  {errors.code}
-                                </motion.p>
-                              )}
+                              <h1 className="text-2xl font-bold text-studywise-gray-900 mb-2">Check your email</h1>
+                              <p className="text-studywise-gray-600">
+                                We've sent a password reset link to {formData.email}. Click the link in the email to reset your password.
+                              </p>
                             </motion.div>
 
                             <motion.div
                               initial={{ opacity: 0, y: 20 }}
                               animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: 0.2 }}
+                              transition={{ delay: 0.6 }}
                             >
-                              <Button
-                                onClick={handleResetVerify}
-                                disabled={formData.verificationCode.length !== 6 || isLoading}
+                              <Button 
+                                onClick={() => switchAuthMode("signin")}
                                 size="lg"
                                 className="w-full px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium transition-all duration-200"
                               >
-                                {isLoading ? "Verifying..." : "Verify Code"}
+                                Back to Sign In
                               </Button>
                             </motion.div>
-
-                            <motion.div 
-                              className="text-center"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              transition={{ delay: 0.3 }}
-                            >
-                              <p className="text-sm text-studywise-gray-600">
-                                Didn't receive the code?{" "}
-                                <button disabled={isLoading} className="text-primary hover:underline font-medium transition-colors duration-200">
-                                  Resend
-                                </button>
-                              </p>
-                            </motion.div>
-                          </>
+                          </motion.div>
                         )}
 
-                        {/* Step 3 - New Password */}
+                        {/* Step 3 - New Password (accessed via email link) */}
                         {currentStep === 3 && (
                           <>
-                            <div className="flex items-center mb-6">
-                              <motion.button 
-                                onClick={() => setCurrentStep(2)} 
-                                className="mr-4 p-2 hover:bg-gray-100 rounded-full transition-colors duration-200" 
-                                disabled={isLoading}
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                              >
-                                <ArrowLeft className="w-5 h-5 text-studywise-gray-600" />
-                              </motion.button>
-                              <div>
-                                <h1 className="text-2xl font-bold text-studywise-gray-900">Create new password</h1>
-                                <p className="text-studywise-gray-600">Choose a strong password for your account.</p>
-                              </div>
+                            <div className="text-center mb-6">
+                              <h1 className="text-2xl font-bold text-studywise-gray-900">Create new password</h1>
+                              <p className="text-studywise-gray-600">Choose a strong password for your account.</p>
                             </div>
 
                             <motion.div
@@ -1075,7 +1080,7 @@ export default function AuthRoot() {
                 </AnimatePresence>
 
                 {/* Footer Links */}
-                {!(authMode === "reset" && currentStep === 4) && (
+                {!(authMode === "reset" && (currentStep === 2 || currentStep === 4)) && (
                   <motion.div 
                     className="mt-8 pt-6 border-t border-studywise-gray-200"
                     initial={{ opacity: 0 }}
