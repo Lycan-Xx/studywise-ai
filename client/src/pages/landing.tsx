@@ -23,7 +23,7 @@ export default function Landing() {
 
             {/* Login Button - Right */}
             <div className="flex-1 sm:flex-1 flex justify-end">
-              <Link href="/dashboard">
+              <Link href="/auth">
                 <Button
                   variant="outline"
                   size="sm"
@@ -68,7 +68,7 @@ export default function Landing() {
             </p>
           </div>
 
-          <Link href="/dashboard">
+          <Link href="/auth">
             <Button size="lg" className="bg-primary hover:bg-blue-600 px-8 py-4 text-lg font-medium" data-testid="button-start-journey">
               Start Your Journey Now
             </Button>
@@ -165,7 +165,7 @@ export default function Landing() {
           </div>
 
           <div className="text-center">
-            <Link href="/dashboard">
+            <Link href="/auth">
               <Button size="lg" className="bg-primary hover:bg-blue-600 px-8 py-4 text-lg font-medium" data-testid="button-start-journey-2">
                 Start Your Journey Now
               </Button>
@@ -203,7 +203,7 @@ export default function Landing() {
                 <div className="mb-6">
                   <span className="text-3xl font-bold text-studywise-gray-900">$0</span>
                 </div>
-                <Link href="/dashboard">
+                <Link href="/auth">
                   <Button variant="outline" size="lg" className="w-full" data-testid="button-get-started-free">
                     Get Started for Free
                   </Button>
@@ -232,7 +232,7 @@ export default function Landing() {
                   <span className="text-3xl font-bold text-studywise-gray-900">$9</span>
                   <span className="text-studywise-gray-600">/month</span>
                 </div>
-                <Link href="/dashboard">
+                <Link href="/auth">
                   <Button size="lg" className="w-full bg-primary hover:bg-blue-600" data-testid="button-start-premium">
                     Start Your Journey Now
                   </Button>

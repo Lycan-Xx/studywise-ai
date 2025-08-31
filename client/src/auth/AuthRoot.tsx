@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -25,7 +24,7 @@ export default function AuthRoot() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
+
   const { signIn, signUp, signOut, resetPassword, updatePassword, signInWithGoogle, user } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -162,20 +161,20 @@ export default function AuthRoot() {
   const handleSignIn = async () => {
     setIsLoading(true);
     setErrors({});
-    
+
     try {
       const { error } = await signIn(formData.email, formData.password);
-      
+
       if (error) {
         setErrors({ general: error.message });
         return;
       }
-      
+
       toast({
         title: "Welcome back!",
         description: "You've been successfully signed in.",
       });
-      
+
       setLocation('/dashboard');
     } catch (error) {
       setErrors({ general: "An unexpected error occurred. Please try again." });
@@ -187,10 +186,10 @@ export default function AuthRoot() {
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);
     setErrors({});
-    
+
     try {
       const { error } = await signInWithGoogle();
-      
+
       if (error) {
         setErrors({ general: error.message });
       }
@@ -204,14 +203,14 @@ export default function AuthRoot() {
   const handleSignUpEmail = async () => {
     setIsLoading(true);
     setErrors({});
-    
+
     try {
       // Just validate email format and move to next step
       if (!formData.email.includes('@')) {
         setErrors({ email: "Please enter a valid email address" });
         return;
       }
-      
+
       setCurrentStep(2);
     } catch (error) {
       setErrors({ email: "Something went wrong. Please try again." });
@@ -228,23 +227,23 @@ export default function AuthRoot() {
   const handleSignUpComplete = async () => {
     setIsLoading(true);
     setErrors({});
-    
+
     try {
       const { error } = await signUp(formData.email, formData.password, {
         full_name: formData.fullName,
         learning_goal: formData.learningGoal
       });
-      
+
       if (error) {
         setErrors({ general: error.message });
         return;
       }
-      
+
       toast({
         title: "Account created!",
         description: "Please check your email to verify your account.",
       });
-      
+
       setAuthMode('signin');
     } catch (error) {
       setErrors({ general: "Failed to create account. Please try again." });
@@ -256,20 +255,20 @@ export default function AuthRoot() {
   const handleResetEmail = async () => {
     setIsLoading(true);
     setErrors({});
-    
+
     try {
       const { error } = await resetPassword(formData.email);
-      
+
       if (error) {
         setErrors({ email: error.message });
         return;
       }
-      
+
       toast({
         title: "Reset email sent!",
         description: "Check your email for password reset instructions.",
       });
-      
+
       setCurrentStep(2);
     } catch (error) {
       setErrors({ email: "Failed to send reset email. Please try again." });
@@ -282,15 +281,15 @@ export default function AuthRoot() {
     if (!isPasswordValid || !passwordsMatch) return;
     setIsLoading(true);
     setErrors({});
-    
+
     try {
       const { error } = await updatePassword(formData.newPassword);
-      
+
       if (error) {
         setErrors({ password: error.message });
         return;
       }
-      
+
       setCurrentStep(4);
     } catch (error) {
       setErrors({ password: "Failed to update password. Please try again." });
@@ -317,7 +316,7 @@ export default function AuthRoot() {
           }}
         />
       </AnimatePresence>
-      
+
       {/* Background overlay */}
       <div className="absolute inset-0 bg-black bg-opacity-40 z-10" />
 
@@ -332,7 +331,7 @@ export default function AuthRoot() {
                   <Brain className="w-8 h-8 text-primary mr-2" />
                   <span className="text-xl font-semibold text-studywise-gray-900">StudyWise AI</span>
                 </Link>
-                
+
                 {/* Progress indicator for signup */}
                 {authMode === "signup" && (
                   <motion.div 
@@ -642,7 +641,7 @@ export default function AuthRoot() {
                                   {showPassword ? <EyeOff className="w-5 h-5 text-studywise-gray-400" /> : <Eye className="w-5 h-5 text-studywise-gray-400" />}
                                 </button>
                               </div>
-                              
+
                               {formData.password && (
                                 <motion.div 
                                   className="mt-3 space-y-2"
@@ -780,7 +779,7 @@ export default function AuthRoot() {
                         )}
                       </div>
                     )}
-                    
+
                     {/* RESET PASSWORD CONTENT */}
                     {authMode === "reset" && (
                       <div className="space-y-6">
@@ -864,7 +863,7 @@ export default function AuthRoot() {
                             >
                               <Mail className="w-8 h-8 text-blue-600" />
                             </motion.div>
-                            
+
                             <motion.div
                               initial={{ opacity: 0, y: 20 }}
                               animate={{ opacity: 1, y: 0 }}
@@ -925,7 +924,7 @@ export default function AuthRoot() {
                                   {showPassword ? <EyeOff className="w-5 h-5 text-studywise-gray-400" /> : <Eye className="w-5 h-5 text-studywise-gray-400" />}
                                 </button>
                               </div>
-                              
+
                               {formData.newPassword && (
                                 <motion.div 
                                   className="mt-3 space-y-2"
@@ -1047,7 +1046,7 @@ export default function AuthRoot() {
                             >
                               <CheckCircle className="w-8 h-8 text-green-600" />
                             </motion.div>
-                            
+
                             <motion.div
                               initial={{ opacity: 0, y: 20 }}
                               animate={{ opacity: 1, y: 0 }}
