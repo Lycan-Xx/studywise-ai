@@ -11,10 +11,7 @@ import Results from "@/pages/results";
 import Settings from "@/pages/settings";
 import PrivacyPolicy from "@/pages/privacy-policy";
 import TermsOfService from "@/pages/terms-of-service";
-import NotFound from "@/pages/not-found";
-import SignIn from "@/auth/SignIn";
-import SignUp from "@/auth/SignUp";
-import ResetPassword from "@/auth/ResetPassword";
+import NotFound from "@/pages/not-found";;
 import AuthRoot from "@/auth/AuthRoot";
 
 function Router() {
@@ -23,9 +20,6 @@ function Router() {
       <Route path="/" component={Landing} />
       <Route path="/privacy-policy" component={PrivacyPolicy} />
       <Route path="/terms-of-service" component={TermsOfService} />
-      <Route path="/auth/signin" component={SignIn} />
-      <Route path="/auth/signup" component={SignUp} />
-      <Route path="/auth/reset-password" component={ResetPassword} />
       <Route path="/auth" component={AuthRoot} />
       <Route path="/dashboard">
         <Layout><Dashboard /></Layout>
