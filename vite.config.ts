@@ -12,9 +12,7 @@ export default defineConfig(async () => ({
     runtimeErrorOverlay(),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
-      ? [
-          (await import("@replit/vite-plugin-cartographer")).cartographer(),
-        ]
+      ? [(await import("@replit/vite-plugin-cartographer")).cartographer()]
       : []),
   ],
   resolve: {
@@ -31,6 +29,11 @@ export default defineConfig(async () => ({
   },
   server: {
     port: 8080,
+    host: true, // Allow all hosts
+    allowedHosts: [
+      "*", // Allow all hosts
+      "407affd2-cc72-4cfd-aee0-3d7f009d3a6d-00-6ekzo1e15fsw.spock.replit.dev", // Specific Replit host
+    ],
     fs: {
       strict: true,
       deny: ["**/.*"],
