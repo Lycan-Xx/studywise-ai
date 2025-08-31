@@ -98,24 +98,21 @@ export function TestSettings({ testTitle, questionCount, onStartTest, onBack }: 
         </div>
       </div>
 
-      {/* Start Test Button */}
-      <div className="flex justify-center">
+      <div className="flex justify-between mt-12">
         <Button
-          onClick={handleStartTest}
-          disabled={selectedTimeLimit === undefined}
-          className="bg-primary hover:bg-blue-600 px-8 py-3 text-lg font-medium"
+          onClick={onBack}
+          variant="outline"
+          size="lg"
+          className="border-2 px-6 py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+        >
+          Back
+        </Button>
+        <Button
+          onClick={() => onStartTest(selectedTimeLimit)}
+          size="lg"
+          className="px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white"
         >
           Start Test
-          {selectedTimeLimit && (
-            <span className="ml-2 text-sm opacity-90">
-              ({selectedTimeLimit} min)
-            </span>
-          )}
-          {selectedTimeLimit === null && (
-            <span className="ml-2 text-sm opacity-90">
-              (No limit)
-            </span>
-          )}
         </Button>
       </div>
     </div>

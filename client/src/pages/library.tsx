@@ -125,6 +125,7 @@ export default function Library() {
     setShowTest(false);
     setShowResults(false);
     setTestTimeLimit(null);
+    setSelectedTest(null); // Reset selected test to return to the grid
   };
 
   // Retake functionality - uses currentResult to restart the exact same test

@@ -372,7 +372,7 @@ export function TestTaking({
                   disabled={!canGoPrevious() || isSubmitting}
                   variant="outline"
                   size="sm"
-                  className="min-w-[64px] px-3"
+                  className="min-w-[64px] px-3 border-2 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
@@ -381,7 +381,7 @@ export function TestTaking({
                   onClick={handleNext}
                   disabled={!canGoNext() || isSubmitting}
                   size="sm"
-                  className="flex-1 bg-primary text-white"
+                  className="flex-1 bg-slate-900 hover:bg-slate-800 text-white"
                 >
                   Next
                   <ChevronRight className="w-4 h-4 ml-2" />
@@ -395,7 +395,7 @@ export function TestTaking({
                   }}
                   disabled={isSubmitting}
                   size="sm"
-                  className="ml-2 bg-green-600 text-white"
+                  className="ml-2 bg-green-200 hover:bg-green-500 border border-green-600 text-gray-700 hover:text-gray-800"
                 >
                   {isSubmitting ? "Submitting..." : "Submit"}
                 </Button>
@@ -508,7 +508,8 @@ export function TestTaking({
               onClick={handlePrevious}
               disabled={!canGoPrevious() || isSubmitting}
               variant="outline"
-              className="flex items-center gap-2"
+              size="lg"
+              className="border-2 px-6 py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center gap-2"
             >
               <ChevronLeft className="w-4 h-4" /> Previous
             </Button>
@@ -520,7 +521,8 @@ export function TestTaking({
                 handleSubmitClick();
               }}
               disabled={isSubmitting}
-              className="bg-green-600 hover:bg-green-700 px-6"
+              size="lg"
+              className="bg-green-600 hover:bg-green-700 text-white px-8 py-3"
             >
               {isSubmitting ? "Submitting..." : "Submit Test"}
             </Button>
@@ -528,7 +530,8 @@ export function TestTaking({
             <Button
               onClick={handleNext}
               disabled={!canGoNext() || isSubmitting}
-              className="bg-primary hover:bg-blue-600 flex items-center gap-2"
+              size="lg"
+              className="px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white flex items-center gap-2"
             >
               Next <ChevronRight className="w-4 h-4" />
             </Button>

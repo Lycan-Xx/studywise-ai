@@ -335,6 +335,7 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
             onClick={handleSave}
             disabled={!hasChanges}
             variant="outline"
+            size="lg"
             className="px-8 py-3 border-2 border-studywise-gray-300 hover:bg-studywise-gray-50 disabled:opacity-50 flex items-center gap-2 w-full sm:w-auto"
           >
             <Save className="w-4 h-4" />
