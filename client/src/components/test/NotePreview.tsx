@@ -257,7 +257,7 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
               : 'bg-slate-900 hover:bg-slate-800 text-white'
               }`}
           >
-            Update Practice Questions
+            Update Questions
           </Button>
         </div>
       </div>
@@ -302,9 +302,9 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
                   maxLength={maxLength}
                 />
                 {/* Character Counter */}
-                <div className="absolute bottom-2 right-2 text-sm text-studywise-gray-500 bg-white px-2 py-1 rounded shadow-sm">
-                  {characterCount.toLocaleString()}/{maxLength.toLocaleString()}
-                </div>
+					<div className="absolute bottom-2 right-2 text-sm text-gray-500 bg-white px-2 py-1 rounded">
+						{notes.length.toLocaleString()}/{maxLength.toLocaleString()}
+					</div>
               </div>
             </div>
 

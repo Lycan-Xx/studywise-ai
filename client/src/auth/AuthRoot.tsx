@@ -216,7 +216,7 @@ export default function AuthRoot() {
 
       {/* Left side - Authentication Card */}
       <div className="flex-1 flex items-center justify-center p-4 md:p-8 relative z-10">
-        <Card className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border-0">
+        <Card className="w-full max-w-lg bg-white rounded-xl shadow-2xl border-0">
           <CardContent className="p-10">
             {/* Header */}
             <div className="text-center mb-8">
@@ -225,143 +225,45 @@ export default function AuthRoot() {
                 <span className="text-xl font-semibold text-studywise-gray-900">StudyWise AI</span>
               </Link>
               
-              {/* Progress indicator for signup */}
-              {authMode === "signup" && (
-                <div className="flex items-center justify-center mb-6">
-                  <span className="text-sm text-studywise-gray-500">Step {currentStep} / 3</span>
-                  <div className="flex ml-4 space-x-1">
-                    {[1, 2, 3].map((step) => (
-                      <div
-                        key={step}
-                        className={`w-2 h-2 rounded-full ${
-                          step <= currentStep ? 'bg-primary' : 'bg-gray-200'
-                        }`}
-                      />
-                    ))}
+{/* Progress indicator for signup */}
+{authMode === "signup" && (
+  <div className="mb-8">
+    {/* Overall progress bar */}
+    <div className="w-full bg-gray-100 rounded-full h-2 mb-2">
+      <div 
+        className="bg-gradient-to-r from-slate-800 to-slate-900 h-2 rounded-full transition-all duration-700 ease-out shadow-sm" 
+        style={{ 
+          width: `${((currentStep - 1) / 2) * 100}%`
+        }}
+      />
+    </div>
+    <div className="text-center">
+      <span className="text-xs font-medium text-gray-500">
+        Step {currentStep} of 3
+      </span>
+    </div>
+  </div>
+)}
+
+              {/* SIGN IN CONTENT */}
+              {authMode === "signin" && (
+                <div className="space-y-6">
+                  <div className="text-center mb-6">
+                    <h1 className="text-2xl font-bold text-studywise-gray-900 mb-2">
+                      Welcome back to StudyWise AI
+                    </h1>
+                    <p className="text-studywise-gray-600">
+                      Sign in to continue your learning journey.
+                    </p>
                   </div>
-                </div>
-              )}
-            </div>
 
-            {/* SIGN IN CONTENT */}
-            {authMode === "signin" && (
-              <div className="space-y-6">
-                <div className="text-center mb-6">
-                  <h1 className="text-2xl font-bold text-studywise-gray-900 mb-2">
-                    Welcome back to StudyWise AI
-                  </h1>
-                  <p className="text-studywise-gray-600">
-                    Sign in to continue your learning journey.
-                  </p>
-                </div>
-
-                {errors.general && (
-                  <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
-                    <p className="text-sm text-red-600">{errors.general}</p>
-                  </div>
-                )}
-
-                <div className="space-y-5">
-                  <div>
-                    <label className="block text-sm font-medium text-studywise-gray-700 mb-2">Email</label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-studywise-gray-400" />
-                      <input
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        placeholder="you@example.com"
-                        className="w-full pl-10 pr-4 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
-                        disabled={isLoading || isGoogleLoading}
-                      />
+                  {errors.general && (
+                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+                      <p className="text-sm text-red-600">{errors.general}</p>
                     </div>
-                  </div>
+                  )}
 
-                  <div>
-                    <label className="block text-sm font-medium text-studywise-gray-700 mb-2">Password</label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-studywise-gray-400" />
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        placeholder="Enter your password"
-                        className="w-full pl-10 pr-12 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
-                        disabled={isLoading || isGoogleLoading}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2"
-                        disabled={isLoading || isGoogleLoading}
-                      >
-                        {showPassword ? <EyeOff className="w-5 h-5 text-studywise-gray-400" /> : <Eye className="w-5 h-5 text-studywise-gray-400" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <Button
-                    onClick={handleSignIn}
-                    disabled={!formData.email || !formData.password || isLoading || isGoogleLoading}
-                    className="w-full bg-primary hover:bg-blue-600 py-4 rounded-xl font-medium text-base"
-                  >
-                    {isLoading ? "Signing in..." : "Sign In"}
-                  </Button>
-                </div>
-
-                <div className="relative my-6">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-studywise-gray-300" />
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-studywise-gray-500">or</span>
-                  </div>
-                </div>
-
-                <Button
-                  onClick={handleGoogleLogin}
-                  disabled={isLoading || isGoogleLoading}
-                  variant="outline"
-                  className="w-full py-4 rounded-xl font-medium border-studywise-gray-300 hover:bg-gray-50 text-base"
-                >
-                  <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-                    <path fill="#4285f4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34a853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#fbbc05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                    <path fill="#ea4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                  </svg>
-                  {isGoogleLoading ? "Connecting..." : "Continue with Google"}
-                </Button>
-
-                <div className="mt-8 space-y-4 text-center">
-                  <button onClick={() => switchAuthMode("reset")} className="text-sm text-primary hover:underline">
-                    Forgot your password?
-                  </button>
-                  <p className="text-sm text-studywise-gray-600">
-                    Don't have an account?{" "}
-                    <button onClick={() => switchAuthMode("signup")} className="text-primary hover:underline font-medium">
-                      Sign up
-                    </button>
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* SIGN UP CONTENT */}
-            {authMode === "signup" && (
-              <div className="space-y-6">
-                {/* Step 1 - Email */}
-                {currentStep === 1 && (
-                  <>
-                    <div className="text-center mb-6">
-                      <h1 className="text-2xl font-bold text-studywise-gray-900 mb-2">
-                        Create your StudyWise AI account
-                      </h1>
-                      <p className="text-studywise-gray-600">
-                        Start by entering your email address.
-                      </p>
-                    </div>
-
+                  <div className="space-y-5">
                     <div>
                       <label className="block text-sm font-medium text-studywise-gray-700 mb-2">Email</label>
                       <div className="relative">
@@ -372,55 +274,7 @@ export default function AuthRoot() {
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                           placeholder="you@example.com"
                           className="w-full pl-10 pr-4 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
-                          required
-                        />
-                      </div>
-                      {errors.email && <p className="mt-2 text-sm text-red-600">{errors.email}</p>}
-                    </div>
-
-                    <Button
-                      onClick={handleSignUpEmail}
-                      disabled={!formData.email || isLoading}
-                      className="w-full bg-primary hover:bg-blue-600 py-4 rounded-xl font-medium text-base"
-                    >
-                      {isLoading ? "Checking..." : "Continue"}
-                    </Button>
-
-                    <div className="text-center">
-                      <p className="text-sm text-studywise-gray-600">
-                        Already have an account?{" "}
-                        <button onClick={() => switchAuthMode("signin")} className="text-primary hover:underline font-medium">
-                          Sign in
-                        </button>
-                      </p>
-                    </div>
-                  </>
-                )}
-
-                {/* Step 2 - Profile */}
-                {currentStep === 2 && (
-                  <>
-                    <div className="flex items-center mb-6">
-                      <button onClick={() => setCurrentStep(1)} className="mr-4 p-2 hover:bg-gray-100 rounded-full">
-                        <ArrowLeft className="w-5 h-5 text-studywise-gray-600" />
-                      </button>
-                      <div>
-                        <h1 className="text-2xl font-bold text-studywise-gray-900">Set up your profile</h1>
-                        <p className="text-studywise-gray-600">We'll use this to personalize your experience.</p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-studywise-gray-700 mb-2">Full Name</label>
-                      <div className="relative">
-                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-studywise-gray-400" />
-                        <input
-                          type="text"
-                          value={formData.fullName}
-                          onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                          placeholder="Sarah Johnson"
-                          className="w-full pl-10 pr-4 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
-                          required
+                          disabled={isLoading || isGoogleLoading}
                         />
                       </div>
                     </div>
@@ -428,328 +282,488 @@ export default function AuthRoot() {
                     <div>
                       <label className="block text-sm font-medium text-studywise-gray-700 mb-2">Password</label>
                       <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-studywise-gray-400" />
                         <input
                           type={showPassword ? "text" : "password"}
                           value={formData.password}
                           onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                          placeholder="Create a secure password"
-                          className="w-full pl-4 pr-12 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
-                          required
+                          placeholder="Enter your password"
+                          className="w-full pl-10 pr-12 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
+                          disabled={isLoading || isGoogleLoading}
                         />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
                           className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                          disabled={isLoading || isGoogleLoading}
                         >
                           {showPassword ? <EyeOff className="w-5 h-5 text-studywise-gray-400" /> : <Eye className="w-5 h-5 text-studywise-gray-400" />}
                         </button>
                       </div>
-                      
-                      <div className="mt-3 space-y-2">
-                        <div className={`flex items-center text-sm ${passwordValidation.minLength ? 'text-green-600' : 'text-studywise-gray-500'}`}>
-                          <Check className={`w-4 h-4 mr-2 ${passwordValidation.minLength ? 'text-green-600' : 'text-gray-300'}`} />
-                          At least 8 characters
-                        </div>
-                        <div className={`flex items-center text-sm ${passwordValidation.hasNumber ? 'text-green-600' : 'text-studywise-gray-500'}`}>
-                          <Check className={`w-4 h-4 mr-2 ${passwordValidation.hasNumber ? 'text-green-600' : 'text-gray-300'}`} />
-                          1 number
-                        </div>
-                        <div className={`flex items-center text-sm ${passwordValidation.hasUppercase ? 'text-green-600' : 'text-studywise-gray-500'}`}>
-                          <Check className={`w-4 h-4 mr-2 ${passwordValidation.hasUppercase ? 'text-green-600' : 'text-gray-300'}`} />
-                          1 uppercase letter
-                        </div>
-                      </div>
                     </div>
 
                     <Button
-                      onClick={handleSignUpProfile}
-                      disabled={!formData.fullName || !isPasswordValid}
-                      className="w-full bg-primary hover:bg-blue-600 py-4 rounded-xl font-medium text-base"
+                      onClick={handleSignIn}
+                      disabled={!formData.email || !formData.password || isLoading || isGoogleLoading}
+                      size="lg"
+                      className="w-full px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium"
                     >
-                      Continue
-                    </Button>
-                  </>
-                )}
-
-                {/* Step 3 - Learning Goal */}
-                {currentStep === 3 && (
-                  <>
-                    <div className="flex items-center mb-6">
-                      <button onClick={() => setCurrentStep(2)} className="mr-4 p-2 hover:bg-gray-100 rounded-full">
-                        <ArrowLeft className="w-5 h-5 text-studywise-gray-600" />
-                      </button>
-                      <div>
-                        <h1 className="text-2xl font-bold text-studywise-gray-900">Tell us what you want to achieve</h1>
-                        <p className="text-studywise-gray-600">Choose a goal so we can personalize your tests.</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      {learningGoals.map((goal) => (
-                        <label
-                          key={goal.value}
-                          className={`flex items-center p-4 border rounded-xl cursor-pointer transition-colors ${
-                            formData.learningGoal === goal.value
-                              ? 'border-primary bg-blue-50'
-                              : 'border-studywise-gray-300 hover:bg-gray-50'
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="learningGoal"
-                            value={goal.value}
-                            checked={formData.learningGoal === goal.value}
-                            onChange={(e) => setFormData({ ...formData, learningGoal: e.target.value })}
-                            className="sr-only"
-                          />
-                          <div className={`w-5 h-5 rounded-full border-2 mr-3 flex items-center justify-center ${
-                            formData.learningGoal === goal.value ? 'border-primary bg-primary' : 'border-studywise-gray-300'
-                          }`}>
-                            {formData.learningGoal === goal.value && <div className="w-2 h-2 bg-white rounded-full" />}
-                          </div>
-                          <span className="text-studywise-gray-900">{goal.label}</span>
-                        </label>
-                      ))}
-                    </div>
-
-                    <Button
-                      onClick={handleSignUpComplete}
-                      disabled={!formData.learningGoal || isLoading}
-                      className="w-full bg-primary hover:bg-blue-600 py-4 rounded-xl font-medium text-base"
-                    >
-                      {isLoading ? "Creating Account..." : "Finish & Create Account"}
-                    </Button>
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* RESET PASSWORD CONTENT */}
-            {authMode === "reset" && (
-              <div className="space-y-6">
-                {/* Step 1 - Email */}
-                {currentStep === 1 && (
-                  <>
-                    <div className="text-center mb-6">
-                      <h1 className="text-2xl font-bold text-studywise-gray-900 mb-2">Reset Password</h1>
-                      <p className="text-studywise-gray-600">Enter the email associated with your account.</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-studywise-gray-700 mb-2">Email</label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-studywise-gray-400" />
-                        <input
-                          type="email"
-                          value={formData.email}
-                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                          placeholder="you@example.com"
-                          className="w-full pl-10 pr-4 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
-                          disabled={isLoading}
-                        />
-                      </div>
-                      {errors.email && <p className="mt-2 text-sm text-red-600">{errors.email}</p>}
-                    </div>
-
-                    <Button
-                      onClick={handleResetEmail}
-                      disabled={!formData.email || isLoading}
-                      className="w-full bg-primary hover:bg-blue-600 py-4 rounded-xl font-medium text-base"
-                    >
-                      {isLoading ? "Sending..." : "Send Reset Link"}
-                    </Button>
-
-                    <div className="text-center">
-                      <button onClick={() => switchAuthMode("signin")} className="text-sm text-studywise-gray-600 hover:text-studywise-gray-800">
-                        Back to sign in
-                      </button>
-                    </div>
-                  </>
-                )}
-
-                {/* Step 2 - Verify Code */}
-                {currentStep === 2 && (
-                  <>
-                    <div className="flex items-center mb-6">
-                      <button onClick={() => setCurrentStep(1)} className="mr-4 p-2 hover:bg-gray-100 rounded-full" disabled={isLoading}>
-                        <ArrowLeft className="w-5 h-5 text-studywise-gray-600" />
-                      </button>
-                      <div>
-                        <h1 className="text-2xl font-bold text-studywise-gray-900">Check your email</h1>
-                        <p className="text-studywise-gray-600">We sent a verification code to {formData.email}</p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-studywise-gray-700 mb-2">Verification Code</label>
-                      <input
-                        type="text"
-                        value={formData.verificationCode}
-                        onChange={(e) => setFormData({ ...formData, verificationCode: e.target.value })}
-                        placeholder="Enter 6-digit code"
-                        className="w-full px-4 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-center text-lg tracking-widest"
-                        maxLength={6}
-                        disabled={isLoading}
-                      />
-                      {errors.code && <p className="mt-2 text-sm text-red-600">{errors.code}</p>}
-                    </div>
-
-                    <Button
-                      onClick={handleResetVerify}
-                      disabled={formData.verificationCode.length !== 6 || isLoading}
-                      className="w-full bg-primary hover:bg-blue-600 py-4 rounded-xl font-medium text-base"
-                    >
-                      {isLoading ? "Verifying..." : "Verify Code"}
-                    </Button>
-
-                    <div className="text-center">
-                      <p className="text-sm text-studywise-gray-600">
-                        Didn't receive the code?{" "}
-                        <button disabled={isLoading} className="text-primary hover:underline font-medium">
-                          Resend
-                        </button>
-                      </p>
-                    </div>
-                  </>
-                )}
-
-                {/* Step 3 - New Password */}
-                {currentStep === 3 && (
-                  <>
-                    <div className="flex items-center mb-6">
-                      <button onClick={() => setCurrentStep(2)} className="mr-4 p-2 hover:bg-gray-100 rounded-full" disabled={isLoading}>
-                        <ArrowLeft className="w-5 h-5 text-studywise-gray-600" />
-                      </button>
-                      <div>
-                        <h1 className="text-2xl font-bold text-studywise-gray-900">Create new password</h1>
-                        <p className="text-studywise-gray-600">Choose a strong password for your account.</p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-studywise-gray-700 mb-2">New Password</label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-studywise-gray-400" />
-                        <input
-                          type={showPassword ? "text" : "password"}
-                          value={formData.newPassword}
-                          onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
-                          placeholder="Create a secure password"
-                          className="w-full pl-10 pr-12 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
-                          disabled={isLoading}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2"
-                          disabled={isLoading}
-                        >
-                          {showPassword ? <EyeOff className="w-5 h-5 text-studywise-gray-400" /> : <Eye className="w-5 h-5 text-studywise-gray-400" />}
-                        </button>
-                      </div>
-                      
-                      {formData.newPassword && (
-                        <div className="mt-3 space-y-2">
-                          <div className={`flex items-center text-sm ${passwordValidation.minLength ? 'text-green-600' : 'text-studywise-gray-500'}`}>
-                            <Check className={`w-4 h-4 mr-2 ${passwordValidation.minLength ? 'text-green-600' : 'text-gray-300'}`} />
-                            At least 8 characters
-                          </div>
-                          <div className={`flex items-center text-sm ${passwordValidation.hasNumber ? 'text-green-600' : 'text-studywise-gray-500'}`}>
-                            <Check className={`w-4 h-4 mr-2 ${passwordValidation.hasNumber ? 'text-green-600' : 'text-gray-300'}`} />
-                            1 number
-                          </div>
-                          <div className={`flex items-center text-sm ${passwordValidation.hasUppercase ? 'text-green-600' : 'text-studywise-gray-500'}`}>
-                            <Check className={`w-4 h-4 mr-2 ${passwordValidation.hasUppercase ? 'text-green-600' : 'text-gray-300'}`} />
-                            1 uppercase letter
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-studywise-gray-700 mb-2">Confirm Password</label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-studywise-gray-400" />
-                        <input
-                          type={showConfirmPassword ? "text" : "password"}
-                          value={formData.confirmPassword}
-                          onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                          placeholder="Confirm your password"
-                          className="w-full pl-10 pr-12 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
-                          disabled={isLoading}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2"
-                          disabled={isLoading}
-                        >
-                          {showConfirmPassword ? <EyeOff className="w-5 h-5 text-studywise-gray-400" /> : <Eye className="w-5 h-5 text-studywise-gray-400" />}
-                        </button>
-                      </div>
-                      {formData.confirmPassword && !passwordsMatch && (
-                        <p className="mt-2 text-sm text-red-600">Passwords don't match</p>
-                      )}
-                      {passwordsMatch && (
-                        <p className="mt-2 text-sm text-green-600 flex items-center">
-                          <Check className="w-4 h-4 mr-1" />
-                          Passwords match
-                        </p>
-                      )}
-                    </div>
-
-                    {errors.password && (
-                      <p className="text-sm text-red-600">{errors.password}</p>
-                    )}
-
-                    <Button
-                      onClick={handleResetPassword}
-                      disabled={!isPasswordValid || !passwordsMatch || isLoading}
-                      className="w-full bg-primary hover:bg-blue-600 py-4 rounded-xl font-medium text-base"
-                    >
-                      {isLoading ? "Updating..." : "Update Password"}
-                    </Button>
-                  </>
-                )}
-
-                {/* Step 4 - Success */}
-                {currentStep === 4 && (
-                  <div className="space-y-6 text-center">
-                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <CheckCircle className="w-8 h-8 text-green-600" />
-                    </div>
-                    
-                    <div>
-                      <h1 className="text-2xl font-bold text-studywise-gray-900 mb-2">Password updated!</h1>
-                      <p className="text-studywise-gray-600">
-                        Your password has been successfully updated. You can now sign in with your new password.
-                      </p>
-                    </div>
-
-                    <Button 
-                      onClick={() => switchAuthMode("signin")}
-                      className="w-full bg-primary hover:bg-blue-600 py-4 rounded-xl font-medium text-base"
-                    >
-                      Sign In
+                      {isLoading ? "Signing in..." : "Sign In"}
                     </Button>
                   </div>
-                )}
-              </div>
-            )}
 
-            {/* Footer Links */}
-            {!(authMode === "reset" && currentStep === 4) && (
-              <div className="mt-8 pt-6 border-t border-studywise-gray-200">
-                <div className="flex justify-center space-x-6 text-sm text-studywise-gray-500">
-                  <Link href="/privacy-policy" className="hover:text-studywise-gray-700">
-                    Privacy Policy
-                  </Link>
-                  <Link href="/terms-of-service" className="hover:text-studywise-gray-700">
-                    Terms of Service
-                  </Link>
+                  <div className="relative my-6">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-studywise-gray-300" />
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                      <span className="px-2 bg-white text-studywise-gray-500">or</span>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={handleGoogleLogin}
+                    disabled={isLoading || isGoogleLoading}
+                    variant="outline"
+                    size="lg"
+                    className="w-full border-2 px-8 py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50 rounded-xl font-medium"
+                  >
+                    <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+                      <path fill="#4285f4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34a853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#fbbc05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                      <path fill="#ea4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    {isGoogleLoading ? "Connecting..." : "Continue with Google"}
+                  </Button>
+
+                  <div className="mt-8 space-y-4 text-center">
+                    <button onClick={() => switchAuthMode("reset")} className="text-sm text-primary hover:underline">
+                      Forgot your password?
+                    </button>
+                    <p className="text-sm text-studywise-gray-600">
+                      Don't have an account?{" "}
+                      <button onClick={() => switchAuthMode("signup")} className="text-primary hover:underline font-medium">
+                        Sign up
+                      </button>
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+
+              {/* SIGN UP CONTENT */}
+              {authMode === "signup" && (
+                <div className="space-y-6">
+                  {/* Step 1 - Email */}
+                  {currentStep === 1 && (
+                    <>
+                      <div className="text-center mb-6">
+                        <h1 className="text-2xl font-bold text-studywise-gray-900 mb-2">
+                          Create your StudyWise AI account
+                        </h1>
+                        <p className="text-studywise-gray-600">
+                          Start by entering your email address.
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-studywise-gray-700 mb-2">Email</label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-studywise-gray-400" />
+                          <input
+                            type="email"
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            placeholder="you@example.com"
+                            className="w-full pl-10 pr-4 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
+                            required
+                          />
+                        </div>
+                        {errors.email && <p className="mt-2 text-sm text-red-600">{errors.email}</p>}
+                      </div>
+
+                      <Button
+                        onClick={handleSignUpEmail}
+                        disabled={!formData.email || isLoading}
+                        size="lg"
+                        className="w-full px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium"
+                      >
+                        {isLoading ? "Checking..." : "Continue"}
+                      </Button>
+
+                      <div className="text-center">
+                        <p className="text-sm text-studywise-gray-600">
+                          Already have an account?{" "}
+                          <button onClick={() => switchAuthMode("signin")} className="text-primary hover:underline font-medium">
+                            Sign in
+                          </button>
+                        </p>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Step 2 - Profile */}
+                  {currentStep === 2 && (
+                    <>
+                      <div className="flex items-center mb-6">
+                        <button onClick={() => setCurrentStep(1)} className="mr-4 p-2 hover:bg-gray-100 rounded-full">
+                          <ArrowLeft className="w-5 h-5 text-studywise-gray-600" />
+                        </button>
+                        <div>
+                          <h1 className="text-2xl font-bold text-studywise-gray-900">Set up your profile</h1>
+                          <p className="text-studywise-gray-600">We'll use this to personalize your experience.</p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-studywise-gray-700 mb-2">Full Name</label>
+                        <div className="relative">
+                          <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-studywise-gray-400" />
+                          <input
+                            type="text"
+                            value={formData.fullName}
+                            onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                            placeholder="Sarah Johnson"
+                            className="w-full pl-10 pr-4 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-studywise-gray-700 mb-2">Password</label>
+                        <div className="relative">
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            value={formData.password}
+                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                            placeholder="Create a secure password"
+                            className="w-full pl-4 pr-12 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                          >
+                            {showPassword ? <EyeOff className="w-5 h-5 text-studywise-gray-400" /> : <Eye className="w-5 h-5 text-studywise-gray-400" />}
+                          </button>
+                        </div>
+                        
+                        {formData.password && (
+                          <div className="mt-3 space-y-2">
+                            <div className={`flex items-center text-sm ${passwordValidation.minLength ? 'text-green-600' : 'text-studywise-gray-500'}`}>
+                              <Check className={`w-4 h-4 mr-2 ${passwordValidation.minLength ? 'text-green-600' : 'text-gray-300'}`} />
+                              At least 8 characters
+                            </div>
+                            <div className={`flex items-center text-sm ${passwordValidation.hasNumber ? 'text-green-600' : 'text-studywise-gray-500'}`}>
+                              <Check className={`w-4 h-4 mr-2 ${passwordValidation.hasNumber ? 'text-green-600' : 'text-gray-300'}`} />
+                              1 number
+                            </div>
+                            <div className={`flex items-center text-sm ${passwordValidation.hasUppercase ? 'text-green-600' : 'text-studywise-gray-500'}`}>
+                              <Check className={`w-4 h-4 mr-2 ${passwordValidation.hasUppercase ? 'text-green-600' : 'text-gray-300'}`} />
+                              1 uppercase letter
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <Button
+                        onClick={handleSignUpProfile}
+                        disabled={!formData.fullName || !isPasswordValid}
+                        size="lg"
+                        className="w-full px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium"
+                      >
+                        Continue
+                      </Button>
+                    </>
+                  )}
+
+                  {/* Step 3 - Learning Goal */}
+                  {currentStep === 3 && (
+                    <>
+                      <div className="flex items-center mb-6">
+                        <button onClick={() => setCurrentStep(2)} className="mr-4 p-2 hover:bg-gray-100 rounded-full">
+                          <ArrowLeft className="w-5 h-5 text-studywise-gray-600" />
+                        </button>
+                        <div>
+                          <h1 className="text-2xl font-bold text-studywise-gray-900">Tell us what you want to achieve</h1>
+                          <p className="text-studywise-gray-600">Choose a goal so we can personalize your tests.</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        {learningGoals.map((goal) => (
+                          <label
+                            key={goal.value}
+                            className={`flex items-center p-4 border rounded-xl cursor-pointer transition-colors ${
+                              formData.learningGoal === goal.value
+                                ? 'border-primary bg-blue-50'
+                                : 'border-studywise-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="learningGoal"
+                              value={goal.value}
+                              checked={formData.learningGoal === goal.value}
+                              onChange={(e) => setFormData({ ...formData, learningGoal: e.target.value })}
+                              className="sr-only"
+                            />
+                            <div className={`w-5 h-5 rounded-full border-2 mr-3 flex items-center justify-center ${
+                              formData.learningGoal === goal.value ? 'border-primary bg-primary' : 'border-studywise-gray-300'
+                            }`}>
+                              {formData.learningGoal === goal.value && <div className="w-2 h-2 bg-white rounded-full" />}
+                            </div>
+                            <span className="text-studywise-gray-900">{goal.label}</span>
+                          </label>
+                        ))}
+                      </div>
+
+                      <Button
+                        onClick={handleSignUpComplete}
+                        disabled={!formData.learningGoal || isLoading}
+                        size="lg"
+                        className="w-full px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium"
+                      >
+                        {isLoading ? "Creating Account..." : "Finish & Create Account"}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* RESET PASSWORD CONTENT */}
+              {authMode === "reset" && (
+                <div className="space-y-6">
+                  {/* Step 1 - Email */}
+                  {currentStep === 1 && (
+                    <>
+                      <div className="text-center mb-6">
+                        <h1 className="text-2xl font-bold text-studywise-gray-900 mb-2">Reset Password</h1>
+                        <p className="text-studywise-gray-600">Enter the email associated with your account.</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-studywise-gray-700 mb-2">Email</label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-studywise-gray-400" />
+                          <input
+                            type="email"
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            placeholder="you@example.com"
+                            className="w-full pl-10 pr-4 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
+                            disabled={isLoading}
+                          />
+                        </div>
+                        {errors.email && <p className="mt-2 text-sm text-red-600">{errors.email}</p>}
+                      </div>
+
+                      <Button
+                        onClick={handleResetEmail}
+                        disabled={!formData.email || isLoading}
+                        size="lg"
+                        className="w-full px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium"
+                      >
+                        {isLoading ? "Sending..." : "Send Reset Link"}
+                      </Button>
+
+                      <div className="text-center">
+                        <button onClick={() => switchAuthMode("signin")} className="text-sm text-studywise-gray-600 hover:text-studywise-gray-800">
+                          Back to sign in
+                        </button>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Step 2 - Verify Code */}
+                  {currentStep === 2 && (
+                    <>
+                      <div className="flex items-center mb-6">
+                        <button onClick={() => setCurrentStep(1)} className="mr-4 p-2 hover:bg-gray-100 rounded-full" disabled={isLoading}>
+                          <ArrowLeft className="w-5 h-5 text-studywise-gray-600" />
+                        </button>
+                        <div>
+                          <h1 className="text-2xl font-bold text-studywise-gray-900">Check your email</h1>
+                          <p className="text-studywise-gray-600">We sent a verification code to {formData.email}</p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-studywise-gray-700 mb-2">Verification Code</label>
+                        <input
+                          type="text"
+                          value={formData.verificationCode}
+                          onChange={(e) => setFormData({ ...formData, verificationCode: e.target.value })}
+                          placeholder="Enter 6-digit code"
+                          className="w-full px-4 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-center text-lg tracking-widest"
+                          maxLength={6}
+                          disabled={isLoading}
+                        />
+                        {errors.code && <p className="mt-2 text-sm text-red-600">{errors.code}</p>}
+                      </div>
+
+                      <Button
+                        onClick={handleResetVerify}
+                        disabled={formData.verificationCode.length !== 6 || isLoading}
+                        size="lg"
+                        className="w-full px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium"
+                      >
+                        {isLoading ? "Verifying..." : "Verify Code"}
+                      </Button>
+
+                      <div className="text-center">
+                        <p className="text-sm text-studywise-gray-600">
+                          Didn't receive the code?{" "}
+                          <button disabled={isLoading} className="text-primary hover:underline font-medium">
+                            Resend
+                          </button>
+                        </p>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Step 3 - New Password */}
+                  {currentStep === 3 && (
+                    <>
+                      <div className="flex items-center mb-6">
+                        <button onClick={() => setCurrentStep(2)} className="mr-4 p-2 hover:bg-gray-100 rounded-full" disabled={isLoading}>
+                          <ArrowLeft className="w-5 h-5 text-studywise-gray-600" />
+                        </button>
+                        <div>
+                          <h1 className="text-2xl font-bold text-studywise-gray-900">Create new password</h1>
+                          <p className="text-studywise-gray-600">Choose a strong password for your account.</p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-studywise-gray-700 mb-2">New Password</label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-studywise-gray-400" />
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            value={formData.newPassword}
+                            onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
+                            placeholder="Create a secure password"
+                            className="w-full pl-10 pr-12 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
+                            disabled={isLoading}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                            disabled={isLoading}
+                          >
+                            {showPassword ? <EyeOff className="w-5 h-5 text-studywise-gray-400" /> : <Eye className="w-5 h-5 text-studywise-gray-400" />}
+                          </button>
+                        </div>
+                        
+                        {formData.newPassword && (
+                          <div className="mt-3 space-y-2">
+                            <div className={`flex items-center text-sm ${passwordValidation.minLength ? 'text-green-600' : 'text-studywise-gray-500'}`}>
+                              <Check className={`w-4 h-4 mr-2 ${passwordValidation.minLength ? 'text-green-600' : 'text-gray-300'}`} />
+                              At least 8 characters
+                            </div>
+                            <div className={`flex items-center text-sm ${passwordValidation.hasNumber ? 'text-green-600' : 'text-studywise-gray-500'}`}>
+                              <Check className={`w-4 h-4 mr-2 ${passwordValidation.hasNumber ? 'text-green-600' : 'text-gray-300'}`} />
+                              1 number
+                            </div>
+                            <div className={`flex items-center text-sm ${passwordValidation.hasUppercase ? 'text-green-600' : 'text-studywise-gray-500'}`}>
+                              <Check className={`w-4 h-4 mr-2 ${passwordValidation.hasUppercase ? 'text-green-600' : 'text-gray-300'}`} />
+                              1 uppercase letter
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-studywise-gray-700 mb-2">Confirm Password</label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-studywise-gray-400" />
+                          <input
+                            type={showConfirmPassword ? "text" : "password"}
+                            value={formData.confirmPassword}
+                            onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                            placeholder="Confirm your password"
+                            className="w-full pl-10 pr-12 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
+                            disabled={isLoading}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                            disabled={isLoading}
+                          >
+                            {showConfirmPassword ? <EyeOff className="w-5 h-5 text-studywise-gray-400" /> : <Eye className="w-5 h-5 text-studywise-gray-400" />}
+                          </button>
+                        </div>
+                        {formData.confirmPassword && !passwordsMatch && (
+                          <p className="mt-2 text-sm text-red-600">Passwords don't match</p>
+                        )}
+                        {passwordsMatch && (
+                          <p className="mt-2 text-sm text-green-600 flex items-center">
+                            <Check className="w-4 h-4 mr-1" />
+                            Passwords match
+                          </p>
+                        )}
+                      </div>
+
+                      {errors.password && (
+                        <p className="text-sm text-red-600">{errors.password}</p>
+                      )}
+
+                      <Button
+                        onClick={handleResetPassword}
+                        disabled={!isPasswordValid || !passwordsMatch || isLoading}
+                        size="lg"
+                        className="w-full px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium"
+                      >
+                        {isLoading ? "Updating..." : "Update Password"}
+                      </Button>
+                    </>
+                  )}
+
+                  {/* Step 4 - Success */}
+                  {currentStep === 4 && (
+                    <div className="space-y-6 text-center">
+                      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <CheckCircle className="w-8 h-8 text-green-600" />
+                      </div>
+                      
+                      <div>
+                        <h1 className="text-2xl font-bold text-studywise-gray-900 mb-2">Password updated!</h1>
+                        <p className="text-studywise-gray-600">
+                          Your password has been successfully updated. You can now sign in with your new password.
+                        </p>
+                      </div>
+
+                      <Button 
+                        onClick={() => switchAuthMode("signin")}
+                        size="lg"
+                        className="w-full px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium"
+                      >
+                        Sign In
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Footer Links */}
+              {!(authMode === "reset" && currentStep === 4) && (
+                <div className="mt-8 pt-6 border-t border-studywise-gray-200">
+                  <div className="flex justify-center space-x-6 text-sm text-studywise-gray-500">
+                    <Link href="/privacy-policy" className="hover:text-studywise-gray-700">
+                      Privacy Policy
+                    </Link>
+                    <Link href="/terms-of-service" className="hover:text-studywise-gray-700">
+                      Terms of Service
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

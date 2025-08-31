@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { FaUserCircle, FaArrowLeft } from "react-icons/fa";
+import { FaUserCircle, FaChevronLeft } from "react-icons/fa";
 
 export function Header(): JSX.Element {
   const [location] = useLocation();
@@ -46,7 +46,7 @@ export function Header(): JSX.Element {
     <header className="px-4 md:px-8 py-3">
       {/* DESKTOP */}
       <div className="hidden md:block">
-        <div className="rounded-xl border border-gray-400 bg-white shadow-sm">
+        <div className="rounded-xl border border-black bg-white shadow-sm">
           <nav className="grid grid-cols-3 items-center max-w-[1200px] mx-auto h-16">
             {/* LEFT */}
             <div className="flex items-center gap-6 pl-4">
@@ -99,7 +99,7 @@ export function Header(): JSX.Element {
       {/* MOBILE */}
       <div className="md:hidden">
         <div className="relative">
-          <div className="rounded-xl border border-gray-200 bg-white h-14 flex items-center justify-center">
+          <div className="rounded-xl border border-black bg-white h-14 flex items-center justify-center">
             {/* Centered Logo */}
             <div className="absolute left-1/2 transform -translate-x-1/2">
               <Link href="/" className="text-lg font-semibold">
@@ -112,10 +112,10 @@ export function Header(): JSX.Element {
               onClick={toggleMenu}
               aria-expanded={isMenuOpen}
               aria-controls="mobile-nav-panel"
-              className="absolute right-3 top-3 w-9 h-9 rounded-md flex items-center justify-center border border-gray-200 bg-white"
+              className="absolute right-3 top-3 w-9 h-9 rounded-md flex items-center justify-center border border-black bg-white"
               title="Open menu"
             >
-              <FaArrowLeft />
+              <FaChevronLeft />
             </button>
           </div>
 
@@ -143,7 +143,7 @@ export function Header(): JSX.Element {
                   ref={idx === 0 ? firstMobileLinkRef : undefined}
                   className={`py-4 px-4 rounded-lg text-lg font-medium focus:outline-none transition-all duration-200 ${
                     isActive(it.to) 
-                      ? "border-2 border-primary" 
+                      ? "border-2 border-black" 
                       : "text-studywise-gray-600 hover:bg-gray-50 hover:text-studywise-gray-900"
                   }`}
                   onClick={closeMenu}
@@ -155,10 +155,10 @@ export function Header(): JSX.Element {
             </div>
 
             {/* Bottom profile */}
-            <div className="mt-auto p-6 border-t border-gray-100">
+            <div className="mt-auto p-6 border-t border-black">
               <Link 
                 href="/settings" 
-                className={`flex items-center gap-3 p-4 rounded-lg transition-all duration-200 ${
+                className={`flex items-center gap-3 p-4 rounded-lg transition-all duration-200 border border-gray-700 ${
                   isActive("/settings") 
                     ? "bg-primary text-white" 
                     : "text-studywise-gray-600 hover:bg-gray-50 hover:text-studywise-gray-900"
@@ -175,7 +175,7 @@ export function Header(): JSX.Element {
                     className={isActive("/settings") ? "text-white" : "text-studywise-gray-800"} 
                   />
                 </div>
-                <span className="font-medium">Settings</span>
+                <span className="font-medium">Profile Settings</span>
               </Link>
             </div>
           </aside>
