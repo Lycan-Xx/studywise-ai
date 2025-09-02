@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowUp, Paperclip, PaperclipIcon, Plus } from "lucide-react";
 import { TestWizard } from "@/components/test";
 import { DocumentProcessor } from "@/utils/documentProcessor";
+import { useAuth } from "@/contexts/AuthContext";
 import * as pdfjsLib from "pdfjs-dist";
 
 export default function Dashboard() {
   // PDF.js worker is now configured in DocumentProcessor.ts
   // to ensure consistent configuration across the application
 
+  const { user } = useAuth();
   const [notes, setNotes] = useState("");
   const [showWizard, setShowWizard] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -115,6 +117,19 @@ export default function Dashboard() {
     }
   };
 
+  const [profileInfo, setProfileInfo] = useState({
+    fullName: "",
+  });
+
+  // Load user data when component mounts or user changes
+  useEffect(() => {
+    if (user) {
+      setProfileInfo({
+        fullName: user.user_metadata?.full_name || user.user_metadata?.name || '',
+      });
+    }
+  }, [user]);
+
   return (
     <div className="h-full md:h-auto flex flex-col">
       {!showWizard ? (
@@ -133,19 +148,19 @@ export default function Dashboard() {
                   <Paperclip className="w-6 h-6 text-gray-700" />
                 </button>
 
-				<div className="flex-1 relative">
-				  <textarea
-  ref={textareaRef}
-  value={notes}
-  onChange={(e) => setNotes(e.target.value)}
-  onInput={adjustTextareaHeight}
-  onFocus={handleFocus}
-  onDragOver={handleDragOver}
-  onDragLeave={handleDragLeave}
-  onDrop={handleDrop}
-  placeholder={isDragOver ? "Drop your file here..." : "Paste or upload your notes here to get started..."}
-  maxLength={maxLength}
-  className={`w-full min-h-[30px] max-h-[36vh] resize-none bg-white 
+                <div className="flex-1 relative">
+                  <textarea
+                    ref={textareaRef}
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    onInput={adjustTextareaHeight}
+                    onFocus={handleFocus}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    placeholder={isDragOver ? "Drop your file here..." : "Paste or upload your notes here to get started..."}
+                    maxLength={maxLength}
+                    className={`w-full min-h-[30px] max-h-[36vh] resize-none bg-white 
 	placeholder:text-gray-400 text-base text-gray-900
 	border-none 
 	focus:outline-none 
@@ -155,17 +170,17 @@ export default function Dashboard() {
 	ring-0 
 	text-center
 	${isDragOver ? 'bg-blue-50' : ''}`}
-  style={{ textAlign: "center", alignItems: "center", justifyContent: "center" }}
-/>
+                    style={{ textAlign: "center", alignItems: "center", justifyContent: "center" }}
+                  />
 
-				  {/* Optional overlay message */}
-				  {isDragOver && (
-					<div className="absolute inset-0 flex items-center justify-center bg-blue-100 bg-opacity-50 pointer-events-none rounded-full text-blue-600 text-center">
-					  Drop your file
-					</div>
-				  )}
+                  {/* Optional overlay message */}
+                  {isDragOver && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-blue-100 bg-opacity-50 pointer-events-none rounded-full text-blue-600 text-center">
+                      Drop your file
+                    </div>
+                  )}
 
-				</div>
+                </div>
 
                 <button onClick={handleGenerateQuiz} disabled={!notes.trim()} className={`w-12 h-12 rounded-full border flex items-center justify-center ${notes.trim() ? "bg-primary text-white border-transparent" : "bg-white text-gray-400 border-gray-200 cursor-not-allowed"}`}>
                   <ArrowUp className="w-6 h-6" />
@@ -178,6 +193,9 @@ export default function Dashboard() {
           {/* DESKTOP */}
           <div className="hidden md:flex flex-col">
             <div className="flex-shrink-0 p-8 text-center">
+              <h1 className="text-3xl md:text-4xl font-semibold">
+                Welcome {profileInfo.fullName || 'User'}
+              </h1>
               <h1 className="text-3xl md:text-4xl font-semibold">
                 Transform your study materials into intelligent practice tests that adapt to how you learn
               </h1>
@@ -213,9 +231,9 @@ export default function Dashboard() {
                           Drop your document here
                         </div>
                       )}
-					<div className="absolute bottom-2 right-2 text-sm text-gray-500 bg-white px-2 py-1 rounded">
-						{notes.length.toLocaleString()}/{maxLength.toLocaleString()}
-					</div>
+                      <div className="absolute bottom-2 right-2 text-sm text-gray-500 bg-white px-2 py-1 rounded">
+                        {notes.length.toLocaleString()}/{maxLength.toLocaleString()}
+                      </div>
                     </div>
                   </div>
                 </div>
