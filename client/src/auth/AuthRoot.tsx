@@ -30,37 +30,92 @@ export default function AuthRoot() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  // Redirect if already authenticated
+  // Replace the existing useEffect for user redirect
   useEffect(() => {
-    if (user) {
-      setLocation('/dashboard');
-    }
+    const handleAuthRedirect = async () => {
+      if (!user) return;
+
+      const params = new URLSearchParams(window.location.search);
+      const mode = params.get('mode');
+      const step = params.get('step');
+      const isOAuth = params.get('oauth') === 'true';
+
+      // Special handling for OAuth users who need to complete profile
+      if (mode === 'signup' && step === '3' && isOAuth) {
+        try {
+          // Check if profile has learning_goal
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('learning_goal')
+            .eq('id', user.id)
+            .single();
+
+          if (!error && !profile?.learning_goal) {
+            // User needs to complete profile, don't redirect
+            setAuthMode('signup');
+            setCurrentStep(3);
+            // Pre-fill data from OAuth
+            if (user?.user_metadata?.full_name) {
+              setFormData(prev => ({
+                ...prev,
+                fullName: user.user_metadata.full_name,
+                email: user.email || ''
+              }));
+            }
+            return; // Don't redirect to dashboard
+          }
+        } catch (err) {
+          console.error('Error checking profile:', err);
+        }
+      }
+
+      // For all other authenticated users, redirect to dashboard
+      // But only if we're not in the middle of a specific auth flow
+      if (!mode || mode === 'signin') {
+        setLocation('/dashboard');
+      }
+    };
+
+    handleAuthRedirect();
   }, [user, setLocation]);
 
-  // Check for auth mode from URL params
+  // Keep the separate useEffect for URL param processing
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const mode = params.get('mode');
     const step = params.get('step');
     const oauth = params.get('oauth');
-    
-    if (mode === 'reset') {
+
+    // Check for password reset tokens in URL hash
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const accessToken = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
+    const type = hashParams.get('type');
+
+    if (mode === 'reset' || type === 'recovery') {
       setAuthMode('reset');
-      setCurrentStep(3); // Go to new password step
-    } else if (mode === 'signup' && step === '3' && oauth === 'true') {
-      // User came from Google OAuth, go to learning goal step
+      setCurrentStep(3);
+
+      // If we have tokens from the reset link, set the session
+      if (accessToken && refreshToken && type === 'recovery') {
+        supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken
+        }).then(({ error }) => {
+          if (error) {
+            console.error('Error setting session from reset link:', error);
+            setErrors({ general: 'Invalid or expired reset link. Please request a new one.' });
+            setAuthMode('reset');
+            setCurrentStep(1);
+          }
+        });
+      }
+    } else if (mode === 'signup' && step === '3' && oauth === 'true' && !user) {
+      // Set the mode for OAuth but don't process if no user yet
       setAuthMode('signup');
       setCurrentStep(3);
-      // Pre-fill some data since they came from OAuth
-      if (user?.user_metadata?.full_name) {
-        setFormData(prev => ({
-          ...prev,
-          fullName: user.user_metadata.full_name,
-          email: user.email || ''
-        }));
-      }
     }
-  }, [user]);
+  }, []); // Empty dependency array - only run once on mount
 
   // Animation variants
   const cardVariants = {
@@ -95,11 +150,11 @@ export default function AuthRoot() {
 
   const backgroundVariants = {
     initial: { opacity: 0 },
-    animate: { 
+    animate: {
       opacity: 1,
       transition: { duration: 0.8, ease: "easeOut" }
     },
-    exit: { 
+    exit: {
       opacity: 0,
       transition: { duration: 0.4 }
     }
@@ -221,22 +276,25 @@ export default function AuthRoot() {
     setErrors({});
 
     try {
-      // Validate email format
       if (!formData.email.includes('@')) {
         setErrors({ email: "Please enter a valid email address" });
+        setIsLoading(false);
         return;
       }
 
-      // Check if email already exists
       const { exists, error } = await checkEmailExists(formData.email);
-      
+
       if (error) {
         setErrors({ email: "Unable to verify email. Please try again." });
+        setIsLoading(false);
         return;
       }
 
       if (exists) {
         setErrors({ email: "An account with this email already exists. Please sign in instead." });
+        // Optionally auto-switch to signin after a delay
+        setTimeout(() => switchAuthMode("signin"), 2000);
+        setIsLoading(false);
         return;
       }
 
@@ -259,7 +317,7 @@ export default function AuthRoot() {
 
     try {
       const isOAuthUser = new URLSearchParams(window.location.search).get('oauth') === 'true';
-      
+
       if (isOAuthUser && user) {
         // User came from OAuth, just update their profile with learning goal
         const { error } = await supabase
@@ -340,12 +398,37 @@ export default function AuthRoot() {
     setErrors({});
 
     try {
+      // Check if we have a valid session first
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        setErrors({ password: "Your reset link has expired. Please request a new password reset." });
+        setTimeout(() => {
+          setAuthMode('reset');
+          setCurrentStep(1);
+        }, 3000);
+        return;
+      }
+
       const { error } = await updatePassword(formData.newPassword);
 
       if (error) {
-        setErrors({ password: error.message });
+        if (error.message.includes('Auth session missing')) {
+          setErrors({ password: "Your reset link has expired. Please request a new password reset." });
+          setTimeout(() => {
+            setAuthMode('reset');
+            setCurrentStep(1);
+          }, 3000);
+        } else {
+          setErrors({ password: error.message });
+        }
         return;
       }
+
+      toast({
+        title: "Password updated!",
+        description: "Your password has been successfully updated.",
+      });
 
       setCurrentStep(4);
     } catch (error) {
@@ -391,15 +474,15 @@ export default function AuthRoot() {
 
                 {/* Progress indicator for signup */}
                 {authMode === "signup" && !(new URLSearchParams(window.location.search).get('oauth') === 'true' && currentStep === 3) && (
-                  <motion.div 
+                  <motion.div
                     className="mb-8"
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2, duration: 0.5 }}
                   >
                     <div className="w-full bg-gray-100 rounded-full h-2 mb-2">
-                      <motion.div 
-                        className="bg-gradient-to-r from-slate-800 to-slate-900 h-2 rounded-full shadow-sm" 
+                      <motion.div
+                        className="bg-gradient-to-r from-slate-800 to-slate-900 h-2 rounded-full shadow-sm"
                         initial={{ width: 0 }}
                         animate={{ width: `${((currentStep - 1) / 3) * 100}%` }}
                         transition={{ duration: 0.7, ease: "easeOut" }}
@@ -437,7 +520,7 @@ export default function AuthRoot() {
                         </div>
 
                         {errors.general && (
-                          <motion.div 
+                          <motion.div
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
                             className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl"
@@ -509,7 +592,7 @@ export default function AuthRoot() {
                           </motion.div>
                         </div>
 
-                        <motion.div 
+                        <motion.div
                           className="relative my-6"
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
@@ -536,16 +619,16 @@ export default function AuthRoot() {
                             className="w-full border-2 px-8 py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50 rounded-xl font-medium transition-all duration-200"
                           >
                             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-                              <path fill="#4285f4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                              <path fill="#34a853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                              <path fill="#fbbc05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                              <path fill="#ea4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                              <path fill="#4285f4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                              <path fill="#34a853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                              <path fill="#fbbc05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                              <path fill="#ea4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                             </svg>
                             {isGoogleLoading ? "Connecting..." : "Continue with Google"}
                           </Button>
                         </motion.div>
 
-                        <motion.div 
+                        <motion.div
                           className="mt-8 space-y-4 text-center"
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
@@ -597,7 +680,7 @@ export default function AuthRoot() {
                                 />
                               </div>
                               {errors.email && (
-                                <motion.p 
+                                <motion.p
                                   initial={{ opacity: 0, y: -10 }}
                                   animate={{ opacity: 1, y: 0 }}
                                   className="mt-2 text-sm text-red-600"
@@ -622,7 +705,7 @@ export default function AuthRoot() {
                               </Button>
                             </motion.div>
 
-                            <motion.div 
+                            <motion.div
                               className="text-center"
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
@@ -642,8 +725,8 @@ export default function AuthRoot() {
                         {currentStep === 2 && (
                           <>
                             <div className="flex items-center mb-6">
-                              <motion.button 
-                                onClick={() => setCurrentStep(1)} 
+                              <motion.button
+                                onClick={() => setCurrentStep(1)}
                                 className="mr-4 p-2 hover:bg-gray-100 rounded-full transition-colors duration-200"
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
@@ -701,27 +784,27 @@ export default function AuthRoot() {
                               </div>
 
                               {formData.password && (
-                                <motion.div 
+                                <motion.div
                                   className="mt-3 space-y-2"
                                   initial={{ opacity: 0, height: 0 }}
                                   animate={{ opacity: 1, height: "auto" }}
                                   transition={{ duration: 0.3 }}
                                 >
-                                  <motion.div 
+                                  <motion.div
                                     className={`flex items-center text-sm ${passwordValidation.minLength ? 'text-green-600' : 'text-studywise-gray-500'}`}
                                     animate={{ color: passwordValidation.minLength ? '#16a34a' : '#6b7280' }}
                                   >
                                     <Check className={`w-4 h-4 mr-2 ${passwordValidation.minLength ? 'text-green-600' : 'text-gray-300'}`} />
                                     At least 8 characters
                                   </motion.div>
-                                  <motion.div 
+                                  <motion.div
                                     className={`flex items-center text-sm ${passwordValidation.hasNumber ? 'text-green-600' : 'text-studywise-gray-500'}`}
                                     animate={{ color: passwordValidation.hasNumber ? '#16a34a' : '#6b7280' }}
                                   >
                                     <Check className={`w-4 h-4 mr-2 ${passwordValidation.hasNumber ? 'text-green-600' : 'text-gray-300'}`} />
                                     1 number
                                   </motion.div>
-                                  <motion.div 
+                                  <motion.div
                                     className={`flex items-center text-sm ${passwordValidation.hasUppercase ? 'text-green-600' : 'text-studywise-gray-500'}`}
                                   >
                                     <Check className={`w-4 h-4 mr-2 ${passwordValidation.hasUppercase ? 'text-green-600' : 'text-gray-300'}`} />
@@ -756,7 +839,7 @@ export default function AuthRoot() {
                                 </button>
                               </div>
                               {formData.confirmPassword && formData.password !== formData.confirmPassword && (
-                                <motion.p 
+                                <motion.p
                                   initial={{ opacity: 0, y: -10 }}
                                   animate={{ opacity: 1, y: 0 }}
                                   className="mt-2 text-sm text-red-600"
@@ -765,7 +848,7 @@ export default function AuthRoot() {
                                 </motion.p>
                               )}
                               {formData.confirmPassword && formData.password === formData.confirmPassword && formData.confirmPassword.length > 0 && (
-                                <motion.p 
+                                <motion.p
                                   initial={{ opacity: 0, scale: 0.9 }}
                                   animate={{ opacity: 1, scale: 1 }}
                                   className="mt-2 text-sm text-green-600 flex items-center"
@@ -799,8 +882,8 @@ export default function AuthRoot() {
                             <div className="flex items-center mb-6">
                               {/* Only show back button if not coming from OAuth */}
                               {!(new URLSearchParams(window.location.search).get('oauth') === 'true') && (
-                                <motion.button 
-                                  onClick={() => setCurrentStep(2)} 
+                                <motion.button
+                                  onClick={() => setCurrentStep(2)}
                                   className="mr-4 p-2 hover:bg-gray-100 rounded-full transition-colors duration-200"
                                   whileHover={{ scale: 1.05 }}
                                   whileTap={{ scale: 0.95 }}
@@ -814,7 +897,7 @@ export default function AuthRoot() {
                               </div>
                             </div>
 
-                            <motion.div 
+                            <motion.div
                               className="space-y-3"
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
@@ -826,11 +909,10 @@ export default function AuthRoot() {
                                   initial={{ opacity: 0, x: -20 }}
                                   animate={{ opacity: 1, x: 0 }}
                                   transition={{ delay: 0.1 + index * 0.1 }}
-                                  className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all duration-200 ${
-                                    formData.learningGoal === goal.value
-                                      ? 'border-primary bg-blue-50 scale-[1.02]'
-                                      : 'border-studywise-gray-300 hover:bg-gray-50 hover:scale-[1.01]'
-                                  }`}
+                                  className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all duration-200 ${formData.learningGoal === goal.value
+                                    ? 'border-primary bg-blue-50 scale-[1.02]'
+                                    : 'border-studywise-gray-300 hover:bg-gray-50 hover:scale-[1.01]'
+                                    }`}
                                   whileHover={{ scale: 1.02 }}
                                   whileTap={{ scale: 0.98 }}
                                 >
@@ -842,10 +924,9 @@ export default function AuthRoot() {
                                     onChange={(e) => setFormData({ ...formData, learningGoal: e.target.value })}
                                     className="sr-only"
                                   />
-                                  <motion.div 
-                                    className={`w-5 h-5 rounded-full border-2 mr-3 flex items-center justify-center ${
-                                      formData.learningGoal === goal.value ? 'border-primary bg-primary' : 'border-studywise-gray-300'
-                                    }`}
+                                  <motion.div
+                                    className={`w-5 h-5 rounded-full border-2 mr-3 flex items-center justify-center ${formData.learningGoal === goal.value ? 'border-primary bg-primary' : 'border-studywise-gray-300'
+                                      }`}
                                     animate={{
                                       borderColor: formData.learningGoal === goal.value ? '#3b82f6' : '#d1d5db',
                                       backgroundColor: formData.learningGoal === goal.value ? '#3b82f6' : 'transparent'
@@ -853,7 +934,7 @@ export default function AuthRoot() {
                                     transition={{ duration: 0.2 }}
                                   >
                                     {formData.learningGoal === goal.value && (
-                                      <motion.div 
+                                      <motion.div
                                         className="w-2 h-2 bg-white rounded-full"
                                         initial={{ scale: 0 }}
                                         animate={{ scale: 1 }}
@@ -885,13 +966,13 @@ export default function AuthRoot() {
 
                         {/* Step 4 - Success */}
                         {currentStep === 4 && (
-                          <motion.div 
+                          <motion.div
                             className="space-y-6 text-center"
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ duration: 0.5 }}
                           >
-                            <motion.div 
+                            <motion.div
                               className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6"
                               initial={{ scale: 0, rotate: -180 }}
                               animate={{ scale: 1, rotate: 0 }}
@@ -916,7 +997,7 @@ export default function AuthRoot() {
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: 0.6 }}
                             >
-                              <Button 
+                              <Button
                                 onClick={() => switchAuthMode("signin")}
                                 size="lg"
                                 className="w-full px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium transition-all duration-200"
@@ -958,7 +1039,7 @@ export default function AuthRoot() {
                                 />
                               </div>
                               {errors.email && (
-                                <motion.p 
+                                <motion.p
                                   initial={{ opacity: 0, y: -10 }}
                                   animate={{ opacity: 1, y: 0 }}
                                   className="mt-2 text-sm text-red-600"
@@ -983,7 +1064,7 @@ export default function AuthRoot() {
                               </Button>
                             </motion.div>
 
-                            <motion.div 
+                            <motion.div
                               className="text-center"
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
@@ -998,13 +1079,13 @@ export default function AuthRoot() {
 
                         {/* Step 2 - Email Sent */}
                         {currentStep === 2 && (
-                          <motion.div 
+                          <motion.div
                             className="space-y-6 text-center"
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ duration: 0.5 }}
                           >
-                            <motion.div 
+                            <motion.div
                               className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6"
                               initial={{ scale: 0, rotate: -180 }}
                               animate={{ scale: 1, rotate: 0 }}
@@ -1029,7 +1110,7 @@ export default function AuthRoot() {
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: 0.6 }}
                             >
-                              <Button 
+                              <Button
                                 onClick={() => switchAuthMode("signin")}
                                 size="lg"
                                 className="w-full px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium transition-all duration-200"
@@ -1075,27 +1156,27 @@ export default function AuthRoot() {
                               </div>
 
                               {formData.newPassword && (
-                                <motion.div 
+                                <motion.div
                                   className="mt-3 space-y-2"
                                   initial={{ opacity: 0, height: 0 }}
                                   animate={{ opacity: 1, height: "auto" }}
                                   transition={{ duration: 0.3 }}
                                 >
-                                  <motion.div 
+                                  <motion.div
                                     className={`flex items-center text-sm ${passwordValidation.minLength ? 'text-green-600' : 'text-studywise-gray-500'}`}
                                     animate={{ color: passwordValidation.minLength ? '#16a34a' : '#6b7280' }}
                                   >
                                     <Check className={`w-4 h-4 mr-2 ${passwordValidation.minLength ? 'text-green-600' : 'text-gray-300'}`} />
                                     At least 8 characters
                                   </motion.div>
-                                  <motion.div 
+                                  <motion.div
                                     className={`flex items-center text-sm ${passwordValidation.hasNumber ? 'text-green-600' : 'text-studywise-gray-500'}`}
                                     animate={{ color: passwordValidation.hasNumber ? '#16a34a' : '#6b7280' }}
                                   >
                                     <Check className={`w-4 h-4 mr-2 ${passwordValidation.hasNumber ? 'text-green-600' : 'text-gray-300'}`} />
                                     1 number
                                   </motion.div>
-                                  <motion.div 
+                                  <motion.div
                                     className={`flex items-center text-sm ${passwordValidation.hasUppercase ? 'text-green-600' : 'text-studywise-gray-500'}`}
                                     animate={{ color: passwordValidation.hasUppercase ? '#16a34a' : '#6b7280' }}
                                   >
@@ -1132,7 +1213,7 @@ export default function AuthRoot() {
                                 </button>
                               </div>
                               {formData.confirmPassword && !passwordsMatch && (
-                                <motion.p 
+                                <motion.p
                                   initial={{ opacity: 0, y: -10 }}
                                   animate={{ opacity: 1, y: 0 }}
                                   className="mt-2 text-sm text-red-600"
@@ -1141,7 +1222,7 @@ export default function AuthRoot() {
                                 </motion.p>
                               )}
                               {passwordsMatch && (
-                                <motion.p 
+                                <motion.p
                                   initial={{ opacity: 0, scale: 0.9 }}
                                   animate={{ opacity: 1, scale: 1 }}
                                   className="mt-2 text-sm text-green-600 flex items-center"
@@ -1153,13 +1234,23 @@ export default function AuthRoot() {
                             </motion.div>
 
                             {errors.password && (
-                              <motion.p 
+                              <motion.div
                                 initial={{ opacity: 0, y: -10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="text-sm text-red-600"
+                                className="p-4 bg-red-50 border border-red-200 rounded-xl"
                               >
-                                {errors.password}
-                              </motion.p>
+                                <p className="text-sm text-red-600">{errors.password}</p>
+                              </motion.div>
+                            )}
+
+                            {errors.general && (
+                              <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="p-4 bg-red-50 border border-red-200 rounded-xl"
+                              >
+                                <p className="text-sm text-red-600">{errors.general}</p>
+                              </motion.div>
                             )}
 
                             <motion.div
@@ -1181,13 +1272,13 @@ export default function AuthRoot() {
 
                         {/* Step 4 - Success */}
                         {currentStep === 4 && (
-                          <motion.div 
+                          <motion.div
                             className="space-y-6 text-center"
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ duration: 0.5 }}
                           >
-                            <motion.div 
+                            <motion.div
                               className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6"
                               initial={{ scale: 0, rotate: -180 }}
                               animate={{ scale: 1, rotate: 0 }}
@@ -1212,7 +1303,7 @@ export default function AuthRoot() {
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: 0.6 }}
                             >
-                              <Button 
+                              <Button
                                 onClick={() => switchAuthMode("signin")}
                                 size="lg"
                                 className="w-full px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium transition-all duration-200"
@@ -1229,7 +1320,7 @@ export default function AuthRoot() {
 
                 {/* Footer Links */}
                 {!(authMode === "reset" && (currentStep === 2 || currentStep === 4)) && (
-                  <motion.div 
+                  <motion.div
                     className="mt-8 pt-6 border-t border-studywise-gray-200"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -1262,7 +1353,7 @@ export default function AuthRoot() {
             transition={{ duration: 0.6, ease: "easeOut" }}
             className="text-center text-white px-8"
           >
-            <motion.h2 
+            <motion.h2
               className="text-5xl xl:text-6xl font-light leading-tight mb-4"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1275,7 +1366,7 @@ export default function AuthRoot() {
                 </span>
               ))}
             </motion.h2>
-            <motion.p 
+            <motion.p
               className="text-xl opacity-90 max-w-md"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 0.9, y: 0 }}
