@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
@@ -19,6 +18,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { Bell, LogOut, User } from "lucide-react";
 
 export default function Settings() {
   const { user, signOut, updatePassword } = useAuth();
@@ -44,13 +44,8 @@ export default function Settings() {
 
   const [accountSettings, setAccountSettings] = useState({
     emailNotifications: true,
-  });
-
-  const [studyPreferences, setStudyPreferences] = useState({
-    defaultSubject: "mathematics",
-    questionTypePreference: "multiple-choice",
-    difficultyLevel: "medium",
-    questionsPerSession: "15",
+    pushNotifications: false,
+    weeklyDigest: true,
   });
 
   const [privacySettings, setPrivacySettings] = useState({
@@ -60,6 +55,7 @@ export default function Settings() {
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [showSignOutDialog, setShowSignOutDialog] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
@@ -85,15 +81,10 @@ export default function Settings() {
   };
 
   const handleSaveAccount = () => {
-    console.log("Saving account settings:", accountSettings);
-  };
-
-  const handleSaveStudyPreferences = () => {
-    console.log("Saving study preferences:", studyPreferences);
-  };
-
-  const handleSavePrivacy = () => {
-    console.log("Saving privacy settings:", privacySettings);
+    toast({
+      title: "Settings saved",
+      description: "Your notification preferences have been updated.",
+    });
   };
 
   const handleChangePassword = () => {
@@ -159,6 +150,24 @@ export default function Settings() {
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Signed out",
+        description: "You have been successfully signed out.",
+      });
+      setLocation('/');
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive",
+      });
+    }
+    setShowSignOutDialog(false);
+  };
+
   const handleSubmitFeedback = () => {
     // In a real app, this would submit to your feedback system
     toast({
@@ -186,14 +195,6 @@ export default function Settings() {
     setShowDeleteDialog(false);
   };
 
-  const handleChangeAvatar = () => {
-    console.log("Changing avatar");
-  };
-
-  const handleHelpCenter = () => {
-    console.log("Opening help center");
-  };
-
   return (
     <div className="max-w-4xl">
       <div className="mb-8">
@@ -205,28 +206,60 @@ export default function Settings() {
         </p>
       </div>
 
+      {/* User Info Header */}
+      <Card className="shadow-sm border-studywise-gray-200 mb-6">
+        <CardContent className="p-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-center space-x-4">
+              <div className="w-16 h-16 rounded-full border-2 border-studywise-gray-200 bg-primary/10 flex items-center justify-center">
+                <span className="text-xl font-semibold text-primary">
+                  {profileInfo.fullName ? profileInfo.fullName.charAt(0).toUpperCase() : 
+                   profileInfo.email ? profileInfo.email.charAt(0).toUpperCase() : 'U'}
+                </span>
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-studywise-gray-900">
+                  {profileInfo.fullName || 'User'}
+                </h2>
+                <p className="text-studywise-gray-600">{profileInfo.email}</p>
+                <p className="text-sm text-studywise-gray-500">@{profileInfo.username}</p>
+              </div>
+            </div>
+            <div className="flex md:block justify-end w-full md:w-auto">
+              <Button 
+                onClick={() => setShowSignOutDialog(true)}
+                variant="outline"
+                size="sm"
+                className="border-red-300 text-red-600 hover:bg-red-50 mt-4 md:mt-0"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Sign Out
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Profile Information */}
       <Card className="shadow-sm border-studywise-gray-200 mb-6">
         <div className="px-6 py-4 border-b border-studywise-gray-200">
           <h2 className="text-lg font-semibold text-studywise-gray-900">Profile Information</h2>
         </div>
         <CardContent className="p-6 space-y-6">
-          <div className="flex items-center space-x-4">
-            <div className="w-20 h-20 rounded-full border-2 border-studywise-gray-200 bg-primary/10 flex items-center justify-center">
-              <span className="text-2xl font-semibold text-primary">
-                {profileInfo.fullName ? profileInfo.fullName.charAt(0).toUpperCase() : 
-                 profileInfo.email ? profileInfo.email.charAt(0).toUpperCase() : 'U'}
-              </span>
-            </div>
-            <div>
-              <h3 className="text-lg font-medium text-studywise-gray-900">
-                {profileInfo.fullName || 'User'}
-              </h3>
-              <p className="text-studywise-gray-500">@{profileInfo.username}</p>
-            </div>
-          </div>
-          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <Label htmlFor="fullName" className="text-sm font-medium text-studywise-gray-700">
+                Full Name
+              </Label>
+              <Input
+                id="fullName"
+                type="text"
+                value={profileInfo.fullName}
+                onChange={(e) => setProfileInfo({ ...profileInfo, fullName: e.target.value })}
+                className="mt-2"
+                placeholder="Enter your full name"
+              />
+            </div>
             <div>
               <Label htmlFor="username" className="text-sm font-medium text-studywise-gray-700">
                 Username
@@ -237,9 +270,10 @@ export default function Settings() {
                 value={profileInfo.username}
                 onChange={(e) => setProfileInfo({ ...profileInfo, username: e.target.value })}
                 className="mt-2"
+                placeholder="Enter username"
               />
             </div>
-            <div>
+            <div className="md:col-span-2">
               <Label htmlFor="email" className="text-sm font-medium text-studywise-gray-700">
                 Email Address
               </Label>
@@ -249,6 +283,7 @@ export default function Settings() {
                 value={profileInfo.email}
                 onChange={(e) => setProfileInfo({ ...profileInfo, email: e.target.value })}
                 className="mt-2"
+                placeholder="Enter email address"
               />
             </div>
           </div>
@@ -268,7 +303,7 @@ export default function Settings() {
       {/* Account Settings */}
       <Card className="shadow-sm border-studywise-gray-200 mb-6">
         <div className="px-6 py-4 border-b border-studywise-gray-200">
-          <h2 className="text-lg font-semibold text-studywise-gray-900">Account Settings</h2>
+          <h2 className="text-lg font-semibold text-studywise-gray-900">Account & Security</h2>
         </div>
         <CardContent className="p-6 space-y-6">
           <div className="flex items-center justify-between">
@@ -284,7 +319,16 @@ export default function Settings() {
               Change Password
             </Button>
           </div>
-          
+        </CardContent>
+      </Card>
+
+      {/* Notifications */}
+      <Card className="shadow-sm border-studywise-gray-200 mb-6">
+        <div className="px-6 py-4 border-b border-studywise-gray-200 flex items-center gap-2">
+          <Bell className="w-5 h-5 text-studywise-gray-600" />
+          <h2 className="text-lg font-semibold text-studywise-gray-900">Notifications</h2>
+        </div>
+        <CardContent className="p-6 space-y-6">
           <div className="flex items-center justify-between">
             <div>
               <h4 className="text-sm font-medium text-studywise-gray-900">Email Notifications</h4>
@@ -296,108 +340,47 @@ export default function Settings() {
             />
           </div>
 
-          {/* <div className="flex justify-end">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-sm font-medium text-studywise-gray-900">Push Notifications</h4>
+              <p className="text-sm text-studywise-gray-500">Get notified about study reminders and achievements</p>
+            </div>
+            <Switch
+              checked={accountSettings.pushNotifications}
+              onCheckedChange={(checked) => setAccountSettings({ ...accountSettings, pushNotifications: checked })}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-sm font-medium text-studywise-gray-900">Weekly Digest</h4>
+              <p className="text-sm text-studywise-gray-500">Receive a weekly summary of your study progress</p>
+            </div>
+            <Switch
+              checked={accountSettings.weeklyDigest}
+              onCheckedChange={(checked) => setAccountSettings({ ...accountSettings, weeklyDigest: checked })}
+            />
+          </div>
+
+          <div className="flex justify-end pt-4 border-t border-studywise-gray-200">
             <Button 
               onClick={handleSaveAccount}
               size="sm"
               className="bg-primary hover:bg-blue-600"
             >
-              Save Settings
+              Save Notification Settings
             </Button>
-          </div> */}
+          </div>
         </CardContent>
       </Card>
-
-      {/* Study Preferences */}
-      {/* <Card className="shadow-sm border-studywise-gray-200 mb-6">
-        <div className="px-6 py-4 border-b border-studywise-gray-200">
-          <h2 className="text-lg font-semibold text-studywise-gray-900">Study Preferences</h2>
-        </div>
-        <CardContent className="p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="text-sm font-medium text-studywise-gray-900">Default Subject</h4>
-              <p className="text-sm text-studywise-gray-500">Your preferred subject for quiz generation</p>
-            </div>
-            <Select
-              value={studyPreferences.defaultSubject}
-              onValueChange={(value) => setStudyPreferences({ ...studyPreferences, defaultSubject: value })}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="mathematics">Mathematics</SelectItem>
-                <SelectItem value="science">Science</SelectItem>
-                <SelectItem value="history">History</SelectItem>
-                <SelectItem value="literature">Literature</SelectItem>
-                <SelectItem value="languages">Languages</SelectItem>
-                <SelectItem value="general">General Knowledge</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="text-sm font-medium text-studywise-gray-900">Question Type Preferences</h4>
-              <p className="text-sm text-studywise-gray-500">Preferred format for generated questions</p>
-            </div>
-            <Select
-              value={studyPreferences.questionTypePreference}
-              onValueChange={(value) => setStudyPreferences({ ...studyPreferences, questionTypePreference: value })}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
-                <SelectItem value="true-false">True/False</SelectItem>
-                <SelectItem value="short-answer">Short Answer</SelectItem>
-                <SelectItem value="mixed">Mixed Types</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="text-sm font-medium text-studywise-gray-900">Default Difficulty</h4>
-              <p className="text-sm text-studywise-gray-500">Preferred difficulty level for questions</p>
-            </div>
-            <Select
-              value={studyPreferences.difficultyLevel}
-              onValueChange={(value) => setStudyPreferences({ ...studyPreferences, difficultyLevel: value })}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="easy">Easy</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="hard">Hard</SelectItem>
-                <SelectItem value="adaptive">Adaptive</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex justify-end">
-            <Button 
-              onClick={handleSaveStudyPreferences}
-              size="sm"
-              className="bg-primary hover:bg-blue-600"
-            >
-              Save Preferences
-            </Button>
-          </div>
-        </CardContent>
-      </Card> */}
 
       {/* Privacy Settings */}
       <Card className="shadow-sm border-studywise-gray-200 mb-6">
         <div className="px-6 py-4 border-b border-studywise-gray-200">
-          <h2 className="text-lg font-semibold text-studywise-gray-900">Privacy Settings</h2>
+          <h2 className="text-lg font-semibold text-studywise-gray-900">Privacy & Data</h2>
         </div>
         <CardContent className="p-6 space-y-6">
-          {/* <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between">
             <div>
               <h4 className="text-sm font-medium text-studywise-gray-900">Data Collection</h4>
               <p className="text-sm text-studywise-gray-500">Allow anonymous usage data collection for service improvement</p>
@@ -417,9 +400,9 @@ export default function Settings() {
               checked={privacySettings.analyticsTracking}
               onCheckedChange={(checked) => setPrivacySettings({ ...privacySettings, analyticsTracking: checked })}
             />
-          </div> */}
+          </div>
 
-          <div className="border-studywise-gray-200 pt-6">
+          <div className="border-t border-studywise-gray-200 pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="text-sm font-medium text-red-600">Delete Account</h4>
@@ -435,16 +418,6 @@ export default function Settings() {
               </Button>
             </div>
           </div>
-
-          {/* <div className="flex justify-end">
-            <Button 
-              onClick={handleSavePrivacy}
-              size="sm"
-              className="bg-primary hover:bg-blue-600"
-            >
-              Save Privacy Settings
-            </Button>
-          </div> */}
         </CardContent>
       </Card>
 
@@ -454,27 +427,9 @@ export default function Settings() {
           <h2 className="text-lg font-semibold text-studywise-gray-900">Support & Feedback</h2>
         </div>
         <CardContent className="p-6 space-y-6">
-          <div className="flex items-center justify-between">
-
-
-            {/* <div>
-              <h4 className="text-sm font-medium text-studywise-gray-900">Help Center</h4>
-              <p className="text-sm text-studywise-gray-500">Access guides, tutorials, and frequently asked questions</p>
-            </div> */}
-
-
-            {/* <Button 
-              onClick={handleHelpCenter}
-              variant="outline"
-              size="sm"
-            >
-              Visit Help Center
-            </Button> */}
-          </div>
-
           <div className="space-y-3">
             <div>
-              <h4 className="text-sm font-medium text-studywise-gray-900">Feedback Submission</h4>
+              <h4 className="text-sm font-medium text-studywise-gray-900">Send Feedback</h4>
               <p className="text-sm text-studywise-gray-500 mb-3">Share your thoughts to help us improve StudyWise AI</p>
             </div>
             <Textarea
@@ -496,6 +451,27 @@ export default function Settings() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Sign Out Dialog */}
+      <AlertDialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign Out</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to sign out of your account?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleSignOut}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Sign Out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Change Password Dialog */}
       <AlertDialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>

@@ -1,26 +1,16 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { FaUserCircle, FaChevronLeft } from "react-icons/fa";
-import { Button } from "@/components/ui/button";
-import { Brain, Menu, X, User, Bell, Settings, LogOut } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
 
 export function Header(): JSX.Element {
   const [location] = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { user, signOut } = useAuth();
-  const [, setLocation] = useLocation();
 
   // Ref to focus the first mobile nav link when panel opens
   const firstMobileLinkRef = useRef<HTMLAnchorElement | null>(null);
 
   const toggleMenu = () => setIsMenuOpen((s) => !s);
   const closeMenu = () => setIsMenuOpen(false);
-
-  const handleSignOut = async () => {
-    await signOut();
-    setLocation('/');
-  };
 
   // Close on ESC
   useEffect(() => {
@@ -95,34 +85,16 @@ export function Header(): JSX.Element {
                 </Link>
               ))}
 
-              {/* Avatar */}
-              <div className="flex items-center space-x-4">
-                <Button variant="ghost" size="icon" className="hover:bg-studywise-gray-100 transition-colors duration-200">
-                  <Bell className="w-5 h-5 text-studywise-gray-700" />
-                </Button>
-                <Link href="/settings">
-                  <Button variant="ghost" size="icon" className="hover:bg-studywise-gray-100 transition-colors duration-200">
-                    <Settings className="w-5 h-5 text-studywise-gray-700" />
-                  </Button>
-                </Link>
-                <div className="flex items-center space-x-2">
-                  <div className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-studywise-gray-50">
-                    <User className="w-4 h-4 text-studywise-gray-600" />
-                    <span className="text-sm font-medium text-studywise-gray-700">
-                      {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
-                    </span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleSignOut}
-                    className="hover:bg-red-50 transition-colors duration-200"
-                    title="Sign out"
-                  >
-                    <LogOut className="w-5 h-5 text-red-600" />
-                  </Button>
+              {/* Simple Avatar - Links to Settings */}
+              <Link href="/settings" className="ml-4" aria-label="Settings">
+                <div className={`w-12 h-12 rounded-lg border border-gray-200 flex items-center justify-center overflow-hidden bg-white transition-colors duration-200 ${
+                  isActive("/settings") ? "border-primary bg-primary/5" : "hover:bg-gray-50"
+                }`}>
+                  <FaUserCircle size={28} className={`${
+                    isActive("/settings") ? "text-primary" : "text-studywise-gray-800"
+                  }`} />
                 </div>
-              </div>
+              </Link>
             </div>
           </nav>
         </div>
@@ -174,8 +146,8 @@ export function Header(): JSX.Element {
                   key={it.to}
                   ref={idx === 0 ? firstMobileLinkRef : undefined}
                   className={`py-4 px-4 rounded-lg text-lg font-medium focus:outline-none transition-all duration-200 ${
-                    isActive(it.to)
-                      ? "border-2 border-black"
+                    isActive(it.to) 
+                      ? "border-2 border-black" 
                       : "text-studywise-gray-600 hover:bg-gray-50 hover:text-studywise-gray-900"
                   }`}
                   onClick={closeMenu}
@@ -186,28 +158,28 @@ export function Header(): JSX.Element {
               ))}
             </div>
 
-            {/* Bottom profile */}
+            {/* Bottom profile - Simple settings link */}
             <div className="mt-auto p-6 border-t border-black">
-              <Link
-                href="/settings"
+              <Link 
+                href="/settings" 
                 className={`flex items-center gap-3 p-4 rounded-lg transition-all duration-200 border border-gray-700 ${
-                  isActive("/settings")
-                    ? "bg-primary text-white"
+                  isActive("/settings") 
+                    ? "bg-primary text-white" 
                     : "text-studywise-gray-600 hover:bg-gray-50 hover:text-studywise-gray-900"
                 }`}
                 onClick={closeMenu}
               >
                 <div className={`w-10 h-10 rounded-md border flex items-center justify-center ${
-                  isActive("/settings")
-                    ? "border-white/20 bg-white/10"
+                  isActive("/settings") 
+                    ? "border-white/20 bg-white/10" 
                     : "border-gray-200 bg-white"
                 }`}>
-                  <FaUserCircle
-                    size={22}
-                    className={isActive("/settings") ? "text-white" : "text-studywise-gray-800"}
+                  <FaUserCircle 
+                    size={22} 
+                    className={isActive("/settings") ? "text-white" : "text-studywise-gray-800"} 
                   />
                 </div>
-                <span className="font-medium">Profile Settings</span>
+                <span className="font-medium">Settings</span>
               </Link>
             </div>
           </aside>
