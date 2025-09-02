@@ -6,6 +6,7 @@ import { Brain, Mail, Lock, Eye, EyeOff, User, ArrowLeft, Check, CheckCircle } f
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabase";
 
 export default function AuthRoot() {
   const [authMode, setAuthMode] = useState("signin");
@@ -25,7 +26,7 @@ export default function AuthRoot() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const { signIn, signUp, signOut, resetPassword, updatePassword, signInWithGoogle, user } = useAuth();
+  const { signIn, signUp, signOut, resetPassword, updatePassword, signInWithGoogle, checkEmailExists, user } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
@@ -40,11 +41,26 @@ export default function AuthRoot() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const mode = params.get('mode');
+    const step = params.get('step');
+    const oauth = params.get('oauth');
+    
     if (mode === 'reset') {
       setAuthMode('reset');
       setCurrentStep(3); // Go to new password step
+    } else if (mode === 'signup' && step === '3' && oauth === 'true') {
+      // User came from Google OAuth, go to learning goal step
+      setAuthMode('signup');
+      setCurrentStep(3);
+      // Pre-fill some data since they came from OAuth
+      if (user?.user_metadata?.full_name) {
+        setFormData(prev => ({
+          ...prev,
+          fullName: user.user_metadata.full_name,
+          email: user.email || ''
+        }));
+      }
     }
-  }, []);
+  }, [user]);
 
   // Animation variants
   const cardVariants = {
@@ -205,9 +221,22 @@ export default function AuthRoot() {
     setErrors({});
 
     try {
-      // Just validate email format and move to next step
+      // Validate email format
       if (!formData.email.includes('@')) {
         setErrors({ email: "Please enter a valid email address" });
+        return;
+      }
+
+      // Check if email already exists
+      const { exists, error } = await checkEmailExists(formData.email);
+      
+      if (error) {
+        setErrors({ email: "Unable to verify email. Please try again." });
+        return;
+      }
+
+      if (exists) {
+        setErrors({ email: "An account with this email already exists. Please sign in instead." });
         return;
       }
 
@@ -229,22 +258,50 @@ export default function AuthRoot() {
     setErrors({});
 
     try {
-      const { error } = await signUp(formData.email, formData.password, {
-        full_name: formData.fullName,
-        learning_goal: formData.learningGoal
-      });
+      const isOAuthUser = new URLSearchParams(window.location.search).get('oauth') === 'true';
+      
+      if (isOAuthUser && user) {
+        // User came from OAuth, just update their profile with learning goal
+        const { error } = await supabase
+          .from('profiles')
+          .upsert({
+            id: user.id,
+            full_name: user.user_metadata?.full_name || formData.fullName,
+            learning_goal: formData.learningGoal
+          });
 
-      if (error) {
-        setErrors({ general: error.message });
+        if (error) {
+          setErrors({ general: "Failed to update profile. Please try again." });
+          return;
+        }
+
+        toast({
+          title: "Profile completed!",
+          description: "Welcome to StudyWise AI. Let's start learning!",
+        });
+
+        // Redirect to dashboard for OAuth users
+        setLocation('/dashboard');
         return;
+      } else {
+        // Regular email signup
+        const { error } = await signUp(formData.email, formData.password, {
+          full_name: formData.fullName,
+          learning_goal: formData.learningGoal
+        });
+
+        if (error) {
+          setErrors({ general: error.message });
+          return;
+        }
+
+        toast({
+          title: "Account created!",
+          description: "Please check your email to verify your account.",
+        });
+
+        setCurrentStep(4); // Go to success step
       }
-
-      toast({
-        title: "Account created!",
-        description: "Please check your email to verify your account.",
-      });
-
-      setAuthMode('signin');
     } catch (error) {
       setErrors({ general: "Failed to create account. Please try again." });
     } finally {
@@ -333,7 +390,7 @@ export default function AuthRoot() {
                 </Link>
 
                 {/* Progress indicator for signup */}
-                {authMode === "signup" && (
+                {authMode === "signup" && !(new URLSearchParams(window.location.search).get('oauth') === 'true' && currentStep === 3) && (
                   <motion.div 
                     className="mb-8"
                     initial={{ opacity: 0, y: -20 }}
@@ -344,13 +401,13 @@ export default function AuthRoot() {
                       <motion.div 
                         className="bg-gradient-to-r from-slate-800 to-slate-900 h-2 rounded-full shadow-sm" 
                         initial={{ width: 0 }}
-                        animate={{ width: `${((currentStep - 1) / 2) * 100}%` }}
+                        animate={{ width: `${((currentStep - 1) / 3) * 100}%` }}
                         transition={{ duration: 0.7, ease: "easeOut" }}
                       />
                     </div>
                     <div className="text-center">
                       <span className="text-xs font-medium text-gray-500">
-                        Step {currentStep} of 3
+                        Step {currentStep} of 4
                       </span>
                     </div>
                   </motion.div>
@@ -395,8 +452,8 @@ export default function AuthRoot() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.1 }}
                           >
-                            <label className="block text-sm font-medium text-studywise-gray-700 mb-2">Email</label>
                             <div className="relative">
+                              <label className="absolute -top-2 left-3 bg-white px-1 text-xs font-medium text-studywise-gray-700 z-10">Email</label>
                               <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-studywise-gray-400" />
                               <input
                                 type="email"
@@ -414,8 +471,8 @@ export default function AuthRoot() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.2 }}
                           >
-                            <label className="block text-sm font-medium text-studywise-gray-700 mb-2">Password</label>
                             <div className="relative">
+                              <label className="absolute -top-2 left-3 bg-white px-1 text-xs font-medium text-studywise-gray-700 z-10">Password</label>
                               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-studywise-gray-400" />
                               <input
                                 type={showPassword ? "text" : "password"}
@@ -527,8 +584,8 @@ export default function AuthRoot() {
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: 0.1 }}
                             >
-                              <label className="block text-sm font-medium text-studywise-gray-700 mb-2">Email</label>
                               <div className="relative">
+                                <label className="absolute -top-2 left-3 bg-white px-1 text-xs font-medium text-studywise-gray-700 z-10">Email</label>
                                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-studywise-gray-400" />
                                 <input
                                   type="email"
@@ -604,8 +661,8 @@ export default function AuthRoot() {
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: 0.1 }}
                             >
-                              <label className="block text-sm font-medium text-studywise-gray-700 mb-2">Full Name</label>
                               <div className="relative">
+                                <label className="absolute -top-2 left-3 bg-white px-1 text-xs font-medium text-studywise-gray-700 z-10">Full Name</label>
                                 <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-studywise-gray-400" />
                                 <input
                                   type="text"
@@ -623,14 +680,15 @@ export default function AuthRoot() {
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: 0.2 }}
                             >
-                              <label className="block text-sm font-medium text-studywise-gray-700 mb-2">Password</label>
                               <div className="relative">
+                                <label className="absolute -top-2 left-3 bg-white px-1 text-xs font-medium text-studywise-gray-700 z-10">Password</label>
+                                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-studywise-gray-400" />
                                 <input
                                   type={showPassword ? "text" : "password"}
                                   value={formData.password}
                                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                   placeholder="Create a secure password"
-                                  className="w-full pl-4 pr-12 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base transition-all duration-200"
+                                  className="w-full pl-10 pr-12 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base transition-all duration-200"
                                   required
                                 />
                                 <button
@@ -665,7 +723,6 @@ export default function AuthRoot() {
                                   </motion.div>
                                   <motion.div 
                                     className={`flex items-center text-sm ${passwordValidation.hasUppercase ? 'text-green-600' : 'text-studywise-gray-500'}`}
-                                    animate={{ color: passwordValidation.hasUppercase ? '#16a34a' : '#6b7280' }}
                                   >
                                     <Check className={`w-4 h-4 mr-2 ${passwordValidation.hasUppercase ? 'text-green-600' : 'text-gray-300'}`} />
                                     1 uppercase letter
@@ -677,11 +734,56 @@ export default function AuthRoot() {
                             <motion.div
                               initial={{ opacity: 0, y: 20 }}
                               animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.3 }}
+                            >
+                              <div className="relative">
+                                <label className="absolute -top-2 left-3 bg-white px-1 text-xs font-medium text-studywise-gray-700 z-10">Confirm Password</label>
+                                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-studywise-gray-400" />
+                                <input
+                                  type={showConfirmPassword ? "text" : "password"}
+                                  value={formData.confirmPassword}
+                                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                                  placeholder="Confirm your password"
+                                  className="w-full pl-10 pr-12 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base transition-all duration-200"
+                                  required
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                  className="absolute right-3 top-1/2 transform -translate-y-1/2 transition-colors duration-200 hover:text-studywise-gray-600"
+                                >
+                                  {showConfirmPassword ? <EyeOff className="w-5 h-5 text-studywise-gray-400" /> : <Eye className="w-5 h-5 text-studywise-gray-400" />}
+                                </button>
+                              </div>
+                              {formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                                <motion.p 
+                                  initial={{ opacity: 0, y: -10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  className="mt-2 text-sm text-red-600"
+                                >
+                                  Passwords don't match
+                                </motion.p>
+                              )}
+                              {formData.confirmPassword && formData.password === formData.confirmPassword && formData.confirmPassword.length > 0 && (
+                                <motion.p 
+                                  initial={{ opacity: 0, scale: 0.9 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  className="mt-2 text-sm text-green-600 flex items-center"
+                                >
+                                  <Check className="w-4 h-4 mr-1" />
+                                  Passwords match
+                                </motion.p>
+                              )}
+                            </motion.div>
+
+                            <motion.div
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: 0.4 }}
                             >
                               <Button
                                 onClick={handleSignUpProfile}
-                                disabled={!formData.fullName || !isPasswordValid}
+                                disabled={!formData.fullName || !isPasswordValid || formData.password !== formData.confirmPassword}
                                 size="lg"
                                 className="w-full px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium transition-all duration-200"
                               >
@@ -695,14 +797,17 @@ export default function AuthRoot() {
                         {currentStep === 3 && (
                           <>
                             <div className="flex items-center mb-6">
-                              <motion.button 
-                                onClick={() => setCurrentStep(2)} 
-                                className="mr-4 p-2 hover:bg-gray-100 rounded-full transition-colors duration-200"
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                              >
-                                <ArrowLeft className="w-5 h-5 text-studywise-gray-600" />
-                              </motion.button>
+                              {/* Only show back button if not coming from OAuth */}
+                              {!(new URLSearchParams(window.location.search).get('oauth') === 'true') && (
+                                <motion.button 
+                                  onClick={() => setCurrentStep(2)} 
+                                  className="mr-4 p-2 hover:bg-gray-100 rounded-full transition-colors duration-200"
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                >
+                                  <ArrowLeft className="w-5 h-5 text-studywise-gray-600" />
+                                </motion.button>
+                              )}
                               <div>
                                 <h1 className="text-2xl font-bold text-studywise-gray-900">Tell us what you want to achieve</h1>
                                 <p className="text-studywise-gray-600">Choose a goal so we can personalize your tests.</p>
@@ -777,6 +882,50 @@ export default function AuthRoot() {
                             </motion.div>
                           </>
                         )}
+
+                        {/* Step 4 - Success */}
+                        {currentStep === 4 && (
+                          <motion.div 
+                            className="space-y-6 text-center"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.5 }}
+                          >
+                            <motion.div 
+                              className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6"
+                              initial={{ scale: 0, rotate: -180 }}
+                              animate={{ scale: 1, rotate: 0 }}
+                              transition={{ delay: 0.2, duration: 0.6, type: "spring", stiffness: 200 }}
+                            >
+                              <CheckCircle className="w-8 h-8 text-green-600" />
+                            </motion.div>
+
+                            <motion.div
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.4 }}
+                            >
+                              <h1 className="text-2xl font-bold text-studywise-gray-900 mb-2">Welcome to StudyWise AI!</h1>
+                              <p className="text-studywise-gray-600">
+                                Your account has been created successfully. Please check your email to verify your account, then you can sign in and start your learning journey.
+                              </p>
+                            </motion.div>
+
+                            <motion.div
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.6 }}
+                            >
+                              <Button 
+                                onClick={() => switchAuthMode("signin")}
+                                size="lg"
+                                className="w-full px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium transition-all duration-200"
+                              >
+                                Go to Sign In
+                              </Button>
+                            </motion.div>
+                          </motion.div>
+                        )}
                       </div>
                     )}
 
@@ -796,8 +945,8 @@ export default function AuthRoot() {
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: 0.1 }}
                             >
-                              <label className="block text-sm font-medium text-studywise-gray-700 mb-2">Email</label>
                               <div className="relative">
+                                <label className="absolute -top-2 left-3 bg-white px-1 text-xs font-medium text-studywise-gray-700 z-10">Email</label>
                                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-studywise-gray-400" />
                                 <input
                                   type="email"
@@ -904,8 +1053,8 @@ export default function AuthRoot() {
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: 0.1 }}
                             >
-                              <label className="block text-sm font-medium text-studywise-gray-700 mb-2">New Password</label>
                               <div className="relative">
+                                <label className="absolute -top-2 left-3 bg-white px-1 text-xs font-medium text-studywise-gray-700 z-10">New Password</label>
                                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-studywise-gray-400" />
                                 <input
                                   type={showPassword ? "text" : "password"}
@@ -962,8 +1111,8 @@ export default function AuthRoot() {
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: 0.2 }}
                             >
-                              <label className="block text-sm font-medium text-studywise-gray-700 mb-2">Confirm Password</label>
                               <div className="relative">
+                                <label className="absolute -top-2 left-3 bg-white px-1 text-xs font-medium text-studywise-gray-700 z-10">Confirm Password</label>
                                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-studywise-gray-400" />
                                 <input
                                   type={showConfirmPassword ? "text" : "password"}
