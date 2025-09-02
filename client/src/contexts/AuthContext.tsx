@@ -81,7 +81,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const resetPassword = async (email: string) => {
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth?mode=reset`
+      redirectTo: `${window.location.origin}/auth?mode=reset&type=recovery`
     })
     return { data, error }
   }
@@ -97,7 +97,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth?mode=signup&step=3&oauth=true`
+        redirectTo: `${window.location.origin}/auth?mode=signup&step=3&oauth=true`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        }
       }
     })
     return { data, error }
@@ -105,37 +109,28 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const checkEmailExists = async (email: string) => {
     try {
-      // Use Supabase's signUp with a temporary password to check if email exists
-      // If email exists, Supabase will return a specific error
-      const { data, error } = await supabase.auth.signUp({
+      // Option 1: Try to sign in with a dummy password
+      // If the user exists, we'll get an invalid password error
+      // If they don't exist, we'll get a different error
+      const { error } = await supabase.auth.signInWithPassword({
         email,
-        password: 'temp-check-password-123',
-        options: {
-          data: { temp_check: true }
-        }
-      })
-      
+        password: 'dummy-check-password-that-will-never-work-123!@#'
+      });
+
       if (error) {
-        // Check for specific error messages that indicate email already exists
-        if (error.message.includes('User already registered') || 
-            error.message.includes('already been registered') ||
-            error.message.includes('email address is already registered')) {
-          return { exists: true, error: null }
+        // Check the error message to determine if user exists
+        if (error.message.includes('Invalid login credentials')) {
+          // User exists but wrong password
+          return { exists: true, error: null };
         }
-        // For other errors, assume email doesn't exist
-        return { exists: false, error: null }
+        // User doesn't exist or other error
+        return { exists: false, error: null };
       }
-      
-      // If no error but we got a user back, email might be available
-      // We should clean up this temporary signup attempt
-      if (data.user && !data.user.email_confirmed_at) {
-        // The signup was successful but not confirmed, so email is available
-        return { exists: false, error: null }
-      }
-      
-      return { exists: false, error: null }
+
+      // Should never reach here
+      return { exists: false, error: null };
     } catch (error) {
-      return { exists: false, error: error as AuthError }
+      return { exists: false, error: error as AuthError };
     }
   }
 
