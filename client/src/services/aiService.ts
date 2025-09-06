@@ -41,6 +41,9 @@ class AIService {
 
   async generateQuestions(options: GenerateQuestionsOptions): Promise<AIResponse> {
     try {
+      console.log('Making request to:', `${this.baseUrl}/tests/generate`);
+      console.log('Request options:', options);
+      
       const response = await fetch(`${this.baseUrl}/tests/generate`, {
         method: 'POST',
         headers: {
@@ -50,11 +53,17 @@ class AIService {
         body: JSON.stringify(options)
       });
 
+      console.log('Response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
+        throw new Error(`API error: ${response.statusText} - ${errorText}`);
       }
 
-      return await response.json();
+      const result = await response.json();
+      console.log('AI Service response:', result);
+      return result;
     } catch (error) {
       console.error('AI question generation failed:', error);
       throw error;
