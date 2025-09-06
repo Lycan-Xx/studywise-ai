@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { aiService } from '../services/aiService'; // Assuming aiService is correctly configured and exported
+import { aiService } from '../services/AIService';
 
 // Placeholder for AI service - replace with actual Gemini integration
 // const aiService = {
