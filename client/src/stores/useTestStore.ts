@@ -94,7 +94,7 @@ const mockGenerateQuestions = (config: TestConfig, notes: string): Question[] =>
     const paragraphIndex = (i - 1) % sampleParagraphs.length;
     const sourceText = sampleParagraphs[paragraphIndex];
 
-    // Calculate realistic source position
+    // Calculate realistic source text snippets
     const noteChunks = Math.ceil(notes.length / 500);
     const chunkIndex = (i - 1) % noteChunks;
     const sourceOffset = Math.floor((notes.length * chunkIndex) / noteChunks);
@@ -135,41 +135,39 @@ export const useTestStore = create<TestStore>()(
       },
 
       generateQuestions: async (config: TestConfig, notes: string) => {
+        const { setError, setQuestions } = get();
+
         set({ isGenerating: true, error: null });
+
         try {
-          const options: GenerateQuestionsOptions = {
+          const aiResponse = await aiService.generateQuestions({
             content: notes,
-            difficulty: config.difficulty,
-            questionCount: config.questionCount,
-            questionTypes: config.questionTypes,
+            difficulty: config.difficulty as any,
+            questionCount: config.numberOfQuestions,
+            questionTypes: [config.questionType],
             subject: config.subject,
-            focus: config.focus,
-          };
+            focus: config.focus
+          });
 
-          const response = await aiService.generateQuestions(options);
-
-          // Convert AI response to our Question format
-          const questions: Question[] = response.questions.map(q => ({
-            id: q.id,
-            type: q.type as Question['type'],
+          // Convert AI response to internal format
+          const convertedQuestions = aiResponse.questions.map(q => ({
             question: q.question,
-            options: q.options,
-            correctAnswer: q.correctAnswer,
-            explanation: q.explanation,
-            difficulty: q.difficulty as TestConfig['difficulty'],
-            points: q.points,
+            options: q.options || [],
+            correctAnswer: Array.isArray(q.correctAnswer) ? q.correctAnswer[0] : q.correctAnswer,
+            sourceText: q.sourceText || 'Generated from your content',
+            explanation: q.explanation || ''
           }));
 
-          set({ 
-            generatedQuestions: questions,
-            isGenerating: false 
-          });
+          setQuestions(convertedQuestions);
         } catch (error) {
-          console.error('Question generation failed:', error);
-          set({ 
-            error: 'Failed to generate questions. Please try again.',
-            isGenerating: false 
-          });
+          console.error('Failed to generate questions:', error);
+          setError('Failed to generate questions. Please try again.');
+
+          // Fallback to mock questions if AI fails
+          const generatedQuestions = mockGenerateQuestions(config, notes);
+          setQuestions(generatedQuestions);
+        } finally {
+          set({ isGenerating: false });
         }
       },
 
@@ -178,11 +176,11 @@ export const useTestStore = create<TestStore>()(
       },
 
       clearTest: () => {
-        set({ 
-          currentConfig: null, 
-          generatedQuestions: [], 
+        set({
+          currentConfig: null,
+          generatedQuestions: [],
           isGenerating: false,
-          error: null 
+          error: null
         }, false, 'clearTest');
       },
 
