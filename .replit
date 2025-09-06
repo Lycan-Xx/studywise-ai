@@ -12,7 +12,7 @@ externalPort = 80
 channel = "stable-25_05"
 
 [workflows]
-runButton = "Dev Server"
+runButton = "Full Stack Dev"
 
 [[workflows.workflow]]
 name = "Dev Server"
@@ -22,6 +22,19 @@ mode = "sequential"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run dev"
+
+[[workflows.workflow]]
+name = "Full Stack Dev"
+author = 46511181
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd server && node index.ts"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm run dev"
 
 [agent]
 expertMode = true

@@ -1,22 +1,17 @@
-import type { Express } from "express";
-import { createServer, type Server } from "http";
-import { storage } from "./storage";
 
-export async function registerRoutes(app: Express): Promise<Server> {
-  // put application routes here
-  // prefix all routes with /api
+import { Router } from 'express';
+import TestController from './controllers/TestController';
 
-  // use storage to perform CRUD operations on the storage interface
-  // e.g. storage.insertUser(user) or storage.getUserByUsername(username)
+const router = Router();
 
-  // Test routes
-  app.post('/api/tests', requireAuth, upload.single('document'), TestController.createTest);
-  app.post('/api/tests/generate', requireAuth, TestController.generateQuestions);
-  app.post('/api/tests/flashcards', requireAuth, TestController.generateFlashcards);
-  app.get('/api/library', requireAuth, TestController.getUserTests);
-  app.post('/api/tests/:id/results', requireAuth, TestController.submitResults);
+// Test generation routes
+router.post('/tests/generate', TestController.generateQuestions);
+router.post('/tests/flashcards', TestController.generateFlashcards);
+router.post('/tests/:testId/results', TestController.submitResults);
 
-  const httpServer = createServer(app);
+// Library routes
+router.get('/library', (req, res) => {
+  res.json([]);
+});
 
-  return httpServer;
-}
+export default router;
