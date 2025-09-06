@@ -1,9 +1,13 @@
+// Load environment variables FIRST, before any other imports
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
 import router from './routes';
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT || '5000', 10);
 
 // Middleware
 app.use(cors({
@@ -32,6 +36,12 @@ app.get('/health', (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://0.0.0.0:${PORT}`);
   console.log(`Health check available at http://0.0.0.0:${PORT}/health`);
+  
+  // Debug environment variables
+  console.log('Environment variables check:');
+  console.log('GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? 'Found' : 'Not found');
+  console.log('VITE_GEMINI_API_KEY:', process.env.VITE_GEMINI_API_KEY ? 'Found' : 'Not found');
+  console.log('NODE_ENV:', process.env.NODE_ENV);
 });
 
 // Add TypeScript declaration for req.user

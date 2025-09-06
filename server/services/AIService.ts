@@ -48,10 +48,17 @@ class AIService {
   private cache = new Map<string, { data: AIResponse; timestamp: number; expiresAt: number }>();
 
   constructor() {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    
     if (!apiKey) {
-      throw new Error('GEMINI_API_KEY environment variable is required');
+      console.warn('GEMINI_API_KEY not found, AI service will use mock responses');
+      this.genAI = null;
+      this.proModel = null;
+      this.flashModel = null;
+      return;
     }
+    
+    console.log('✅ Gemini API key found, initializing AI service');
 
     this.genAI = new GoogleGenerativeAI(apiKey);
     this.proModel = this.genAI.getGenerativeModel({ model: process.env.VITE_GEMINI_MODEL || 'gemini-1.5-pro' });
@@ -59,6 +66,12 @@ class AIService {
   }
 
   async generateQuestions(options: GenerateQuestionsOptions): Promise<AIResponse> {
+    // If no API key, return mock questions immediately
+    if (!this.genAI) {
+      console.log('No Gemini API key found, returning mock questions');
+      return this.generateMockQuestions(options);
+    }
+
     const contentHash = this.generateContentHash(options);
     
     // Check cache first

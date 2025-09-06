@@ -15,6 +15,7 @@ export default defineConfig(async () => ({
       ? [(await import("@replit/vite-plugin-cartographer")).cartographer()]
       : []),
   ],
+  envDir: path.resolve(__dirname), // Look for .env files in the project root
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "client", "src"),
