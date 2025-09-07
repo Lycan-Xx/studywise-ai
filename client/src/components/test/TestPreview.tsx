@@ -21,6 +21,7 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
   const [testTimeLimit, setTestTimeLimit] = useState<number | null>(null);
   const [sourceModalOpen, setSourceModalOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<any>(null);
+  const [showAllQuestions, setShowAllQuestions] = useState(false);
 
   // Use workflow hook for coordinated store operations
   const { generateAndSaveTest, completeTest } = useTestWorkflow();
@@ -69,9 +70,14 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
   };
 
   const handleShowResults = async (answers: Record<number, string>) => {
-    await handleTestSubmit(answers);
-    setShowTest(false);
-    setShowResults(true);
+    try {
+      // Complete the test and save results
+      await completeTest();
+      setShowTest(false);
+      setShowResults(true);
+    } catch (error) {
+      console.error("Failed to complete test:", error);
+    }
   };
 
   const handleTestBack = () => {
@@ -103,7 +109,7 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
 
   const handleSaveToLibrary = async () => {
     try {
-      await generateAndSaveTest(config, notes, `${config.subject} Test`);
+      await generateAndSaveTest(config, notes, config.title || 'Untitled Test');
       onClose();
     } catch (error) {
       console.error("Failed to save test:", error);
@@ -134,7 +140,7 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
   if (showTest) {
     return (
       <TestTaking
-        testTitle={`${config.subject} Test`}
+        testTitle={config.title || 'Untitled Test'}
         questions={generatedQuestions}
         timeLimit={testTimeLimit}
         onSubmit={handleTestSubmit}
@@ -148,7 +154,7 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
   if (showSettings) {
     return (
       <TestSettings
-        testTitle={`${config.subject} Test`}
+        testTitle={config.title || 'Untitled Test'}
         questionCount={config.numberOfQuestions}
         onStartTest={handleStartTestWithSettings}
         onBack={() => setShowSettings(false)}
@@ -177,8 +183,8 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
       <div className="bg-studywise-gray-50 rounded-lg p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div>
-            <span className="font-medium text-studywise-gray-700">Subject:</span>
-            <span className="ml-2 text-studywise-gray-900">{config.subject}</span>
+            <span className="font-medium text-studywise-gray-700">Title:</span>
+            <span className="ml-2 text-studywise-gray-900">{config.title}</span>
           </div>
           <div>
             <span className="font-medium text-studywise-gray-700">Question Type:</span>
@@ -204,26 +210,56 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
             <p className="text-studywise-gray-600">Generating questions...</p>
           </div>
+        ) : generatedQuestions.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-studywise-gray-600">No questions generated yet.</p>
+            <button 
+              onClick={() => generateQuestions(config, notes)}
+              className="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+            >
+              Retry Generation
+            </button>
+          </div>
         ) : (
           <div className="space-y-6">
-            {generatedQuestions.slice(0, 3).map((question) => (
-              <div key={question.id} className="border border-studywise-gray-200 rounded-lg p-6">
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0">
-                    <List className="w-5 h-5 text-studywise-gray-400 mt-1" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-medium text-studywise-gray-900 mb-2">
-                      Question {question.id}
-                    </h3>
-                    <p className="text-studywise-gray-700 mb-3">
-                      {question.question}
-                    </p>
-                    <div className="text-studywise-gray-600">
-                      {question.options.map((option, idx) => (
-                        <div key={idx} className="mb-1">• {option}</div>
-                      ))}
+
+            {(showAllQuestions ? generatedQuestions : generatedQuestions.slice(0, 3)).map((question) => {
+              // Ensure True/False questions have options
+              let displayOptions = question.options;
+              if (config.questionType === 'true-false' && (!displayOptions || displayOptions.length === 0)) {
+                displayOptions = ['True', 'False'];
+              }
+              
+              return (
+                <div key={question.id} className="border border-studywise-gray-200 rounded-lg p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0">
+                      <List className="w-5 h-5 text-studywise-gray-400 mt-1" />
                     </div>
+                    <div className="flex-1">
+                      <h3 className="font-medium text-studywise-gray-900 mb-2">
+                        Question {question.id}
+                      </h3>
+                      <p className="text-studywise-gray-700 mb-4">
+                        {question.question}
+                      </p>
+                      <div className="space-y-2">
+                        {displayOptions && displayOptions.length > 0 ? (
+                          displayOptions.map((option, idx) => (
+                            <div 
+                              key={idx} 
+                              className="flex items-center gap-3 p-3 border border-studywise-gray-200 rounded-lg bg-studywise-gray-50"
+                            >
+                              <div className="w-4 h-4 border-2 border-studywise-gray-300 rounded-full bg-white"></div>
+                              <span className="text-studywise-gray-700">{option}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-studywise-gray-500 italic">
+                            No options available for this question
+                          </div>
+                        )}
+                      </div>
                     
                     {/* Source Link */}
                     {question.sourceText && (
@@ -239,14 +275,29 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
                         </Button>
                       </div>
                     )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             {generatedQuestions.length > 3 && (
-              <div className="text-center py-4 text-studywise-gray-500">
-                ... and {generatedQuestions.length - 3} more questions
+              <div className="text-center py-4">
+                {!showAllQuestions ? (
+                  <button 
+                    onClick={() => setShowAllQuestions(true)}
+                    className="text-primary hover:text-primary/80 underline cursor-pointer"
+                  >
+                    Show all {generatedQuestions.length} questions
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => setShowAllQuestions(false)}
+                    className="text-primary hover:text-primary/80 underline cursor-pointer"
+                  >
+                    Show less
+                  </button>
+                )}
               </div>
             )}
           </div>

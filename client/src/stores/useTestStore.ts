@@ -140,28 +140,45 @@ export const useTestStore = create<TestStore>()(
         set({ isGenerating: true, error: null });
 
         try {
+          console.log('Starting question generation with config:', config);
+          console.log('Notes length:', notes.length);
+          
           const aiResponse = await aiService.generateQuestions({
             content: notes,
-            difficulty: config.difficulty as any,
+            difficulty: config.difficulty || 'medium', // Default to medium if not set
             questionCount: config.numberOfQuestions,
             questionTypes: [config.questionType],
-            subject: config.subject,
-            focus: config.focus
+            subject: config.title, // Use title as subject for AI generation
+            focus: config.topics
           });
 
+          console.log('AI Response received:', aiResponse);
+
           // Convert AI response to internal format
-          const convertedQuestions = aiResponse.questions.map(q => ({
-            question: q.question,
-            options: q.options || [],
-            correctAnswer: Array.isArray(q.correctAnswer) ? q.correctAnswer[0] : q.correctAnswer,
-            sourceText: q.sourceText || 'Generated from your content',
-            explanation: q.explanation || ''
-          }));
+          const convertedQuestions = aiResponse.questions.map((q, index) => {
+            let options = q.options || [];
+            
+            // Ensure True/False questions have the correct options
+            if (config.questionType === 'true-false' && (!options || options.length === 0)) {
+              options = ['True', 'False'];
+            }
+            
+            return {
+              id: index + 1, // Use sequential IDs for internal use
+              type: config.questionType, // Use the config type (mcq or true-false)
+              question: q.question,
+              options: options,
+              correctAnswer: Array.isArray(q.correctAnswer) ? q.correctAnswer[0] : q.correctAnswer || '',
+              sourceText: q.sourceText || 'Generated from your content',
+              sourceOffset: 0, // Default offset
+              sourceLength: q.sourceText?.length || 0 // Length of source text
+            };
+          });
 
           setQuestions(convertedQuestions);
         } catch (error) {
           console.error('Failed to generate questions:', error);
-          setError('Failed to generate questions. Please try again.');
+          setError(`Failed to generate questions: ${error instanceof Error ? error.message : 'Unknown error'}`);
 
           // Fallback to mock questions if AI fails
           const generatedQuestions = mockGenerateQuestions(config, notes);

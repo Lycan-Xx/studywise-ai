@@ -1,10 +1,10 @@
 // Load environment variables FIRST, before any other imports
-import dotenv from 'dotenv';
-dotenv.config();
+import './config.js';
 
 import express from 'express';
 import cors from 'cors';
 import router from './routes';
+import { verifyEnvironment } from './config.js';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '5000', 10);
@@ -36,12 +36,10 @@ app.get('/health', (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://0.0.0.0:${PORT}`);
   console.log(`Health check available at http://0.0.0.0:${PORT}/health`);
+  console.log(`API endpoints available at http://0.0.0.0:${PORT}/api`);
   
   // Debug environment variables
-  console.log('Environment variables check:');
-  console.log('GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? 'Found' : 'Not found');
-  console.log('VITE_GEMINI_API_KEY:', process.env.VITE_GEMINI_API_KEY ? 'Found' : 'Not found');
-  console.log('NODE_ENV:', process.env.NODE_ENV);
+  verifyEnvironment();
 });
 
 // Add TypeScript declaration for req.user

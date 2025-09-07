@@ -1,52 +1,7 @@
 import { Request, Response } from 'express';
 import { aiService } from '../services/AIService';
 
-// Placeholder for AI service - replace with actual Gemini integration
-// const aiService = {
-//   createTestFromText: async (text: string, options: any) => {
-//     console.log(`Mock AI: Generating questions from text: "${text.substring(0, 50)}..." with options:`, options);
-//     // Simulate AI response
-//     return {
-//       questions: Array.from({ length: options.questionCount }, (_, i) => ({
-//         id: `q_${i + 1}`,
-//         text: `Sample question ${i + 1} about ${options.subject || 'a topic'}?`,
-//         options: ['A', 'B', 'C', 'D'],
-//         answer: 'A',
-//         explanation: 'This is a sample explanation.'
-//       }))
-//     };
-//   },
-//   generateQuestions: async (params: { content: string, difficulty: string, questionCount: number, questionTypes: string[], subject?: string, focus?: string }) => {
-//     console.log(`Mock AI: Generating questions with params:`, params);
-//     // Simulate AI response
-//     return {
-//       questions: Array.from({ length: params.questionCount }, (_, i) => ({
-//         id: `q_${i + 1}`,
-//         text: `Sample question ${i + 1} for ${params.difficulty} difficulty?`,
-//         options: ['A', 'B', 'C', 'D'],
-//         answer: 'A',
-//         explanation: 'This is a sample explanation.'
-//       }))
-//     };
-//   }
-// };
-
-
 class TestController {
-  // This method likely existed before, but is being modified or replaced.
-  // Assuming it was a placeholder or an older method.
-  // We are replacing the logic related to AI question generation.
-  // The following method is a placeholder for potential future use or a prior functionality.
-  // static async createTest(req: Request, res: Response) {
-  //   // Existing logic or placeholder
-  // }
-
-  // This method is being updated to use the enhanced AI service with better error handling
-  // and to align with the new `generateQuestions` function.
-  // Note: The original code snippet provided did not include the `generateQuestions` method,
-  // so we're inferring its placement based on the `changes` provided.
-  // The previous `submitResults` method is being modified to become `generateQuestions`.
-
   static async generateQuestions(req: Request, res: Response) {
     try {
       const userId = req.user?.id;
@@ -67,7 +22,7 @@ class TestController {
         difficulty,
         questionCount,
         questionTypes,
-        subject,
+        subject: subject || 'General', // Use subject (which is now title) or default to 'General'
         focus
       });
 
@@ -120,18 +75,33 @@ class TestController {
   }
 
   static async submitResults(req: Request, res: Response) {
-    // This method's original content is not provided, so it remains as is,
-    // or it might be a placeholder if it was meant to be removed or significantly changed.
-    // Based on the changes, it seems like the logic for AI question generation
-    // was moved to `generateQuestions`. If `submitResults` had other important logic,
-    // that logic would need to be preserved or refactored.
-    // For now, assuming it's either a new placeholder or its original AI-related logic
-    // was entirely replaced by `generateQuestions`.
-    console.log('Submit results endpoint called.');
-    // Example placeholder logic:
-    // const { testId, answers } = req.body;
-    // await ResultService.saveResults(req.user.id, testId, answers);
-    // res.status(200).json({ message: 'Results submitted successfully' });
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'User not authenticated' });
+      }
+
+      const { testId, answers, score, timeTaken } = req.body;
+
+      if (!testId || !answers) {
+        return res.status(400).json({ error: 'Missing required parameters' });
+      }
+
+      console.log(`Saving test results for user ${userId}, test ${testId}`);
+
+      // For now, just return success - in production this would save to database
+      res.json({ 
+        success: true, 
+        resultId: nanoid(),
+        message: 'Results saved successfully' 
+      });
+    } catch (error) {
+      console.error('Submit results error:', error);
+      res.status(500).json({
+        error: 'Failed to save results',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
   }
 }
 

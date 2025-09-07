@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TestConfig } from "@/types";
-import { ChevronDown, X, BookOpen, Plus } from "lucide-react";
+import { X, BookOpen, Plus } from "lucide-react";
 
 interface StepOneProps {
   config: TestConfig;
@@ -11,19 +11,8 @@ interface StepOneProps {
   onBack: () => void;
 }
 
-const subjects = [
-  "Mathematics", "Science", "History", "English", "Geography",
-  "Physics", "Chemistry", "Biology", "Computer Science", "Economics"
-];
-
 export function StepOne({ config, updateConfig, onNext, onBack }: StepOneProps) {
-  const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
   const [customTopic, setCustomTopic] = useState("");
-
-  const handleSubjectSelect = (subject: string) => {
-    updateConfig({ subject });
-    setShowSubjectDropdown(false);
-  };
 
   const addTopic = () => {
     if (customTopic.trim()) {
@@ -42,7 +31,7 @@ export function StepOne({ config, updateConfig, onNext, onBack }: StepOneProps) 
     updateConfig({ topics: newTopics });
   };
 
-  const canProceed = config.subject && config.topics && config.topics.trim().length > 0;
+  const canProceed = config.title && config.title.trim().length > 0 && config.topics && config.topics.trim().length > 0;
   const topicsArray = config.topics ? config.topics.split(',').map(t => t.trim()).filter(t => t) : [];
 
   return (
@@ -56,47 +45,25 @@ export function StepOne({ config, updateConfig, onNext, onBack }: StepOneProps) 
           Customize Your Test
         </h3>
         <p className="text-studywise-gray-600">
-          Choose your subject and topics for personalized questions
+          Give your test a title and choose topics for personalized questions
         </p>
       </div>
 
-      {/* Subject Selection Card */}
+      {/* Test Title Card */}
       <div className="bg-white border border-studywise-gray-200 rounded-xl p-6 mb-6 shadow-sm">
         <div className="flex items-center gap-3 mb-4">
-         
           <h4 className="text-lg font-semibold text-studywise-gray-900">
-            Select Subject
+            Test Title
           </h4>
         </div>
         
         <div className="relative">
-          <button
-            onClick={() => setShowSubjectDropdown(!showSubjectDropdown)}
-            className={`w-full p-4 border-2 rounded-lg text-left flex items-center justify-between transition-all ${
-              config.subject 
-                ? "border-primary bg-blue-50 text-primary" 
-                : "border-studywise-gray-300 hover:border-studywise-gray-400 text-studywise-gray-500"
-            }`}
-          >
-            <span className="font-medium">
-              {config.subject || "Choose your subject area"}
-            </span>
-            <ChevronDown className={`w-5 h-5 transition-transform ${showSubjectDropdown ? 'rotate-180' : ''}`} />
-          </button>
-
-          {showSubjectDropdown && (
-            <div className="absolute z-20 w-full mt-2 bg-white border border-studywise-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto">
-              {subjects.map((subject) => (
-                <button
-                  key={subject}
-                  onClick={() => handleSubjectSelect(subject)}
-                  className="w-full px-4 py-3 text-left hover:bg-blue-50 focus:outline-none focus:bg-blue-50 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                >
-                  {subject}
-                </button>
-              ))}
-            </div>
-          )}
+          <Input
+            value={config.title || ""}
+            onChange={(e) => updateConfig({ title: e.target.value })}
+            placeholder="Enter a title for your test (e.g., 'English Literature Quiz', 'Math Practice Test')"
+            className="w-full p-4 border-2 border-studywise-gray-300 focus:border-primary rounded-lg text-base"
+          />
         </div>
       </div>
 
