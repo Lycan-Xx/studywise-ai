@@ -1,6 +1,10 @@
 
+// Ensure environment variables are loaded first
+import '../config.js';
+
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import crypto from 'crypto';
+import { createHash } from 'crypto';
+import { nanoid } from 'nanoid';
 
 interface GenerateQuestionsOptions {
   content: string;
@@ -49,7 +53,7 @@ class AIService {
 
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-    
+
     if (!apiKey) {
       console.warn('GEMINI_API_KEY not found, AI service will use mock responses');
       this.genAI = null;
@@ -57,7 +61,7 @@ class AIService {
       this.flashModel = null;
       return;
     }
-    
+
     console.log('✅ Gemini API key found, initializing AI service');
 
     this.genAI = new GoogleGenerativeAI(apiKey);
@@ -73,7 +77,7 @@ class AIService {
     }
 
     const contentHash = this.generateContentHash(options);
-    
+
     // Check cache first
     const cached = this.getCachedQuestions(contentHash);
     if (cached) {
@@ -84,11 +88,11 @@ class AIService {
     try {
       console.log(`Generating ${options.questionCount} questions using Gemini Pro`);
       const response = await this.generateWithGeminiPro(options);
-      
+
       // Validate questions with Flash model
       console.log('Validating questions with Gemini Flash');
       const validatedQuestions = await this.validateQuestions(response.questions, options.content);
-      
+
       const finalResponse: AIResponse = {
         ...response,
         questions: validatedQuestions,
@@ -101,7 +105,7 @@ class AIService {
 
       // Cache the response
       this.setCachedQuestions(contentHash, finalResponse);
-      
+
       return finalResponse;
     } catch (error) {
       console.error('Primary AI generation failed:', error);
@@ -111,12 +115,12 @@ class AIService {
 
   private async generateWithGeminiPro(options: GenerateQuestionsOptions): Promise<AIResponse> {
     const prompt = this.buildComprehensivePrompt(options);
-    
+
     try {
       const result = await this.proModel.generateContent(prompt);
       const response = await result.response;
       const text = response.text();
-      
+
       const parsedResponse = this.parseAIResponse(text);
       return this.processGeneratedQuestions(parsedResponse, options);
     } catch (error) {
@@ -127,13 +131,13 @@ class AIService {
 
   private async generateWithFallback(options: GenerateQuestionsOptions): Promise<AIResponse> {
     console.log('Attempting fallback to Gemini Flash');
-    
+
     try {
       const simplifiedPrompt = this.buildSimplifiedPrompt(options);
       const result = await this.flashModel.generateContent(simplifiedPrompt);
       const response = await result.response;
       const text = response.text();
-      
+
       const parsedResponse = this.parseAIResponse(text);
       return this.processGeneratedQuestions(parsedResponse, options);
     } catch (error) {
@@ -145,7 +149,7 @@ class AIService {
 
   private buildComprehensivePrompt(options: GenerateQuestionsOptions): string {
     const { content, difficulty, questionCount, questionTypes, subject, focus } = options;
-    
+
     return `You are an expert educational content creator and assessment designer with deep expertise in creating high-quality test questions.
 
 TASK: Generate ${questionCount} exceptional test questions based on the provided content.
@@ -181,18 +185,29 @@ QUALITY STANDARDS:
 OUTPUT FORMAT (JSON):
 {
   "questions": [
-    {
+    ${questionTypes.includes('mcq') || questionTypes.includes('multiple-choice') ? `{
       "id": "q_001",
       "type": "multiple-choice",
       "question": "Clear, specific question text",
       "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correctAnswer": "A",
+      "correctAnswer": "Option A",
       "explanation": "Detailed explanation referencing specific content",
       "difficulty": "${difficulty}",
       "points": 2,
       "sourceText": "Exact sentence from content that supports the answer",
       "confidence": 0.95
-    }
+    }` : ''}${questionTypes.includes('true-false') ? `{
+      "id": "q_001",
+      "type": "true-false",
+      "question": "Clear, specific statement to evaluate",
+      "options": ["True", "False"],
+      "correctAnswer": "True",
+      "explanation": "Detailed explanation referencing specific content",
+      "difficulty": "${difficulty}",
+      "points": 2,
+      "sourceText": "Exact sentence from content that supports the answer",
+      "confidence": 0.95
+    }` : ''}
   ]
 }
 
@@ -201,21 +216,27 @@ Generate exactly ${questionCount} high-quality questions now:`;
 
   private buildSimplifiedPrompt(options: GenerateQuestionsOptions): string {
     const { content, difficulty, questionCount, questionTypes } = options;
-    
+
+    const isTrueFalse = questionTypes.includes('true-false');
+    const isMultipleChoice = questionTypes.includes('mcq') || questionTypes.includes('multiple-choice');
+
     return `Create ${questionCount} ${difficulty} ${questionTypes.join(' and ')} questions from this content:
 
 ${content.substring(0, 4000)}
 
-Return as JSON with questions array. Each question needs: id, type, question, options (if multiple-choice), correctAnswer, explanation, difficulty, points.`;
+${isTrueFalse ? 'For true-false questions: Use options ["True", "False"] and make correctAnswer either "True" or "False".' : ''}
+${isMultipleChoice ? 'For multiple-choice questions: Use 4 options and make correctAnswer match one of the options exactly.' : ''}
+
+Return as JSON with questions array. Each question needs: id, type, question, options, correctAnswer, explanation, difficulty, points.`;
   }
 
   private async validateQuestions(questions: GeneratedQuestion[], content: string): Promise<GeneratedQuestion[]> {
     const validatedQuestions: GeneratedQuestion[] = [];
-    
+
     for (const question of questions) {
       try {
         const validation = await this.validateSingleQuestion(question, content);
-        
+
         if (validation.isValid && validation.confidence > 0.7) {
           validatedQuestions.push({
             ...question,
@@ -233,7 +254,7 @@ Return as JSON with questions array. Each question needs: id, type, question, op
         });
       }
     }
-    
+
     return validatedQuestions;
   }
 
@@ -264,12 +285,12 @@ Respond with JSON:
       const result = await this.flashModel.generateContent(prompt);
       const response = await result.response;
       const text = response.text();
-      
+
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         return JSON.parse(jsonMatch[0]);
       }
-      
+
       return { isValid: true, confidence: 0.6, reasoning: "Validation parsing failed" };
     } catch (error) {
       return { isValid: true, confidence: 0.5, reasoning: "Validation failed" };
@@ -283,7 +304,7 @@ Respond with JSON:
       if (!jsonMatch) {
         throw new Error('No JSON found in AI response');
       }
-      
+
       return JSON.parse(jsonMatch[0]);
     } catch (error) {
       console.error('Failed to parse AI response:', error);
@@ -293,7 +314,7 @@ Respond with JSON:
 
   private processGeneratedQuestions(parsedResponse: any, options: GenerateQuestionsOptions): AIResponse {
     const questions = parsedResponse.questions || [];
-    
+
     // Ensure all questions have required fields
     const processedQuestions = questions.map((q: any, index: number) => ({
       id: q.id || `q_${index + 1}`,
@@ -323,22 +344,41 @@ Respond with JSON:
   }
 
   private generateMockQuestions(options: GenerateQuestionsOptions): AIResponse {
-    const { questionCount, difficulty } = options;
+    const { questionCount, difficulty, questionTypes } = options;
     const questions: GeneratedQuestion[] = [];
 
+    // Determine the question type from the request
+    const questionType = questionTypes[0]; // Use the first question type
+    const isTrueFalse = questionType === 'true-false';
+
     for (let i = 0; i < questionCount; i++) {
-      questions.push({
-        id: `mock_${i + 1}`,
-        type: 'multiple-choice',
-        question: `Sample question ${i + 1} based on your content`,
-        options: ['Option A', 'Option B', 'Option C', 'Option D'],
-        correctAnswer: 'A',
-        explanation: 'This is a sample explanation for the mock question.',
-        difficulty,
-        points: difficulty === 'easy' ? 1 : difficulty === 'medium' ? 2 : 3,
-        sourceText: 'Mock source text from your document',
-        confidence: 0.5
-      });
+      if (isTrueFalse) {
+        questions.push({
+          id: nanoid(),
+          type: 'true-false',
+          question: `Sample true/false question ${i + 1} based on your content`,
+          options: ['True', 'False'],
+          correctAnswer: i % 2 === 0 ? 'True' : 'False', // Alternate between True and False
+          explanation: 'This is a sample explanation for the mock true/false question.',
+          difficulty,
+          points: difficulty === 'easy' ? 1 : difficulty === 'medium' ? 2 : 3,
+          sourceText: 'Mock source text from your document',
+          confidence: 0.5
+        });
+      } else {
+        questions.push({
+          id: nanoid(),
+          type: 'multiple-choice',
+          question: `Sample multiple choice question ${i + 1} based on your content`,
+          options: ['Option A', 'Option B', 'Option C', 'Option D'],
+          correctAnswer: 'Option A',
+          explanation: 'This is a sample explanation for the mock multiple choice question.',
+          difficulty,
+          points: difficulty === 'easy' ? 1 : difficulty === 'medium' ? 2 : 3,
+          sourceText: 'Mock source text from your document',
+          confidence: 0.5
+        });
+      }
     }
 
     return {
@@ -355,7 +395,7 @@ Respond with JSON:
 
   private generateContentHash(options: GenerateQuestionsOptions): string {
     const hashInput = `${options.content}-${options.difficulty}-${options.questionCount}-${options.questionTypes.join(',')}`;
-    return crypto.createHash('md5').update(hashInput).digest('hex');
+    return createHash('md5').update(hashInput).digest('hex');
   }
 
   private getCachedQuestions(contentHash: string): AIResponse | null {

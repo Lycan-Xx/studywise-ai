@@ -16,6 +16,7 @@ interface ResultsStore {
   getResultsByTestId: (testId: string) => TestResult[];
   deleteResult: (resultId: string) => Promise<void>;
   setCurrentResult: (result: TestResult | null) => void;
+  clearAllResults: () => void;
 
   // Analytics getters
   get totalTestsTaken(): number;
@@ -29,7 +30,7 @@ export const useResultsStore = create<ResultsStore>()(
   devtools(
     persist(
       (set, get) => ({
-        // Initial state
+        // Initial state - start with empty results (no mock data)
         testResults: [],
         currentResult: null,
         isLoading: false,
@@ -107,6 +108,10 @@ export const useResultsStore = create<ResultsStore>()(
 
         setCurrentResult: (result) => {
           set({ currentResult: result }, false, 'setCurrentResult');
+        },
+
+        clearAllResults: () => {
+          set({ testResults: [], currentResult: null }, false, 'clearAllResults');
         },
 
         // Analytics getters
