@@ -15,16 +15,27 @@ import TermsOfService from "@/pages/terms-of-service";
 import NotFound from "@/pages/not-found";;
 import AuthRoot from "@/auth/AuthRoot";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { useEffect } from "react";
+import { useLocation } from "wouter";
+
+function RedirectToDashboard() {
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    setLocation('/dashboard');
+  }, [setLocation]);
+  return null;
+}
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Landing} />
+      {/* Temporarily redirect root to dashboard */}
+      <Route path="/" component={RedirectToDashboard} />
       <Route path="/privacy-policy" component={PrivacyPolicy} />
       <Route path="/terms-of-service" component={TermsOfService} />
       <Route path="/auth" component={AuthRoot} />
       <Route path="/dashboard">
-        <ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>
+        <Layout><Dashboard /></Layout>
       </Route>
       <Route path="/library">
         <ProtectedRoute><Layout><Library /></Layout></ProtectedRoute>
@@ -35,8 +46,9 @@ function Router() {
       <Route path="/settings">
         <ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>
       </Route>
+      {/* Fallback: redirect any unknown route to dashboard */}
       <Route>
-        <Layout><NotFound /></Layout>
+        <RedirectToDashboard />
       </Route>
     </Switch>
   );
