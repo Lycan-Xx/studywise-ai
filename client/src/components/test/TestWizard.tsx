@@ -20,11 +20,17 @@ export function TestWizard({ notes, onClose }: TestWizardProps) {
   const { currentConfig, updateConfig, generateQuestions, isGenerating } = useTestStore();
   
   const testConfig = currentConfig || {
-    subject: '',
+    title: '',
     topics: '',
     questionType: 'mcq' as const,
-    numberOfQuestions: 10
+    numberOfQuestions: 10,
+    difficulty: 'medium' as const
   };
+
+  // Ensure difficulty is set if not already present
+  if (currentConfig && !currentConfig.difficulty) {
+    updateConfig({ difficulty: 'medium' });
+  }
 
   const handleNext = async () => {
     if (currentStep < 3) {

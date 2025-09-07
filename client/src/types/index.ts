@@ -1,10 +1,10 @@
 // Shared types for the application
 export interface TestConfig {
-  subject: string;
+  title: string;
   topics: string;
   questionType: 'mcq' | 'true-false';
   numberOfQuestions: number;
-  difficulty?: 'easy' | 'medium' | 'hard';
+  difficulty: 'easy' | 'medium' | 'hard';
 }
 
 export interface Question {
@@ -21,7 +21,6 @@ export interface Question {
 export interface SavedTest {
   id: string;
   title: string;
-  subject: string;
   createdDate: string;
   questionCount: number;
   config: TestConfig;

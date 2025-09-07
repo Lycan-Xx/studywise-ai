@@ -36,6 +36,7 @@ class AIService {
   private baseUrl: string;
 
   constructor() {
+    // Use the same origin as the frontend since both are served from the same Vite dev server
     this.baseUrl = '/api';
   }
 

@@ -16,7 +16,7 @@ import { NotePreview } from "@/components/test/NotePreview";
 import { TestSettings } from "@/components/test/TestSettings";
 import { TestTaking } from "@/components/test/TestTaking";
 import { TestResults } from "@/components/test/TestResults";
-import { useLibraryStore, useTestSessionStore, useResultsStore } from "@/stores";
+import { useLibraryStore, useTestSessionStore, useResultsStore, useTestWorkflow } from "@/stores";
 import { useLocation } from "wouter";
 
 export default function Library() {
@@ -55,6 +55,7 @@ export default function Library() {
   } = useTestSessionStore();
   
   const { currentResult } = useResultsStore();
+  const { completeTest } = useTestWorkflow();
 
   // Load tests on component mount and handle query parameters
   useEffect(() => {
@@ -107,7 +108,9 @@ export default function Library() {
 
   const handleTestSubmit = async (answers: Record<number, string>) => {
     try {
-      submitTest();
+      // Complete the test and save results
+      await completeTest();
+      
       setShowTest(false);
       setShowResults(true);
     } catch (error) {

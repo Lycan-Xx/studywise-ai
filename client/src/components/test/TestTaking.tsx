@@ -48,6 +48,7 @@ export function TestTaking({
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showResultDialog, setShowResultDialog] = useState(false);
   const [showQuestionIndex, setShowQuestionIndex] = useState(false);
+  const [showConfirmSubmitDialog, setShowConfirmSubmitDialog] = useState(false);
   // const [showSaveForLaterDialog, setShowSaveForLaterDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -181,8 +182,8 @@ export function TestTaking({
   const handleSubmitClick = () => {
     console.log('handleSubmitClick called, isSubmitting:', isSubmitting);
     if (isSubmitting) return;
-    console.log('Setting showSubmitDialog to true');
-    setShowSubmitDialog(true);
+    console.log('Setting showConfirmSubmitDialog to true');
+    setShowConfirmSubmitDialog(true);
   };
 
   /* const handleSaveForLater = () => {
@@ -195,7 +196,7 @@ export function TestTaking({
     if (isSubmitting) return;
     setIsSubmitting(true);
     // Close the dialog UI first (so user sees feedback)
-    setShowSubmitDialog(false);
+    setShowConfirmSubmitDialog(false);
 
     try {
       submitTest();
@@ -319,7 +320,14 @@ export function TestTaking({
                   </h2>
 
                   <div className="space-y-3">
-                    {currentQuestion.options.map((option, index) => {
+                    {(() => {
+                      // Ensure True/False questions have options
+                      let displayOptions = currentQuestion.options;
+                      if (currentQuestion.type === 'true-false' && (!displayOptions || displayOptions.length === 0)) {
+                        displayOptions = ['True', 'False'];
+                      }
+                      
+                      return displayOptions && displayOptions.length > 0 ? displayOptions.map((option, index) => {
                       const selected = answers[currentQuestion.id] === option;
                       return (
                         <div
@@ -356,7 +364,12 @@ export function TestTaking({
                           <label className="flex-1 text-studywise-gray-900 cursor-pointer leading-relaxed">{option}</label>
                         </div>
                       );
-                    })}
+                    }) : (
+                        <div className="text-center py-8 text-studywise-gray-500">
+                          No options available for this question
+                        </div>
+                      );
+                    })()}
                   </div>
                 </motion.div>
               )}
@@ -462,7 +475,14 @@ export function TestTaking({
                     <h2 className="text-lg font-medium text-studywise-gray-900 mb-6">{currentQuestion.question}</h2>
 
                 <div className="space-y-3">
-                  {currentQuestion.options.map((option, index) => {
+                  {(() => {
+                    // Ensure True/False questions have options
+                    let displayOptions = currentQuestion.options;
+                    if (currentQuestion.type === 'true-false' && (!displayOptions || displayOptions.length === 0)) {
+                      displayOptions = ['True', 'False'];
+                    }
+                    
+                    return displayOptions && displayOptions.length > 0 ? displayOptions.map((option, index) => {
                     const selected = answers[currentQuestion.id] === option;
                     return (
                       <div
@@ -494,7 +514,12 @@ export function TestTaking({
                         </div>
                       </div>
                     );
-                  })}
+                    }) : (
+                      <div className="text-center py-8 text-studywise-gray-500">
+                        No options available for this question
+                      </div>
+                    );
+                  })()}
                 </div>
                   </CardContent>
                 </Card>
@@ -538,33 +563,34 @@ export function TestTaking({
           </div>
         </div>
 
-        {/* Submit dialog (shared) - using normal button for confirm action to avoid Radix auto-close race */}
+        {/* Confirmation Submit dialog */}
         <AlertDialog
-          open={showSubmitDialog}
+          open={showConfirmSubmitDialog}
           onOpenChange={(open) => {
-            console.log('AlertDialog onOpenChange called with:', open, 'isSubmitting:', isSubmitting);
+            console.log('Confirm submit dialog onOpenChange called with:', open, 'isSubmitting:', isSubmitting);
             if (!isSubmitting) {
-              setShowSubmitDialog(open);
+              setShowConfirmSubmitDialog(open);
             }
           }}
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Submit Test</AlertDialogTitle>
+              <AlertDialogTitle>Are you sure you want to submit your test?</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to submit your test? You have answered {Object.keys(answers).length} out of {progress.total} questions.
-                Once submitted, you cannot make any changes.
+                <div className="space-y-2">
+                  <p>You have answered {Object.keys(answers).length} out of {progress.total} questions.</p>
+                  <p className="font-medium">Once submitted, you cannot make any changes to your answers.</p>
+                </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isSubmitting}>Continue Test</AlertDialogCancel>
-              {/* use a regular button that invokes the handler */}
+              <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
               <button
                 onClick={handleConfirmSubmit}
                 disabled={isSubmitting}
                 className="inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
               >
-                {isSubmitting ? "Submitting..." : "Submit Test"}
+                {isSubmitting ? "Submitting..." : "Submit"}
               </button>
             </AlertDialogFooter>
           </AlertDialogContent>
