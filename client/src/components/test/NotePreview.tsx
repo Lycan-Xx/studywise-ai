@@ -11,7 +11,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { TestWizard } from "./TestWizard";
 import { TestTaking } from "./TestTaking";
 import { ArrowLeft, Save, Play, Paperclip } from "lucide-react";
 import { useTestSessionStore } from "@/stores";
@@ -31,7 +30,6 @@ interface NotePreviewProps {
 
 export function NotePreview({ testId, title, subject, initialNotes, highlightText, onClose, onSave, onStartTest }: NotePreviewProps) {
   const [notes, setNotes] = useState(initialNotes);
-  const [showWizard, setShowWizard] = useState(false);
   // const [showResumeTest, setShowResumeTest] = useState(false);
   // const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -96,7 +94,9 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
 
     // Reset the modification flag since we're generating new questions
     setHasBeenModifiedAndSaved(false);
-    setShowWizard(true);
+    // Navigate back to dashboard with notes pre-filled
+    // This would require updating the dashboard to accept pre-filled notes
+    console.log("Navigate to dashboard with notes for regeneration");
   };
 
   const handleStartExistingTest = () => {
@@ -189,15 +189,6 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
       processFile(textFile);
     }
   };
-
-  if (showWizard) {
-    return (
-      <TestWizard
-        notes={notes}
-        onClose={() => setShowWizard(false)}
-      />
-    );
-  }
 
   const maxLength = 50000;
   const characterCount = notes.length;
