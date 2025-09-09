@@ -85,18 +85,13 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
       // Auto-save before starting test
       onSave(testId, notes);
       setHasChanges(false);
-
-      // If the notes were modified from the original, mark as needing regeneration
-      if (notes !== initialNotes) {
-        setHasBeenModifiedAndSaved(true);
-      }
     }
 
-    // Reset the modification flag since we're generating new questions
-    setHasBeenModifiedAndSaved(false);
-    // Navigate back to dashboard with notes pre-filled
-    // This would require updating the dashboard to accept pre-filled notes
-    console.log("Navigate to dashboard with notes for regeneration");
+    // Navigate to dashboard with the notes
+    const params = new URLSearchParams();
+    params.set('importNotes', encodeURIComponent(notes));
+    params.set('importTitle', encodeURIComponent(title));
+    window.location.href = `/dashboard?${params.toString()}`;
   };
 
   const handleStartExistingTest = () => {
@@ -209,10 +204,25 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
               <span className="hidden sm:inline">Return to Library</span>
             </Button>
           </div>
-          <div>
+          <div className="space-y-2">
             <h1 className="text-2xl sm:text-3xl font-bold text-studywise-gray-900">
               {title}
             </h1>
+            {/* Test Metadata */}
+            <div className="flex flex-wrap items-center gap-4 text-sm text-studywise-gray-600">
+              <div className="flex items-center gap-1">
+                <span className="font-medium">Questions:</span>
+                <span>10</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="font-medium">Type:</span>
+                <span>Multiple Choice</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="font-medium">Difficulty:</span>
+                <span className="capitalize">Medium</span>
+              </div>
+            </div>
           </div>
         </div>
         <div className="flex gap-3 w-full sm:w-auto">

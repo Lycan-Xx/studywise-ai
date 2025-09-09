@@ -3,10 +3,10 @@ import { ArrowUp, Paperclip, Plus, X, BookOpen, Wand2, Settings } from "lucide-r
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { TestPreview } from "@/components/test";
+import { TestPreviewModal, TestTakingModal, TestResultsModal } from "@/components/test";
 import { DocumentProcessor } from "@/utils/documentProcessor";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTestStore } from "@/stores";
+import { useTestStore, useLibraryStore, useTestSessionStore, useTestWorkflow } from "@/stores";
 import { TestConfig } from "@/types";
 
 export default function Dashboard() {
@@ -26,11 +26,42 @@ export default function Dashboard() {
     difficulty: 'medium'
   });
 
-  const { updateConfig, generateQuestions, isGenerating } = useTestStore();
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [showTestModal, setShowTestModal] = useState(false);
+  const [showResultsModal, setShowResultsModal] = useState(false);
+  const [testTimeLimit, setTestTimeLimit] = useState<number | null>(null);
+
+  const { updateConfig, generateQuestions, isGenerating, generatedQuestions } = useTestStore();
+  const { saveTest } = useLibraryStore();
+  const { startTest, submitTest, currentSession } = useTestSessionStore();
+  const { completeTest } = useTestWorkflow();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const maxLength = 50000;
+
+  // Handle imported notes from URL params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const importedNotes = params.get('importNotes');
+    const importedTitle = params.get('importTitle');
+    
+    if (importedNotes) {
+      const decodedNotes = decodeURIComponent(importedNotes);
+      setNotes(decodedNotes);
+      
+      if (importedTitle) {
+        const decodedTitle = decodeURIComponent(importedTitle);
+        setTestConfig(prev => ({ ...prev, title: decodedTitle }));
+      }
+      
+      // Clear the URL params
+      window.history.replaceState({}, '', window.location.pathname);
+      
+      // Show customization panel for imported notes
+      setShowCustomization(true);
+    }
+  }, []);
 
   // Auto-generate title and topics when notes change
   useEffect(() => {
@@ -74,7 +105,20 @@ export default function Dashboard() {
 
     updateConfig(defaultConfig);
     await generateQuestions(defaultConfig, notes);
-    setShowPreview(true);
+    setShowPreviewModal(true);
+  };
+
+  const handleStartTest = async (timeLimit: number | null) => {
+    if (!generatedQuestions.length) return;
+    
+    // Start the test session
+    const testId = Date.now().toString();
+    const testTitle = testConfig.title || "Generated Test";
+    
+    startTest(testId, testTitle, generatedQuestions, timeLimit);
+    setTestTimeLimit(timeLimit);
+    setShowPreviewModal(false);
+    setShowTestModal(true);
   };
 
   // Generate with custom settings
@@ -83,7 +127,56 @@ export default function Dashboard() {
     
     updateConfig(testConfig);
     await generateQuestions(testConfig, notes);
-    setShowPreview(true);
+    setShowPreviewModal(true);
+  };
+    if (!generatedQuestions.length) return;
+    
+    try {
+      const savedTest = {
+        title: testConfig.title || "Generated Test",
+        subject: testConfig.topics || "General",
+        questionCount: generatedQuestions.length,
+        config: testConfig,
+        questions: generatedQuestions,
+        notes,
+        gradient: getRandomGradient()
+      };
+      
+      await saveTest(savedTest);
+      setShowPreviewModal(false);
+      console.log("Test saved to library successfully");
+    } catch (error) {
+      console.error("Failed to save test:", error);
+    }
+  };
+
+  const handleTestSubmit = async (answers: Record<number, string>) => {
+    try {
+      // Complete the test and save results
+      await completeTest();
+      setShowTestModal(false);
+      setShowResultsModal(true);
+    } catch (error) {
+      console.error("Failed to submit test:", error);
+    }
+  };
+
+  const handleBackToDashboard = () => {
+    setShowTestModal(false);
+    setShowResultsModal(false);
+    setTestTimeLimit(null);
+  };
+
+  // Helper function for random gradients
+  const getRandomGradient = () => {
+    const gradients = [
+      "from-blue-600 to-blue-700",
+      "from-green-600 to-green-700", 
+      "from-purple-600 to-purple-700",
+      "from-orange-600 to-orange-700",
+      "from-red-600 to-red-700"
+    ];
+    return gradients[Math.floor(Math.random() * gradients.length)];
   };
 
   // Topic management
@@ -248,8 +341,34 @@ export default function Dashboard() {
 
   const questionCounts = [5, 10, 15, 20, 25, 30];
 
-  if (showPreview) {
-    return <TestPreview config={testConfig} notes={notes} onClose={() => setShowPreview(false)} />;
+  if (showPreviewModal && generatedQuestions.length > 0) {
+    return (
+      <>
+        {/* Main dashboard content */}
+        <div className="h-full md:h-auto flex flex-col">
+          {/* ... existing dashboard content ... */}
+        </div>
+        
+        {/* Test Preview Modal */}
+        <TestPreviewModal
+          open={showPreviewModal}
+          onOpenChange={setShowPreviewModal}
+          config={testConfig}
+          questions={generatedQuestions}
+          onStartTest={(timeLimit) => {
+            // TODO: Start test taking modal
+            console.log("Starting test with time limit:", timeLimit);
+          }}
+          onRegenerateAll={() => {
+            handleGenerateCustom();
+          }}
+          onSaveToLibrary={() => {
+            // TODO: Save to library
+            console.log("Saving to library");
+          }}
+        />
+      </>
+    );
   }
 
   return (
