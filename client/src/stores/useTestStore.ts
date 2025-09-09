@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import type { TestConfig, Question, Test } from '@/types';
+import type { TestConfig, Question } from '@/types';
 import { aiService, type GenerateQuestionsOptions } from '@/services/aiService';
 
 interface TestStore {
