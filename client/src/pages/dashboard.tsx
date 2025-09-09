@@ -124,13 +124,15 @@ export default function Dashboard() {
   // Generate with custom settings
   const handleGenerateCustom = async () => {
     if (!notes.trim() || !testConfig.title.trim()) return;
-    
+
     updateConfig(testConfig);
     await generateQuestions(testConfig, notes);
     setShowPreviewModal(true);
   };
+
+  const handleSaveToLibrary = async () => {
     if (!generatedQuestions.length) return;
-    
+
     try {
       const savedTest = {
         title: testConfig.title || "Generated Test",
@@ -141,7 +143,7 @@ export default function Dashboard() {
         notes,
         gradient: getRandomGradient()
       };
-      
+
       await saveTest(savedTest);
       setShowPreviewModal(false);
       console.log("Test saved to library successfully");
