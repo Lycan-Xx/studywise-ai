@@ -1,43 +1,120 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Paperclip, PaperclipIcon, Plus } from "lucide-react";
-import { TestWizard } from "@/components/test";
+import { ArrowUp, Paperclip, Plus, X, BookOpen, Wand2, Settings } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { TestPreview } from "@/components/test";
 import { DocumentProcessor } from "@/utils/documentProcessor";
 import { useAuth } from "@/contexts/AuthContext";
-import * as pdfjsLib from "pdfjs-dist";
+import { useTestStore } from "@/stores";
+import { TestConfig } from "@/types";
 
 export default function Dashboard() {
-  // PDF.js worker is now configured in DocumentProcessor.ts
-  // to ensure consistent configuration across the application
-
   const { user } = useAuth();
   const [notes, setNotes] = useState("");
-  const [showWizard, setShowWizard] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [showCustomization, setShowCustomization] = useState(false);
+  const [customTopic, setCustomTopic] = useState("");
+  
+  // Test configuration state
+  const [testConfig, setTestConfig] = useState<TestConfig>({
+    title: "",
+    topics: "",
+    questionType: 'mcq',
+    numberOfQuestions: 10,
+    difficulty: 'medium'
+  });
+
+  const { updateConfig, generateQuestions, isGenerating } = useTestStore();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const maxLength = 50000;
 
-  // Trigger the quiz wizard
-  const handleGenerateQuiz = () => {
+  // Auto-generate title and topics when notes change
+  useEffect(() => {
+    if (notes.trim()) {
+      // Auto-generate title from first meaningful sentence
+      const sentences = notes.split(/[.!?]+/).filter(s => s.trim().length > 10);
+      const autoTitle = sentences[0]?.trim().substring(0, 50) + (sentences[0]?.length > 50 ? "..." : "") || "Study Test";
+      
+      // Extract potential topics (simple keyword extraction)
+      const words = notes.toLowerCase().match(/\b[a-z]{4,}\b/g) || [];
+      const wordFreq = words.reduce((acc, word) => {
+        acc[word] = (acc[word] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      const topTopics = Object.entries(wordFreq)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 3)
+        .map(([word]) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(', ');
+
+      setTestConfig(prev => ({
+        ...prev,
+        title: prev.title || autoTitle,
+        topics: prev.topics || topTopics
+      }));
+    }
+  }, [notes]);
+
+  // Generate with defaults
+  const handleGenerateWithDefaults = async () => {
     if (!notes.trim()) return;
-    setShowWizard(true);
+    
+    const defaultConfig: TestConfig = {
+      title: testConfig.title || "Quick Study Test",
+      topics: testConfig.topics || "General",
+      questionType: 'mcq',
+      numberOfQuestions: 10,
+      difficulty: 'medium'
+    };
+
+    updateConfig(defaultConfig);
+    await generateQuestions(defaultConfig, notes);
+    setShowPreview(true);
   };
 
-  // Programmatically open file input
+  // Generate with custom settings
+  const handleGenerateCustom = async () => {
+    if (!notes.trim() || !testConfig.title.trim()) return;
+    
+    updateConfig(testConfig);
+    await generateQuestions(testConfig, notes);
+    setShowPreview(true);
+  };
+
+  // Topic management
+  const addTopic = () => {
+    if (customTopic.trim()) {
+      const currentTopics = testConfig.topics ? testConfig.topics.split(',').map(t => t.trim()).filter(t => t) : [];
+      if (!currentTopics.includes(customTopic.trim())) {
+        const newTopics = [...currentTopics, customTopic.trim()].join(', ');
+        setTestConfig(prev => ({ ...prev, topics: newTopics }));
+        setCustomTopic("");
+      }
+    }
+  };
+
+  const removeTopic = (topicToRemove: string) => {
+    const currentTopics = testConfig.topics ? testConfig.topics.split(',').map(t => t.trim()).filter(t => t) : [];
+    const newTopics = currentTopics.filter(topic => topic !== topicToRemove).join(', ');
+    setTestConfig(prev => ({ ...prev, topics: newTopics }));
+  };
+
+  // File handling
   const handleFileUpload = () => {
     fileInputRef.current?.click();
   };
 
-  // Handle manual file selection
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) await processFile(file);
-    // Reset input so same file can be uploaded again
     event.target.value = "";
   };
 
-  // Process a single file
   const processFile = async (file: File) => {
     const fileName = file.name;
     try {
@@ -52,7 +129,7 @@ export default function Dashboard() {
     }
   };
 
-  // Drag-and-drop handlers
+  // Drag and drop
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -84,7 +161,7 @@ export default function Dashboard() {
     await processFile(supportedFiles[0]);
   };
 
-  // Adjust textarea height dynamically
+  // Textarea auto-resize
   const adjustTextareaHeight = () => {
     const ta = textareaRef.current;
     if (!ta) return;
@@ -121,7 +198,6 @@ export default function Dashboard() {
     fullName: "",
   });
 
-  // Load user data when component mounts or user changes
   useEffect(() => {
     if (user) {
       setProfileInfo({
@@ -130,22 +206,134 @@ export default function Dashboard() {
     }
   }, [user]);
 
+  const topicsArray = testConfig.topics ? testConfig.topics.split(',').map(t => t.trim()).filter(t => t) : [];
+
+  const questionTypes = [
+    {
+      id: 'mcq' as const,
+      title: 'Multiple Choice',
+      initials: 'MCQ',
+      description: 'Choose from multiple options',
+      example: 'What is 2+2? A) 3 B) 4 C) 5'
+    },
+    {
+      id: 'true-false' as const,
+      title: 'True or False',
+      initials: 'T/F',
+      description: 'Answer true or false only',
+      example: 'The sun rises in the east. True/False'
+    }
+  ];
+
+  const difficultyLevels = [
+    {
+      id: 'easy' as const,
+      title: 'Easy',
+      description: 'Basic concepts and recall',
+      color: 'bg-green-50 border-green-200 text-green-700'
+    },
+    {
+      id: 'medium' as const,
+      title: 'Medium',
+      description: 'Understanding and application',
+      color: 'bg-yellow-50 border-yellow-200 text-yellow-700'
+    },
+    {
+      id: 'hard' as const,
+      title: 'Hard',
+      description: 'Analysis and critical thinking',
+      color: 'bg-red-50 border-red-200 text-red-700'
+    }
+  ];
+
+  const questionCounts = [5, 10, 15, 20, 25, 30];
+
+  if (showPreview) {
+    return <TestPreview config={testConfig} notes={notes} onClose={() => setShowPreview(false)} />;
+  }
+
   return (
     <div className="h-full md:h-auto flex flex-col">
-      {!showWizard ? (
-        <>
-          {/* MOBILE */}
-          <div className="md:hidden flex flex-col h-[100dvh] overflow-hidden">
-            <div className="flex-1 flex items-start justify-start pt-12 px-6 pb-32">
-              <h1 className="mx-auto text-[3.6rem] leading-tight font-light text-center">
-                Turn your notes into smart tests
-              </h1>
+      {/* MOBILE */}
+      <div className="md:hidden flex flex-col h-[100dvh] overflow-hidden">
+        <div className="flex-1 flex items-start justify-start pt-12 px-6 pb-32">
+          <h1 className="mx-auto text-[3.6rem] leading-tight font-light text-center">
+            Turn your notes into smart tests
+          </h1>
+        </div>
+
+        <div className="fixed left-4 right-4 bottom-6 z-50">
+          <div className={`bg-white rounded-full border flex items-center gap-3 px-4 py-3 ${isDragOver ? 'border-blue-400 bg-blue-50' : 'border-black'}`}>
+            <button onClick={handleFileUpload} className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center border border-gray-400">
+              <Paperclip className="w-6 h-6 text-gray-700" />
+            </button>
+
+            <div className="flex-1 relative">
+              <textarea
+                ref={textareaRef}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                onInput={adjustTextareaHeight}
+                onFocus={handleFocus}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                placeholder={isDragOver ? "Drop your file here..." : "Paste or upload your notes here to get started..."}
+                maxLength={maxLength}
+                className={`w-full min-h-[30px] max-h-[36vh] resize-none bg-white 
+                  placeholder:text-gray-400 text-base text-gray-900
+                  border-none 
+                  focus:outline-none 
+                  focus:ring-0 
+                  focus:border-transparent 
+                  outline-0 
+                  ring-0 
+                  text-center
+                  ${isDragOver ? 'bg-blue-50' : ''}`}
+                style={{ textAlign: "center", alignItems: "center", justifyContent: "center" }}
+              />
+
+              {isDragOver && (
+                <div className="absolute inset-0 flex items-center justify-center bg-blue-100 bg-opacity-50 pointer-events-none rounded-full text-blue-600 text-center">
+                  Drop your file
+                </div>
+              )}
             </div>
 
-            <div className="fixed left-4 right-4 bottom-6 z-50 ">
-              <div className={`bg-white rounded-full border flex items-center gap-3 px-4 py-3 ${isDragOver ? 'border-blue-400 bg-blue-50' : 'border-black'}`}>
-                <button onClick={handleFileUpload} className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center border border-gray-400">
-                  <Paperclip className="w-6 h-6 text-gray-700" />
+            <button 
+              onClick={handleGenerateWithDefaults} 
+              disabled={!notes.trim() || isGenerating} 
+              className={`w-12 h-12 rounded-full border flex items-center justify-center ${notes.trim() && !isGenerating ? "bg-primary text-white border-transparent" : "bg-white text-gray-400 border-gray-200 cursor-not-allowed"}`}
+            >
+              {isGenerating ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <ArrowUp className="w-6 h-6" />
+              )}
+            </button>
+          </div>
+          <input ref={fileInputRef} type="file" accept=".txt,.md,.doc,.docx,.pdf" onChange={handleFileChange} className="hidden" />
+        </div>
+      </div>
+
+      {/* DESKTOP */}
+      <div className="hidden md:flex flex-col">
+        <div className="flex-shrink-0 p-8 text-center">
+          <h1 className="text-3xl md:text-4xl font-semibold mb-2">
+            Welcome {profileInfo.fullName || 'User'}
+          </h1>
+          <h2 className="text-xl md:text-2xl font-normal text-studywise-gray-600">
+            Transform your study materials into intelligent practice tests
+          </h2>
+        </div>
+
+        <div className="flex-1 flex justify-center items-start pt-8">
+          <div className="w-full max-w-4xl px-8 space-y-6">
+            {/* Main Notes Input */}
+            <div className={`bg-white rounded-2xl border border-black shadow-sm p-6 relative ${isDragOver ? 'bg-blue-50 border-blue-400' : ''}`}>
+              <div className="flex items-start gap-4">
+                <button onClick={handleFileUpload} className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100">
+                  <Paperclip className="w-6 h-6 text-gray-600" />
                 </button>
 
                 <div className="flex-1 relative">
@@ -154,103 +342,224 @@ export default function Dashboard() {
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     onInput={adjustTextareaHeight}
-                    onFocus={handleFocus}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
-                    placeholder={isDragOver ? "Drop your file here..." : "Paste or upload your notes here to get started..."}
+                    placeholder={isDragOver ? "Drop your document here..." : "Paste or upload your study notes, textbook content, or lecture materials here..."}
                     maxLength={maxLength}
-                    className={`w-full min-h-[30px] max-h-[36vh] resize-none bg-white 
-	placeholder:text-gray-400 text-base text-gray-900
-	border-none 
-	focus:outline-none 
-	focus:ring-0 
-	focus:border-transparent 
-	outline-0 
-	ring-0 
-	text-center
-	${isDragOver ? 'bg-blue-50' : ''}`}
-                    style={{ textAlign: "center", alignItems: "center", justifyContent: "center" }}
+                    className={`w-full min-h-[140px] md:min-h-[180px] max-h-[60vh] resize-none
+                      bg-transparent placeholder:text-gray-400 text-gray-900 px-2 py-1 pr-20
+                      outline-none focus:outline-none focus:ring-0
+                      ${isDragOver ? 'bg-blue-50 border border-blue-400 rounded-xl' : ''}`}
                   />
-
-                  {/* Optional overlay message */}
                   {isDragOver && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-blue-100 bg-opacity-50 pointer-events-none rounded-full text-blue-600 text-center">
-                      Drop your file
+                    <div className="absolute inset-0 flex items-center justify-center bg-blue-100 bg-opacity-50 pointer-events-none rounded-2xl text-blue-600 text-center">
+                      Drop your document here
                     </div>
                   )}
-
-                </div>
-
-                <button onClick={handleGenerateQuiz} disabled={!notes.trim()} className={`w-12 h-12 rounded-full border flex items-center justify-center ${notes.trim() ? "bg-primary text-white border-transparent" : "bg-white text-gray-400 border-gray-200 cursor-not-allowed"}`}>
-                  <ArrowUp className="w-6 h-6" />
-                </button>
-              </div>
-              <input ref={fileInputRef} type="file" accept=".txt,.md,.doc,.docx,.pdf" onChange={handleFileChange} className="hidden" />
-            </div>
-          </div>
-
-          {/* DESKTOP */}
-          <div className="hidden md:flex flex-col">
-            <div className="flex-shrink-0 p-8 text-center">
-              <h1 className="text-3xl md:text-4xl font-semibold">
-                Welcome {profileInfo.fullName || 'User'}
-              </h1>
-              <h1 className="text-3xl md:text-4xl font-semibold">
-                Transform your study materials into intelligent practice tests that adapt to how you learn
-              </h1>
-            </div>
-            <div className="flex-1 flex justify-center items-center">
-              <div className="w-full max-w-3xl px-8">
-                <div className={`bg-white rounded-2xl border border-black shadow-sm p-6 relative ${isDragOver ? 'bg-blue-50 border-blue-400' : ''}`}>
-                  <div className="flex items-start gap-4">
-                    <button onClick={handleFileUpload} className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100">
-                      <Paperclip className="w-6 h-6 text-gray-600" />
-                    </button>
-
-                    <div className="flex-1 relative">
-                      <textarea
-                        ref={textareaRef}
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        onInput={adjustTextareaHeight}
-                        onDragOver={handleDragOver}
-                        onDragLeave={handleDragLeave}
-                        onDrop={handleDrop}
-                        placeholder={isDragOver ? "Drop your document here..." : "Paste or upload your study notes, textbook content, or lecture materials here..."}
-                        maxLength={maxLength}
-                        className={`w-full min-h-[140px] md:min-h-[180px] max-h-[60vh] resize-none
-                          bg-transparent placeholder:text-gray-400 text-gray-900 px-2 py-1 pr-20
-                          outline-none focus:outline-none focus:ring-0
-                          
-                          ${isDragOver ? 'bg-blue-50 border border-blue-400 rounded-xl' : ''}`}
-                      />
-                      {/* Overlay for drag feedback */}
-                      {isDragOver && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-blue-100 bg-opacity-50 pointer-events-none rounded-2xl text-blue-600 text-center">
-                          Drop your document here
-                        </div>
-                      )}
-                      <div className="absolute bottom-2 right-2 text-sm text-gray-500 bg-white px-2 py-1 rounded">
-                        {notes.length.toLocaleString()}/{maxLength.toLocaleString()}
-                      </div>
-                    </div>
+                  <div className="absolute bottom-2 right-2 text-sm text-gray-500 bg-white px-2 py-1 rounded">
+                    {notes.length.toLocaleString()}/{maxLength.toLocaleString()}
                   </div>
                 </div>
-                <div className="flex justify-end mt-4">
-                  <button onClick={handleGenerateQuiz} disabled={!notes.trim()} className={`h-12 px-4 rounded-xl flex items-center gap-2 ${notes.trim() ? "bg-primary text-white border-transparent" : "bg-white text-gray-400 border border-gray-200 cursor-not-allowed"}`}>
-                    <ArrowUp className="w-4 h-4" />
-                    <span className="hidden lg:inline">Generate</span>
-                  </button>
-                </div>
-                <input ref={fileInputRef} type="file" accept=".txt,.md,.doc,.docx,.pdf" onChange={handleFileChange} className="hidden" />
               </div>
             </div>
+
+            {/* Auto-extracted topics (if any) */}
+            {notes.trim() && topicsArray.length > 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Wand2 className="w-4 h-4 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-800">Auto-detected topics:</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {topicsArray.map((topic, index) => (
+                    <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                      {topic}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            {notes.trim() && (
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button
+                  onClick={handleGenerateWithDefaults}
+                  disabled={isGenerating}
+                  size="lg"
+                  className="px-8 py-3 bg-primary hover:bg-blue-600 text-white flex items-center gap-2"
+                >
+                  {isGenerating ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 className="w-4 h-4" />
+                      Generate with Defaults
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  onClick={() => setShowCustomization(!showCustomization)}
+                  variant="outline"
+                  size="lg"
+                  className="px-8 py-3 border-2 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center gap-2"
+                >
+                  <Settings className="w-4 h-4" />
+                  Customize
+                </Button>
+              </div>
+            )}
+
+            {/* Customization Section */}
+            {showCustomization && notes.trim() && (
+              <Card className="border-2 border-studywise-gray-300 shadow-lg">
+                <CardContent className="p-6 space-y-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <BookOpen className="w-5 h-5 text-primary" />
+                    <h3 className="text-lg font-semibold text-studywise-gray-900">Customize Your Test</h3>
+                  </div>
+
+                  {/* Test Title */}
+                  <div>
+                    <label className="block text-sm font-medium text-studywise-gray-700 mb-2">
+                      Test Title
+                    </label>
+                    <Input
+                      value={testConfig.title}
+                      onChange={(e) => setTestConfig(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="Enter a title for your test"
+                      className="w-full"
+                    />
+                  </div>
+
+                  {/* Topics Management */}
+                  <div>
+                    <label className="block text-sm font-medium text-studywise-gray-700 mb-2">
+                      Focus Topics
+                    </label>
+                    <div className="flex gap-2 mb-3">
+                      <Input
+                        value={customTopic}
+                        onChange={(e) => setCustomTopic(e.target.value)}
+                        placeholder="Add a specific topic..."
+                        onKeyDown={(e) => e.key === 'Enter' && addTopic()}
+                        className="flex-1"
+                      />
+                      <Button onClick={addTopic} disabled={!customTopic.trim()} size="sm">
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    
+                    {topicsArray.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {topicsArray.map((topic, index) => (
+                          <div key={index} className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                            <span>{topic}</span>
+                            <button
+                              onClick={() => removeTopic(topic)}
+                              className="ml-1 text-blue-600 hover:text-blue-800"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Question Type */}
+                  <div>
+                    <label className="block text-sm font-medium text-studywise-gray-700 mb-3">
+                      Question Format
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {questionTypes.map((type) => (
+                        <button
+                          key={type.id}
+                          onClick={() => setTestConfig(prev => ({ ...prev, questionType: type.id }))}
+                          className={`p-4 border rounded-lg text-center transition-all ${
+                            testConfig.questionType === type.id
+                              ? 'border-primary bg-blue-50 text-primary font-medium'
+                              : 'border-studywise-gray-300 hover:border-studywise-gray-400 text-studywise-gray-700'
+                          }`}
+                        >
+                          <div className="text-2xl font-bold mb-2">{type.initials}</div>
+                          <h4 className="text-sm font-semibold mb-1">{type.title}</h4>
+                          <p className="text-xs text-studywise-gray-600">{type.description}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Difficulty */}
+                  <div>
+                    <label className="block text-sm font-medium text-studywise-gray-700 mb-3">
+                      Difficulty Level
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      {difficultyLevels.map((level) => (
+                        <button
+                          key={level.id}
+                          onClick={() => setTestConfig(prev => ({ ...prev, difficulty: level.id }))}
+                          className={`p-4 border-2 rounded-lg text-center transition-all ${
+                            testConfig.difficulty === level.id
+                              ? 'border-primary bg-blue-50 text-primary font-medium'
+                              : `border-studywise-gray-300 hover:border-studywise-gray-400 ${level.color}`
+                          }`}
+                        >
+                          <div className="text-lg font-bold mb-1">{level.title}</div>
+                          <p className="text-sm">{level.description}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Question Count */}
+                  <div>
+                    <label className="block text-sm font-medium text-studywise-gray-700 mb-3">
+                      Number of Questions
+                    </label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {questionCounts.map((count) => (
+                        <button
+                          key={count}
+                          onClick={() => setTestConfig(prev => ({ ...prev, numberOfQuestions: count }))}
+                          className={`p-3 border rounded-lg text-center transition-all ${
+                            testConfig.numberOfQuestions === count
+                              ? 'border-primary bg-blue-50 text-primary font-medium'
+                              : 'border-studywise-gray-300 hover:border-studywise-gray-400 text-studywise-gray-700'
+                          }`}
+                        >
+                          {count}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Generate Button */}
+                  <div className="flex justify-end pt-4 border-t border-studywise-gray-200">
+                    <Button
+                      onClick={handleGenerateCustom}
+                      disabled={!testConfig.title.trim() || isGenerating}
+                      size="lg"
+                      className="px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white"
+                    >
+                      {isGenerating ? "Generating..." : "Generate Test"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <input ref={fileInputRef} type="file" accept=".txt,.md,.doc,.docx,.pdf" onChange={handleFileChange} className="hidden" />
           </div>
-        </>
-      ) : (
-        <TestWizard notes={notes} onClose={() => setShowWizard(false)} />
-      )}
+        </div>
+      </div>
     </div>
   );
 }
