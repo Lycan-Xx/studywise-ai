@@ -11,7 +11,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { TestTaking } from "./TestTaking";
 import { ArrowLeft, Save, Play, Paperclip } from "lucide-react";
 import { useTestStore } from "@/stores";
 import { useToast } from "@/hooks/use-toast";
@@ -25,8 +24,6 @@ interface NotePreviewProps {
   highlightText?: string | null;
   onClose: () => void;
   onSave: (testId: string, notes: string) => void;
-  onSubmit?: (answers: Record<number, string>) => void;
-  onShowResults?: (answers: Record<number, string>) => void;
   onStartTest?: (testId: string) => void;
 }
 
@@ -135,17 +132,7 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
     setShowResumeTest(true);
   }; */
 
-  const handleTestSubmit = (answers: Record<number, string>) => {
-    if (onSubmit) {
-      onSubmit(answers);
-    }
-  };
 
-  const handleShowResults = (answers: Record<number, string>) => {
-    if (onShowResults) {
-      onShowResults(answers);
-    }
-  };
 
   const handleFileUpload = () => {
     fileInputRef.current?.click();
