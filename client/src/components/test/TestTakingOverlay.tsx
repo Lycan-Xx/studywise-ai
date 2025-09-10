@@ -163,13 +163,15 @@ export function TestTakingOverlay({
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
-              <button
+              <Button
                 onClick={onBack}
-                className="flex items-center gap-2 px-3 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                variant="outline"
+                size="lg"
+                className="border-2 px-6 py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center gap-2"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-4 h-4" />
                 <span className="hidden sm:inline">Exit Test</span>
-              </button>
+              </Button>
               
               <div>
                 <h1 className="text-lg sm:text-xl font-bold text-slate-900">{testTitle}</h1>
@@ -268,35 +270,36 @@ export function TestTakingOverlay({
           {/* Navigation */}
           <div className="bg-white border-t border-slate-200 p-4 flex-shrink-0">
             <div className="max-w-4xl mx-auto">
-              <div className="flex items-center justify-between">
+              <div className="flex justify-between">
                 <Button
                   onClick={handlePrevious}
                   disabled={safeCurrentQuestionIndex === 0}
                   variant="outline"
-                  className="flex items-center gap-2"
+                  size="lg"
+                  className="border-2 px-6 py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center gap-2"
                 >
                   <ChevronLeft className="w-4 h-4" />
                   Previous
                 </Button>
 
-                <div className="flex items-center gap-3">
-                  {safeCurrentQuestionIndex === questions.length - 1 ? (
-                    <Button
-                      onClick={handleSubmit}
-                      className="bg-green-600 hover:bg-green-700 text-white px-8"
-                    >
-                      Submit Test
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={handleNext}
-                      className="flex items-center gap-2"
-                    >
-                      Next
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
+                {safeCurrentQuestionIndex === questions.length - 1 ? (
+                  <Button
+                    onClick={handleSubmit}
+                    size="lg"
+                    className="px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white"
+                  >
+                    Submit Test
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleNext}
+                    size="lg"
+                    className="px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white flex items-center gap-2"
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             </div>
           </div>
