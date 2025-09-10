@@ -112,6 +112,7 @@ export const useLibraryStore = create<LibraryStore>()(
               error: error instanceof Error ? error.message : 'Failed to update test',
               isLoading: false 
             }, false, 'updateTest/error');
+            throw error;
           }
         },
 

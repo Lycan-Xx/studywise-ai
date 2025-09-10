@@ -1,11 +1,12 @@
 import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
+import { devtools, persist, createJSONStorage } from 'zustand/middleware';
 import type { TestConfig, Question } from '@/types';
 import { aiService, type GenerateQuestionsOptions } from '@/services/aiService';
 
 interface TestStore {
   // State
   currentConfig: TestConfig | null;
+  notes: string;
   generatedQuestions: Question[];
   isGenerating: boolean;
   error: string | null;
@@ -13,6 +14,7 @@ interface TestStore {
   // Actions
   updateConfig: (config: Partial<TestConfig>) => void;
   setConfig: (config: TestConfig) => void;
+  setNotes: (notes: string) => void;
   generateQuestions: (config: TestConfig, notes: string) => Promise<void>;
   setQuestions: (questions: Question[]) => void;
   clearTest: () => void;
@@ -116,95 +118,106 @@ const mockGenerateQuestions = (config: TestConfig, notes: string): Question[] =>
 
 export const useTestStore = create<TestStore>()(
   devtools(
-    (set, get) => ({
-      // Initial state
-      currentConfig: null,
-      generatedQuestions: [],
-      isGenerating: false,
-      error: null,
+    persist(
+      (set, get) => ({
+        // Initial state
+        currentConfig: null,
+        notes: "",
+        generatedQuestions: [],
+        isGenerating: false,
+        error: null,
 
-      // Actions
-      updateConfig: (updates) => {
-        const currentConfig = get().currentConfig;
-        const newConfig = currentConfig ? { ...currentConfig, ...updates } : updates as TestConfig;
-        set({ currentConfig: newConfig }, false, 'updateConfig');
-      },
+        // Actions
+        updateConfig: (updates) => {
+          const currentConfig = get().currentConfig;
+          const newConfig = currentConfig ? { ...currentConfig, ...updates } : updates as TestConfig;
+          set({ currentConfig: newConfig }, false, 'updateConfig');
+        },
 
-      setConfig: (config) => {
-        set({ currentConfig: config }, false, 'setConfig');
-      },
+        setConfig: (config) => {
+          set({ currentConfig: config }, false, 'setConfig');
+        },
 
-      generateQuestions: async (config: TestConfig, notes: string) => {
-        const { setError, setQuestions } = get();
+        setNotes: (notes) => {
+          set({ notes }, false, 'setNotes');
+        },
 
-        set({ isGenerating: true, error: null });
+        generateQuestions: async (config: TestConfig, notes: string) => {
+          const { setError, setQuestions } = get();
 
-        try {
-          console.log('Starting question generation with config:', config);
-          console.log('Notes length:', notes.length);
-          
-          const aiResponse = await aiService.generateQuestions({
-            content: notes,
-            difficulty: config.difficulty || 'medium', // Default to medium if not set
-            questionCount: config.numberOfQuestions,
-            questionTypes: [config.questionType],
-            subject: config.title, // Use title as subject for AI generation
-            focus: config.topics
-          });
+          set({ isGenerating: true, error: null });
 
-          console.log('AI Response received:', aiResponse);
-
-          // Convert AI response to internal format
-          const convertedQuestions = aiResponse.questions.map((q, index) => {
-            let options = q.options || [];
+          try {
+            console.log('Starting question generation with config:', config);
+            console.log('Notes length:', notes.length);
             
-            // Ensure True/False questions have the correct options
-            if (config.questionType === 'true-false' && (!options || options.length === 0)) {
-              options = ['True', 'False'];
-            }
-            
-            return {
-              id: index + 1, // Use sequential IDs for internal use
-              type: config.questionType, // Use the config type (mcq or true-false)
-              question: q.question,
-              options: options,
-              correctAnswer: Array.isArray(q.correctAnswer) ? q.correctAnswer[0] : q.correctAnswer || '',
-              sourceText: q.sourceText || 'Generated from your content',
-              sourceOffset: 0, // Default offset
-              sourceLength: q.sourceText?.length || 0 // Length of source text
-            };
-          });
+            const aiResponse = await aiService.generateQuestions({
+              content: notes,
+              difficulty: config.difficulty || 'medium', // Default to medium if not set
+              questionCount: config.numberOfQuestions,
+              questionTypes: [config.questionType],
+              subject: config.title, // Use title as subject for AI generation
+              focus: config.topics
+            });
 
-          setQuestions(convertedQuestions);
-        } catch (error) {
-          console.error('Failed to generate questions:', error);
-          setError(`Failed to generate questions: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            console.log('AI Response received:', aiResponse);
 
-          // Fallback to mock questions if AI fails
-          const generatedQuestions = mockGenerateQuestions(config, notes);
-          setQuestions(generatedQuestions);
-        } finally {
-          set({ isGenerating: false });
+            // Convert AI response to internal format
+            const convertedQuestions = aiResponse.questions.map((q, index) => {
+              let options = q.options || [];
+              
+              // Ensure True/False questions have the correct options
+              if (config.questionType === 'true-false' && (!options || options.length === 0)) {
+                options = ['True', 'False'];
+              }
+              
+              return {
+                id: index + 1, // Use sequential IDs for internal use
+                type: config.questionType, // Use the config type (mcq or true-false)
+                question: q.question,
+                options: options,
+                correctAnswer: Array.isArray(q.correctAnswer) ? q.correctAnswer[0] : q.correctAnswer || '',
+                sourceText: q.sourceText || 'Generated from your content',
+                sourceOffset: 0, // Default offset
+                sourceLength: q.sourceText?.length || 0 // Length of source text
+              };
+            });
+
+            setQuestions(convertedQuestions);
+          } catch (error) {
+            console.error('Failed to generate questions:', error);
+            setError(`Failed to generate questions: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+            // Fallback to mock questions if AI fails
+            const generatedQuestions = mockGenerateQuestions(config, notes);
+            setQuestions(generatedQuestions);
+          } finally {
+            set({ isGenerating: false });
+          }
+        },
+
+        setQuestions: (questions) => {
+          set({ generatedQuestions: questions }, false, 'setQuestions');
+        },
+
+        clearTest: () => {
+          set({
+            currentConfig: null,
+            generatedQuestions: [],
+            isGenerating: false,
+            error: null
+          }, false, 'clearTest');
+        },
+
+        setError: (error) => {
+          set({ error }, false, 'setError');
         }
-      },
-
-      setQuestions: (questions) => {
-        set({ generatedQuestions: questions }, false, 'setQuestions');
-      },
-
-      clearTest: () => {
-        set({
-          currentConfig: null,
-          generatedQuestions: [],
-          isGenerating: false,
-          error: null
-        }, false, 'clearTest');
-      },
-
-      setError: (error) => {
-        set({ error }, false, 'setError');
+      }),
+      {
+        name: 'studywise-test',
+        storage: createJSONStorage(() => localStorage),
       }
-    }),
+    ),
     { name: 'test-store' }
   )
 );

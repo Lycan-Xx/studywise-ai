@@ -23,7 +23,7 @@ export const useTestWorkflow = () => {
       // Create saved test object
       const savedTest: Omit<SavedTest, 'id' | 'createdDate'> = {
         title: title || `${config.topics || 'Study'} Test`,
-        subject: testConfig.topics || "General",
+        subject: config.topics || "General",
         questionCount: config.numberOfQuestions,
         config,
         questions: testStore.generatedQuestions,
