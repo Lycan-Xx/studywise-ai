@@ -150,8 +150,12 @@ export default function Library() {
   };
 
   const handleSaveNotes = (testId: string, notes: string) => {
-    // TODO: Save notes to backend/storage
-    console.log("Saving notes for test:", testId, notes);
+    // Update the test in the library store
+    try {
+      libraryStore.updateTest(testId, { notes });
+    } catch (error) {
+      console.error("Failed to update test notes:", error);
+    }
   };
 
   const selectedTestData = selectedTest ? getTestById(selectedTest) : null;
