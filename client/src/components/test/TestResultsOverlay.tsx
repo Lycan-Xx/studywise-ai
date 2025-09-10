@@ -90,21 +90,23 @@ export function TestResultsOverlay({
     <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white border-b border-slate-200">
-        <div className="flex items-center gap-4 p-4 max-w-6xl mx-auto">
-          <button
+        <div className="flex items-center justify-between p-4 max-w-6xl mx-auto">
+          <Button
             onClick={onBack}
-            className="flex items-center gap-2 px-3 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+            variant="outline"
+            size="lg"
+            className="border-2 px-6 py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center gap-2"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-4 h-4" />
             <span className="hidden sm:inline">Back to Dashboard</span>
-          </button>
-          
-          <div className="flex-1">
-            <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-              <Trophy className="w-6 h-6 text-primary" />
-              Test Results: {testTitle}
-            </h1>
-          </div>
+          </Button>
+
+          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+            <Trophy className="w-6 h-6 text-primary" />
+            Test Results
+          </h1>
+
+          <div className="w-32"></div> {/* Spacer for centering */}
         </div>
       </div>
 
@@ -309,41 +311,22 @@ export function TestResultsOverlay({
       {/* Sticky Footer with Action Buttons */}
       <div className="sticky bottom-0 bg-white border-t border-slate-200 p-4">
         <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-            <Button
-              onClick={onRetake}
-              className="bg-primary hover:bg-blue-600 text-white flex items-center gap-2"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Retake Full Test
-            </Button>
-            
-            {/* {wrongCount > 0 && (
-              <Button
-                onClick={onRetakeWrong}
-                variant="outline"
-                className="border-orange-300 text-orange-700 hover:bg-orange-50 flex items-center gap-2"
-              >
-                <AlertCircle className="w-4 h-4" />
-                Retake Wrong ({wrongCount})
-              </Button>
-            )}
-             */}
-            <Button
-              onClick={() => setNotesModalOpen(true)}
-              variant="outline"
-              className="border-green-300 text-green-700 hover:bg-green-50 flex items-center gap-2"
-            >
-              <BookOpen className="w-4 h-4" />
-              View Notes
-            </Button>
-            
+          <div className="flex justify-between">
             <Button
               onClick={onBack}
               variant="outline"
-              className="border-slate-300 text-slate-700 hover:bg-slate-50"
+              size="lg"
+              className="border-2 px-6 py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50"
             >
               Back to Dashboard
+            </Button>
+            <Button
+              onClick={onRetake}
+              size="lg"
+              className="px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Retake Full Test
             </Button>
           </div>
         </div>
