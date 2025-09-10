@@ -7,6 +7,7 @@ import { TestTaking } from "./TestTaking";
 import { TestResults } from "./TestResults";
 import { SourcePreviewModal } from "./SourcePreviewModal";
 import { useTestWorkflow, useResultsStore, useTestStore, useTestSessionStore } from "@/stores";
+import { useToast } from "@/hooks/use-toast";
 
 interface TestPreviewProps {
   config: TestConfig;
@@ -15,6 +16,7 @@ interface TestPreviewProps {
 }
 
 export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
+  const { toast } = useToast();
   const [showSettings, setShowSettings] = useState(false);
   const [showTest, setShowTest] = useState(false);
   const [showResults, setShowResults] = useState(false);
@@ -109,11 +111,42 @@ export function TestPreview({ config, notes, onClose }: TestPreviewProps) {
 
   const handleSaveToLibrary = async () => {
     try {
-      await generateAndSaveTest(config, notes, config.title || 'Untitled Test');
-      onClose();
+      const savedTest = {
+        title: config.title || "Generated Test",
+        subject: config.topics || "General",
+        questionCount: generatedQuestions.length,
+        config,
+        questions: generatedQuestions,
+        notes,
+        gradient: getRandomGradient()
+      };
+
+      await saveTest(savedTest);
+      
+      toast({
+        title: "Test saved to library",
+        description: "Your test has been successfully saved and is now available in your library.",
+      });
     } catch (error) {
       console.error("Failed to save test:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save test to library. Please try again.",
+        variant: "destructive",
+      });
     }
+  };
+
+  // Helper function for random gradients
+  const getRandomGradient = () => {
+    const gradients = [
+      "from-blue-600 to-blue-700",
+      "from-green-600 to-green-700", 
+      "from-purple-600 to-purple-700",
+      "from-orange-600 to-orange-700",
+      "from-red-600 to-red-700"
+    ];
+    return gradients[Math.floor(Math.random() * gradients.length)];
   };
 
   const handleViewSource = (question: any) => {

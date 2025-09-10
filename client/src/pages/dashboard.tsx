@@ -8,10 +8,11 @@ import { DocumentProcessor } from "@/utils/documentProcessor";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTestStore, useLibraryStore, useTestSessionStore, useTestWorkflow } from "@/stores";
 import { TestConfig } from "@/types";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const [notes, setNotes] = useState("");
+  const { toast } = useToast();
   const [isDragOver, setIsDragOver] = useState(false);
   const [showCustomization, setShowCustomization] = useState(false);
   const [customTopic, setCustomTopic] = useState("");
@@ -29,7 +30,7 @@ export default function Dashboard() {
     difficulty: 'medium'
   });
 
-  const { updateConfig, generateQuestions, isGenerating, generatedQuestions } = useTestStore();
+  const { notes, setNotes, updateConfig, generateQuestions, isGenerating, generatedQuestions } = useTestStore();
   const { saveTest } = useLibraryStore();
   const { startTest, submitTest, currentSession } = useTestSessionStore();
   const { completeTest } = useTestWorkflow();
@@ -37,29 +38,6 @@ export default function Dashboard() {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const maxLength = 50000;
-
-  // Handle imported notes from URL params
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const importedNotes = params.get('importNotes');
-    const importedTitle = params.get('importTitle');
-    
-    if (importedNotes) {
-      const decodedNotes = decodeURIComponent(importedNotes);
-      setNotes(decodedNotes);
-      
-      if (importedTitle) {
-        const decodedTitle = decodeURIComponent(importedTitle);
-        setTestConfig(prev => ({ ...prev, title: decodedTitle }));
-      }
-      
-      // Clear the URL params
-      window.history.replaceState({}, '', window.location.pathname);
-      
-      // Show customization panel for imported notes
-      setShowCustomization(true);
-    }
-  }, []);
 
   // Auto-generate title and topics when notes change
   useEffect(() => {
@@ -148,10 +126,17 @@ export default function Dashboard() {
       };
 
       await saveTest(savedTest);
-      backToDashboard();
-      console.log("Test saved to library successfully");
+      toast({
+        title: "Test saved to library",
+        description: "Your test has been successfully saved and is now available in your library.",
+      });
     } catch (error) {
       console.error("Failed to save test:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save test to library. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 

@@ -13,7 +13,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { TestTaking } from "./TestTaking";
 import { ArrowLeft, Save, Play, Paperclip } from "lucide-react";
-import { useTestSessionStore } from "@/stores";
+import { useTestSessionStore, useTestStore } from "@/stores";
+import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 interface NotePreviewProps {
   testId: string;
@@ -29,7 +31,10 @@ interface NotePreviewProps {
 }
 
 export function NotePreview({ testId, title, subject, initialNotes, highlightText, onClose, onSave, onStartTest }: NotePreviewProps) {
-  const [notes, setNotes] = useState(initialNotes);
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const { notes: globalNotes, setNotes: setGlobalNotes } = useTestStore();
+  const [localNotes, setLocalNotes] = useState(initialNotes);
   // const [showResumeTest, setShowResumeTest] = useState(false);
   // const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -45,7 +50,7 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
   useEffect(() => {
     if (highlightText && textareaRef.current) {
       const textarea = textareaRef.current;
-      const text = textarea.value;
+      const text = localNotes;
 
       // Find the text to highlight
       const index = text.toLowerCase().indexOf(highlightText.toLowerCase());
@@ -62,42 +67,52 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
         );
       }
     }
-  }, [highlightText]);
+  }, [highlightText, localNotes]);
 
   const handleNotesChange = (value: string) => {
-    setNotes(value);
+    setLocalNotes(value);
     setHasChanges(value !== lastSaved);
   };
 
   const handleSave = () => {
-    onSave(testId, notes);
-    setLastSaved(notes);
+    onSave(testId, localNotes);
+    setLastSaved(localNotes);
     setHasChanges(false);
 
     // If the notes were modified from the original, mark as needing regeneration
-    if (notes !== initialNotes) {
+    if (localNotes !== initialNotes) {
       setHasBeenModifiedAndSaved(true);
     }
+
+    toast({
+      title: "Notes saved",
+      description: "Your notes have been successfully updated.",
+    });
   };
 
   const handleCreateTest = () => {
     if (hasChanges) {
       // Auto-save before starting test
-      onSave(testId, notes);
+      onSave(testId, localNotes);
       setHasChanges(false);
     }
 
-    // Navigate to dashboard with the notes
-    const params = new URLSearchParams();
-    params.set('importNotes', encodeURIComponent(notes));
-    params.set('importTitle', encodeURIComponent(title));
-    window.location.href = `/dashboard?${params.toString()}`;
+    // Update global notes state and navigate to dashboard
+    setGlobalNotes(localNotes);
+    
+    toast({
+      title: "Notes sent to Dashboard",
+      description: "Your updated notes are now ready for test generation.",
+    });
+    
+    // Navigate to dashboard without page reload
+    setLocation('/dashboard');
   };
 
   const handleStartExistingTest = () => {
     if (hasChanges) {
       // Auto-save before starting test
-      onSave(testId, notes);
+      onSave(testId, localNotes);
       setHasChanges(false);
     }
     if (onStartTest) {
@@ -148,7 +163,7 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
     reader.onload = (e) => {
       const result = e.target?.result;
       if (typeof result === "string") {
-        setNotes(result);
+        setLocalNotes(result);
         setHasChanges(true);
       }
     };
@@ -186,7 +201,7 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
   };
 
   const maxLength = 50000;
-  const characterCount = notes.length;
+  const characterCount = localNotes.length;
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -303,7 +318,7 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
               <div className="flex-1 relative">
                 <Textarea
                   ref={textareaRef}
-                  value={notes}
+                value={localNotes}
                   onChange={(e) => handleNotesChange(e.target.value)}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
@@ -314,7 +329,7 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
                 />
                 {/* Character Counter */}
 					<div className="absolute bottom-2 right-2 text-sm text-gray-500 bg-white px-2 py-1 rounded">
-						{notes.length.toLocaleString()}/{maxLength.toLocaleString()}
+						{localNotes.length.toLocaleString()}/{maxLength.toLocaleString()}
 					</div>
               </div>
             </div>
@@ -347,16 +362,16 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
             disabled={!hasChanges}
             variant="outline"
             size="lg"
-            className="px-8 py-3 border-2 border-studywise-gray-300 hover:bg-studywise-gray-50 disabled:opacity-50 flex items-center gap-2 w-full sm:w-auto"
-          >
+            disabled={hasBeenModifiedAndSaved}
+            className={`border-2 px-6 py-3 flex items-center gap-2 flex-1 sm:flex-none transition-colors ${hasBeenModifiedAndSaved
             <Save className="w-4 h-4" />
             {hasChanges ? "Save Changes" : "Saved"}
           </Button>
 
           {hasChanges && (
             <p className="text-sm text-amber-600 flex items-center gap-1">
-              <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
-              You have unsaved changes
+            disabled={!hasBeenModifiedAndSaved && localNotes === initialNotes}
+            className={`px-8 py-3 flex-1 sm:flex-none transition-colors ${!hasBeenModifiedAndSaved && localNotes === initialNotes
             </p>
           )}
         </div>
