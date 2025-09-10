@@ -7,6 +7,6 @@ export { TestResults } from './TestResults';
 export { SourcePreviewModal } from './SourcePreviewModal';
 
 // New modal exports
-export { TestPreviewModal } from './TestPreviewModal';
-export { TestTakingModal } from './TestTakingModal';
-export { TestResultsModal } from './TestResultsModal';
+export { TestPreviewOverlay } from './TestPreviewOverlay';
+export { TestTakingOverlay} from './TestTakingOverlay';
+export { TestResultsOverlay } from './TestResultsOverlay';
