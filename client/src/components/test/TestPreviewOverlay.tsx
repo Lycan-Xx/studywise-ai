@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { Question, TestConfig } from "@/types";
 import { SourcePreviewModal } from "./SourcePreviewModal";
+import { useTestWorkflow, useResultsStore, useTestStore, useTestSessionStore, useLibraryStore } from "@/stores";
+import { useToast } from "@/hooks/use-toast";
 
 interface TestPreviewOverlayProps {
   config: TestConfig;
@@ -21,6 +23,7 @@ interface TestPreviewOverlayProps {
   onRegenerateAll: () => void;
   onSaveToLibrary: () => void;
   onBack: () => void;
+  isUsingCache?: boolean;
 }
 
 export function TestPreviewOverlay({
@@ -30,12 +33,21 @@ export function TestPreviewOverlay({
   onStartTest,
   onRegenerateAll,
   onSaveToLibrary,
-  onBack
+  onBack,
+  isUsingCache = false
 }: TestPreviewOverlayProps) {
+  const { toast } = useToast();
   const [selectedTimeLimit, setSelectedTimeLimit] = useState<number | null>(null);
   const [showTimeSelector, setShowTimeSelector] = useState(false);
   const [sourceModalOpen, setSourceModalOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
+
+  // Use workflow hook for coordinated store operations
+  const { generateAndSaveTest, completeTest } = useTestWorkflow();
+  const { generatedQuestions, isGenerating, generateQuestions } = useTestStore();
+  const { currentResult } = useResultsStore();
+  const { startTest, resetSession } = useTestSessionStore();
+  const { saveTest } = useLibraryStore();
 
   const timeLimits = [
     { value: null, label: "No time limit" },
@@ -60,6 +72,46 @@ export function TestPreviewOverlay({
   const handleViewSource = (question: Question) => {
     setSelectedQuestion(question);
     setSourceModalOpen(true);
+  };
+
+  const handleSaveToLibrary = async () => {
+    try {
+      const savedTest = {
+        title: config.title || "Generated Test",
+        subject: config.topics || "General",
+        questionCount: questions.length,
+        config,
+        questions: questions,
+        notes,
+        gradient: getRandomGradient()
+      };
+
+      await saveTest(savedTest);
+
+      toast({
+        title: "Test saved to library",
+        description: "Your test has been successfully saved and is now available in your library.",
+      });
+    } catch (error) {
+      console.error("Failed to save test:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save test to library. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Helper function for random gradients
+  const getRandomGradient = () => {
+    const gradients = [
+      "from-blue-600 to-blue-700",
+      "from-green-600 to-green-700",
+      "from-purple-600 to-purple-700",
+      "from-orange-600 to-orange-700",
+      "from-red-600 to-red-700"
+    ];
+    return gradients[Math.floor(Math.random() * gradients.length)];
   };
 
   return (
@@ -91,6 +143,13 @@ export function TestPreviewOverlay({
         {/* Note Title */}
         <div className="text-center">
           <h2 className="text-lg font-medium text-studywise-gray-900">{config.title}</h2>
+          {/* Cache indicator */}
+          {isUsingCache && (
+            <div className="mt-2 flex items-center justify-center gap-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-xs text-green-600 font-medium">Using cached questions</span>
+            </div>
+          )}
         </div>
 
         {/* Test Info */}
@@ -208,7 +267,7 @@ export function TestPreviewOverlay({
         <div className="max-w-6xl mx-auto">
           <div className="flex justify-end gap-3">
             <Button
-              onClick={onSaveToLibrary}
+              onClick={handleSaveToLibrary}
               variant="outline"
               size="lg"
               className="border-2 px-6 py-3 border-primary text-black hover:border-green-400 hover:bg-green-50 flex items-center gap-2"

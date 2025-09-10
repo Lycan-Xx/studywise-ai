@@ -31,6 +31,7 @@ export default function Dashboard() {
   });
 
   const { notes, setNotes, updateConfig, generateQuestions, isGenerating, generatedQuestions } = useTestStore();
+  const [isUsingCache, setIsUsingCache] = useState(false);
   const { saveTest } = useLibraryStore();
   const { startTest, submitTest, currentSession } = useTestSessionStore();
   const { completeTest } = useTestWorkflow();
@@ -76,7 +77,7 @@ export default function Dashboard() {
   // Generate with defaults
   const handleGenerateWithDefaults = async () => {
     if (!notes.trim()) return;
-    
+
     const defaultConfig: TestConfig = {
       title: testConfig.title || "Quick Study Test",
       topics: testConfig.topics || "General",
@@ -86,7 +87,8 @@ export default function Dashboard() {
     };
 
     updateConfig(defaultConfig);
-    await generateQuestions(defaultConfig, notes);
+    const result = await generateQuestions(defaultConfig, notes);
+    setIsUsingCache(result.usedCache);
     showPreview();
   };
 
@@ -107,7 +109,8 @@ export default function Dashboard() {
     if (!notes.trim() || !testConfig.title.trim()) return;
 
     updateConfig(testConfig);
-    await generateQuestions(testConfig, notes);
+    const result = await generateQuestions(testConfig, notes);
+    setIsUsingCache(result.usedCache);
     showPreview();
   };
 
@@ -335,6 +338,7 @@ export default function Dashboard() {
         onRegenerateAll={handleGenerateCustom}
         onSaveToLibrary={handleSaveToLibrary}
         onBack={backToDashboard}
+        isUsingCache={isUsingCache}
       />
     );
   }
