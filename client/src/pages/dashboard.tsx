@@ -3,7 +3,7 @@ import { ArrowUp, Paperclip, Plus, X, BookOpen, Wand2, Settings } from "lucide-r
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { TestPreviewModal, TestTakingModal, TestResultsModal } from "@/components/test";
+import { TestPreviewOverlay, TestTakingOverlay, TestResultsOverlay } from "@/components/test";
 import { DocumentProcessor } from "@/utils/documentProcessor";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTestStore, useLibraryStore, useTestSessionStore, useTestWorkflow } from "@/stores";
@@ -12,10 +12,13 @@ import { TestConfig } from "@/types";
 export default function Dashboard() {
   const { user } = useAuth();
   const [notes, setNotes] = useState("");
-  const [showPreview, setShowPreview] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [showCustomization, setShowCustomization] = useState(false);
   const [customTopic, setCustomTopic] = useState("");
+  
+  // Navigation state - replaces modal open/close states
+  const [currentView, setCurrentView] = useState<'dashboard' | 'preview' | 'test' | 'results'>('dashboard');
+  const [testTimeLimit, setTestTimeLimit] = useState<number | null>(null);
   
   // Test configuration state
   const [testConfig, setTestConfig] = useState<TestConfig>({
@@ -25,11 +28,6 @@ export default function Dashboard() {
     numberOfQuestions: 10,
     difficulty: 'medium'
   });
-
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [showTestModal, setShowTestModal] = useState(false);
-  const [showResultsModal, setShowResultsModal] = useState(false);
-  const [testTimeLimit, setTestTimeLimit] = useState<number | null>(null);
 
   const { updateConfig, generateQuestions, isGenerating, generatedQuestions } = useTestStore();
   const { saveTest } = useLibraryStore();
@@ -91,6 +89,12 @@ export default function Dashboard() {
     }
   }, [notes]);
 
+  // Navigation functions
+  const showPreview = () => setCurrentView('preview');
+  const showTest = () => setCurrentView('test');
+  const showResults = () => setCurrentView('results');
+  const backToDashboard = () => setCurrentView('dashboard');
+
   // Generate with defaults
   const handleGenerateWithDefaults = async () => {
     if (!notes.trim()) return;
@@ -105,7 +109,7 @@ export default function Dashboard() {
 
     updateConfig(defaultConfig);
     await generateQuestions(defaultConfig, notes);
-    setShowPreviewModal(true);
+    showPreview();
   };
 
   const handleStartTest = async (timeLimit: number | null) => {
@@ -117,8 +121,7 @@ export default function Dashboard() {
     
     startTest(testId, testTitle, generatedQuestions, timeLimit);
     setTestTimeLimit(timeLimit);
-    setShowPreviewModal(false);
-    setShowTestModal(true);
+    showTest();
   };
 
   // Generate with custom settings
@@ -127,7 +130,7 @@ export default function Dashboard() {
 
     updateConfig(testConfig);
     await generateQuestions(testConfig, notes);
-    setShowPreviewModal(true);
+    showPreview();
   };
 
   const handleSaveToLibrary = async () => {
@@ -145,7 +148,7 @@ export default function Dashboard() {
       };
 
       await saveTest(savedTest);
-      setShowPreviewModal(false);
+      backToDashboard();
       console.log("Test saved to library successfully");
     } catch (error) {
       console.error("Failed to save test:", error);
@@ -156,17 +159,10 @@ export default function Dashboard() {
     try {
       // Complete the test and save results
       await completeTest();
-      setShowTestModal(false);
-      setShowResultsModal(true);
+      showResults();
     } catch (error) {
       console.error("Failed to submit test:", error);
     }
-  };
-
-  const handleBackToDashboard = () => {
-    setShowTestModal(false);
-    setShowResultsModal(false);
-    setTestTimeLimit(null);
   };
 
   // Helper function for random gradients
@@ -343,36 +339,61 @@ export default function Dashboard() {
 
   const questionCounts = [5, 10, 15, 20, 25, 30];
 
-  if (showPreviewModal && generatedQuestions.length > 0) {
+  // Render overlays based on current view
+  if (currentView === 'preview') {
     return (
-      <>
-        {/* Main dashboard content */}
-        <div className="h-full md:h-auto flex flex-col">
-          {/* ... existing dashboard content ... */}
-        </div>
-        
-        {/* Test Preview Modal */}
-        <TestPreviewModal
-          open={showPreviewModal}
-          onOpenChange={setShowPreviewModal}
-          config={testConfig}
-          questions={generatedQuestions}
-          onStartTest={(timeLimit) => {
-            // TODO: Start test taking modal
-            console.log("Starting test with time limit:", timeLimit);
-          }}
-          onRegenerateAll={() => {
-            handleGenerateCustom();
-          }}
-          onSaveToLibrary={() => {
-            // TODO: Save to library
-            console.log("Saving to library");
-          }}
-        />
-      </>
+      <TestPreviewOverlay
+        config={testConfig}
+        questions={generatedQuestions}
+        notes={notes}
+        onStartTest={handleStartTest}
+        onRegenerateAll={handleGenerateCustom}
+        onSaveToLibrary={handleSaveToLibrary}
+        onBack={backToDashboard}
+      />
     );
   }
 
+  if (currentView === 'test' && generatedQuestions.length > 0) {
+    return (
+      <TestTakingOverlay
+        testTitle={testConfig.title || "Generated Test"}
+        questions={generatedQuestions}
+        timeLimit={testTimeLimit}
+        onSubmit={handleTestSubmit}
+        onBack={backToDashboard}
+      />
+    );
+  }
+
+  if (currentView === 'results') {
+    return (
+      <TestResultsOverlay
+        testTitle={testConfig.title || "Generated Test"}
+        testId={currentSession?.testId || ""}
+        questions={generatedQuestions}
+        userAnswers={currentSession?.userAnswers || {}}
+        correctAnswers={generatedQuestions.reduce((acc, q) => ({ ...acc, [q.id]: q.correctAnswer }), {})}
+        score={currentSession?.score || 0}
+        totalQuestions={generatedQuestions.length}
+        timeSpent={currentSession?.timeSpent}
+        notes={notes}
+        onRetake={() => handleStartTest(testTimeLimit)}
+        onRetakeWrong={() => {
+          const wrongQuestions = generatedQuestions.filter(q => 
+            currentSession?.userAnswers[q.id] !== q.correctAnswer
+          );
+          if (wrongQuestions.length > 0) {
+            // Handle wrong questions retry logic here
+          }
+        }}
+        onViewNotes={backToDashboard}
+        onBack={backToDashboard}
+      />
+    );
+  }
+
+  // Dashboard view (same as before)
   return (
     <div className="h-full md:h-auto flex flex-col">
       {/* MOBILE */}

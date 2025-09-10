@@ -191,75 +191,85 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-        <div className="flex flex-col gap-4">
-          <div>
-            <Button
-              onClick={onClose}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Return to Library</span>
-            </Button>
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-2xl sm:text-3xl font-bold text-studywise-gray-900">
-              {title}
-            </h1>
-            {/* Test Metadata */}
-            <div className="flex flex-wrap items-center gap-4 text-sm text-studywise-gray-600">
-              <div className="flex items-center gap-1">
-                <span className="font-medium">Questions:</span>
-                <span>10</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="font-medium">Type:</span>
-                <span>Multiple Choice</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="font-medium">Difficulty:</span>
-                <span className="capitalize">Medium</span>
-              </div>
+      <div className="mb-8">
+        {/* Back Button */}
+        <div className="mb-6">
+          <Button
+            onClick={onClose}
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Return to Library</span>
+          </Button>
+        </div>
+
+        {/* Test Metadata - Full Width Header */}
+        <div className="bg-slate-200 border border-primary rounded-xl p-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div>
+              <span className="font-medium text-slate-600">Questions:</span>
+              <div className="font-semibold text-slate-900">10</div>
+            </div>
+            <div>
+              <span className="font-medium text-slate-600">Type:</span>
+              <div className="font-semibold text-slate-900">Multiple Choice</div>
+            </div>
+            <div>
+              <span className="font-medium text-slate-600">Difficulty:</span>
+              <div className="font-semibold text-slate-900 capitalize">Medium</div>
+            </div>
+            <div>
+              <span className="font-medium text-slate-600">Topics:</span>
+              <div className="font-semibold text-slate-900">{subject}</div>
             </div>
           </div>
         </div>
-        <div className="flex gap-3 w-full sm:w-auto">
-          {/* {hasSavedSession(testId) && (
+
+        {/* Title and Action Buttons */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-studywise-gray-900">
+              {title}
+            </h1>
+          </div>
+          <div className="flex gap-3 w-full sm:w-auto">
+            {/* {hasSavedSession(testId) && (
+              <Button
+                onClick={handleResumeTest}
+                variant="outline"
+                className="border-blue-200 text-blue-600 hover:bg-blue-50 px-6 py-3 flex items-center gap-2 flex-1 sm:flex-none"
+              >
+                <Play className="w-4 h-4" />
+                Resume Test
+              </Button>
+            )} */}
             <Button
-              onClick={handleResumeTest}
+              onClick={handleStartExistingTest}
               variant="outline"
-              className="border-blue-200 text-blue-600 hover:bg-blue-50 px-6 py-3 flex items-center gap-2 flex-1 sm:flex-none"
+              size="lg"
+              disabled={hasBeenModifiedAndSaved}
+              className={`border-2 px-6 py-3 flex items-center gap-2 flex-1 sm:flex-none transition-colors ${hasBeenModifiedAndSaved
+                ? 'border-gray-300 text-gray-400 cursor-not-allowed bg-gray-50'
+                : 'border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                }`}
             >
               <Play className="w-4 h-4" />
-              Resume Test
+              Start Test
             </Button>
-          )} */}
-          <Button
-            onClick={handleStartExistingTest}
-            variant="outline"
-            size="lg"
-            disabled={hasBeenModifiedAndSaved}
-            className={`border-2 px-6 py-3 flex items-center gap-2 flex-1 sm:flex-none transition-colors ${hasBeenModifiedAndSaved
-              ? 'border-gray-300 text-gray-400 cursor-not-allowed bg-gray-50'
-              : 'border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50'
-              }`}
-          >
-            <Play className="w-4 h-4" />
-            Start Test
-          </Button>
-          <Button
-            onClick={handleCreateTest}
-            size="lg"
-            disabled={!hasBeenModifiedAndSaved && notes === initialNotes}
-            className={`px-8 py-3 flex-1 sm:flex-none transition-colors ${!hasBeenModifiedAndSaved && notes === initialNotes
-              ? 'bg-gray-400 hover:bg-gray-400 cursor-not-allowed text-gray-200'
-              : 'bg-slate-900 hover:bg-slate-800 text-white'
-              }`}
-          >
-            Update Questions
-          </Button>
+            <Button
+              onClick={handleCreateTest}
+              size="lg"
+              disabled={!hasBeenModifiedAndSaved && notes === initialNotes}
+              className={`px-8 py-3 flex-1 sm:flex-none transition-colors ${!hasBeenModifiedAndSaved && notes === initialNotes
+                ? 'bg-gray-400 hover:bg-gray-400 cursor-not-allowed text-gray-200'
+                : 'bg-slate-900 hover:bg-slate-800 text-white'
+                }`}
+            >
+              Update Questions
+            </Button>
+          </div>
         </div>
       </div>
       {/* Main Content */}
