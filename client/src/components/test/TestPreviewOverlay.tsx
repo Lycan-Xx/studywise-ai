@@ -66,26 +66,33 @@ export function TestPreviewOverlay({
     <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white border-b border-slate-200">
-        <div className="flex items-center gap-4 p-4 max-w-6xl mx-auto">
-          <button
+        <div className="flex items-center justify-between p-4 max-w-6xl mx-auto">
+          <Button
             onClick={onBack}
-            className="flex items-center gap-2 px-3 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+            variant="outline"
+            size="lg"
+            className="border-2 px-6 py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center gap-2"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4" />
             <span className="hidden sm:inline">Back to Dashboard</span>
-          </button>
-          
-          <div className="flex-1">
-            <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-              <FileText className="w-6 h-6 text-primary" />
-              Test Preview: {config.title}
-            </h1>
-          </div>
+          </Button>
+
+          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+            <FileText className="w-6 h-6 text-primary" />
+            Test Preview
+          </h1>
+
+          <div className="w-32"></div> {/* Spacer for centering */}
         </div>
       </div>
 
       {/* Content */}
       <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
+        {/* Note Title */}
+        <div className="text-center">
+          <h2 className="text-lg font-medium text-studywise-gray-900">{config.title}</h2>
+        </div>
+
         {/* Test Info */}
         <div className="bg-slate-200 border border-primary rounded-xl p-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -199,28 +206,20 @@ export function TestPreviewOverlay({
       {/* Sticky Footer with Action Buttons */}
       <div className="sticky bottom-0 bg-white border-t border-slate-200 p-4">
         <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col-reverse sm:flex-row gap-3">
-            <Button
-              onClick={onRegenerateAll}
-              variant="outline"
-              className="border-slate-300 text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-            >
-              <Edit3 className="w-4 h-4" />
-              Regenerate All
-            </Button>
-            
+          <div className="flex justify-end gap-3">
             <Button
               onClick={onSaveToLibrary}
               variant="outline"
-              className="border-green-300 text-green-700 hover:bg-green-50 flex items-center gap-2"
+              size="lg"
+              className="border-2 px-6 py-3 border-primary text-black hover:border-green-400 hover:bg-green-50 flex items-center gap-2"
             >
               <FileText className="w-4 h-4" />
               Save to Library
             </Button>
-            
             <Button
               onClick={handleStartTest}
-              className="bg-primary hover:bg-blue-600 text-white flex items-center gap-2"
+              size="lg"
+              className="px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white flex items-center gap-2"
             >
               <PlayCircle className="w-4 h-4" />
               {showTimeSelector ? 'Start Test Now' : 'Start Test'}
