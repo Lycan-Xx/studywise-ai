@@ -130,7 +130,7 @@ export function TestPreviewOverlay({
               className="border-2 px-6 py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center gap-2"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Back to Dashboard</span>
+              <span className="hidden sm:inline">Return</span>
             </Button>
 
             {/* Title centered */}

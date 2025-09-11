@@ -55,7 +55,8 @@ class AIService {
     const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 
     if (!apiKey) {
-      console.warn('GEMINI_API_KEY not found, AI service will use mock responses');
+      console.error('GEMINI_API_KEY not found! AI service requires API key for production use.');
+      console.error('Please set GEMINI_API_KEY or VITE_GEMINI_API_KEY environment variable.');
       this.genAI = null;
       this.proModel = null;
       this.flashModel = null;
