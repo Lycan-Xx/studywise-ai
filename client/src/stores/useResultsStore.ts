@@ -39,26 +39,32 @@ export const useResultsStore = create<ResultsStore>()(
         // Actions
         saveResult: async (resultData) => {
           set({ isLoading: true, error: null }, false, 'saveResult/start');
-          
+
           try {
             // Simulate API delay
             await new Promise(resolve => setTimeout(resolve, 300));
-            
+
             const newResult: TestResult = {
               ...resultData,
               id: Date.now().toString(),
               completedAt: new Date().toISOString()
             };
-            
-            set(state => ({ 
-              testResults: [...state.testResults, newResult],
-              currentResult: newResult,
-              isLoading: false 
-            }), false, 'saveResult/success');
+
+            console.log('Saving result to results store:', newResult.testTitle, newResult.score);
+
+            set(state => {
+              const newResults = [...state.testResults, newResult];
+              console.log('Updated results count:', newResults.length);
+              return {
+                testResults: newResults,
+                currentResult: newResult,
+                isLoading: false
+              };
+            }, false, 'saveResult/success');
           } catch (error) {
-            set({ 
+            set({
               error: error instanceof Error ? error.message : 'Failed to save result',
-              isLoading: false 
+              isLoading: false
             }, false, 'saveResult/error');
           }
         },
@@ -135,9 +141,22 @@ export const useResultsStore = create<ResultsStore>()(
         },
 
         get recentResults() {
-          return get().testResults
-            .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())
+          const results = get().testResults;
+          console.log('Getting recent results from', results.length, 'total results');
+
+          if (results.length === 0) return [];
+
+          const sorted = results
+            .sort((a, b) => {
+              const dateA = new Date(a.completedAt).getTime();
+              const dateB = new Date(b.completedAt).getTime();
+              console.log('Comparing dates:', a.completedAt, 'vs', b.completedAt, '->', dateB - dateA);
+              return dateB - dateA;
+            })
             .slice(0, 10);
+
+          console.log('Recent results count:', sorted.length);
+          return sorted;
         },
 
         getScoreHistory: (testId) => {

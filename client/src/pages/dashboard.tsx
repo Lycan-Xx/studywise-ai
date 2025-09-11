@@ -145,7 +145,9 @@ export default function Dashboard() {
   const handleTestSubmit = async (answers: Record<number, string>) => {
     try {
       // Complete the test and save results
+      console.log('Submitting test with answers:', Object.keys(answers).length);
       const result = await completeTest(answers);
+      console.log('Test result saved:', result);
       showResults();
     } catch (error) {
       console.error("Failed to submit test:", error);

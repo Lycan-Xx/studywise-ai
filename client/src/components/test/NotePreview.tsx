@@ -107,13 +107,17 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
   };
 
   const handleStartExistingTest = () => {
+    console.log('NotePreview: Starting existing test for testId:', testId);
     if (hasChanges) {
       // Auto-save before starting test
       onSave(testId, localNotes);
       setHasChanges(false);
     }
     if (onStartTest) {
+      console.log('NotePreview: Calling onStartTest with testId:', testId);
       onStartTest(testId);
+    } else {
+      console.log('NotePreview: onStartTest prop is not provided');
     }
   };
 

@@ -302,12 +302,15 @@ export function TestResultsOverlay({
         <div className="max-w-6xl mx-auto">
           <div className="flex justify-between">
             <Button
-              onClick={onBack}
+              onClick={() => {
+                // Always navigate to library page
+                window.location.href = '/library';
+              }}
               variant="outline"
               size="lg"
               className="border-2 px-6 py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50"
             >
-              Back to Dashboard
+              Return to Library
             </Button>
             <Button
               onClick={onRetake}
