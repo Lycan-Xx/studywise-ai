@@ -25,9 +25,24 @@ interface NotePreviewProps {
   onClose: () => void;
   onSave: (testId: string, notes: string) => void;
   onStartTest?: (testId: string) => void;
+  questionCount?: number;
+  questionType?: string;
+  difficulty?: string;
 }
 
-export function NotePreview({ testId, title, subject, initialNotes, highlightText, onClose, onSave, onStartTest }: NotePreviewProps) {
+export function NotePreview({ 
+  testId, 
+  title, 
+  subject, 
+  initialNotes, 
+  highlightText, 
+  onClose, 
+  onSave, 
+  onStartTest,
+  questionCount = 10,
+  questionType = 'Multiple Choice',
+  difficulty = 'medium'
+}: NotePreviewProps) {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const { notes: globalNotes, setNotes: setGlobalNotes } = useTestStore();
@@ -216,15 +231,15 @@ export function NotePreview({ testId, title, subject, initialNotes, highlightTex
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
               <span className="font-medium text-slate-600">Questions:</span>
-              <div className="font-semibold text-slate-900">10</div>
+              <div className="font-semibold text-slate-900">{questionCount}</div>
             </div>
             <div>
               <span className="font-medium text-slate-600">Type:</span>
-              <div className="font-semibold text-slate-900">Multiple Choice</div>
+              <div className="font-semibold text-slate-900">{questionType}</div>
             </div>
             <div>
               <span className="font-medium text-slate-600">Difficulty:</span>
-              <div className="font-semibold text-slate-900 capitalize">Medium</div>
+              <div className="font-semibold text-slate-900 capitalize">{difficulty}</div>
             </div>
             <div>
               <span className="font-medium text-slate-600">Topics:</span>
