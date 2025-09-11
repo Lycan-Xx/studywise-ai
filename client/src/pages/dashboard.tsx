@@ -120,7 +120,6 @@ export default function Dashboard() {
     try {
       const savedTest = {
         title: testConfig.title || "Generated Test",
-        subject: testConfig.topics || "General",
         questionCount: generatedQuestions.length,
         config: testConfig,
         questions: generatedQuestions,
@@ -146,11 +145,30 @@ export default function Dashboard() {
   const handleTestSubmit = async (answers: Record<number, string>) => {
     try {
       // Complete the test and save results
-      await completeTest();
+      const result = await completeTest(answers);
       showResults();
     } catch (error) {
       console.error("Failed to submit test:", error);
     }
+  };
+
+  // Calculate score and time spent for results display
+  const calculateScoreAndTime = () => {
+    if (!currentSession || !generatedQuestions.length) {
+      return { score: 0, timeSpent: undefined };
+    }
+
+    const correctCount = generatedQuestions.filter(
+      q => currentSession.userAnswers[q.id] === q.correctAnswer
+    ).length;
+
+    const score = Math.round((correctCount / generatedQuestions.length) * 100);
+
+    const timeSpent = currentSession.timeLimit && currentSession.timeRemaining
+      ? (currentSession.timeLimit * 60) - currentSession.timeRemaining
+      : undefined;
+
+    return { score, timeSpent };
   };
 
   // Helper function for random gradients
@@ -200,7 +218,7 @@ export default function Dashboard() {
       const documentContent = await DocumentProcessor.processFile(file);
       if (documentContent) {
         const separator = `\n\n--- Document Content (${fileName}) ---\n\n`;
-        setNotes(prev => prev.trim() ? `${prev}${separator}${documentContent}` : documentContent);
+        setNotes(notes.trim() ? `${notes}${separator}${documentContent}` : documentContent);
       }
     } catch (error) {
       console.error(error);
@@ -356,6 +374,7 @@ export default function Dashboard() {
   }
 
   if (currentView === 'results') {
+    const { score, timeSpent } = calculateScoreAndTime();
     return (
       <TestResultsOverlay
         testTitle={testConfig.title || "Generated Test"}
@@ -363,13 +382,13 @@ export default function Dashboard() {
         questions={generatedQuestions}
         userAnswers={currentSession?.userAnswers || {}}
         correctAnswers={generatedQuestions.reduce((acc, q) => ({ ...acc, [q.id]: q.correctAnswer }), {})}
-        score={currentSession?.score || 0}
+        score={score}
         totalQuestions={generatedQuestions.length}
-        timeSpent={currentSession?.timeSpent}
+        timeSpent={timeSpent}
         notes={notes}
         onRetake={() => handleStartTest(testTimeLimit)}
         onRetakeWrong={() => {
-          const wrongQuestions = generatedQuestions.filter(q => 
+          const wrongQuestions = generatedQuestions.filter(q =>
             currentSession?.userAnswers[q.id] !== q.correctAnswer
           );
           if (wrongQuestions.length > 0) {

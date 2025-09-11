@@ -23,7 +23,6 @@ export const useTestWorkflow = () => {
       // Create saved test object
       const savedTest: Omit<SavedTest, 'id' | 'createdDate'> = {
         title: title || `${config.topics || 'Study'} Test`,
-        subject: config.topics || "General",
         questionCount: config.numberOfQuestions,
         config,
         questions: testStore.generatedQuestions,
@@ -63,16 +62,19 @@ export const useTestWorkflow = () => {
   /**
    * Complete a test and save results
    */
-  const completeTest = useCallback(async () => {
+  const completeTest = useCallback(async (userAnswers?: Record<number, string>) => {
     const session = sessionStore.currentSession;
     if (!session) {
       throw new Error('No active test session');
     }
 
+    // Use provided answers or session answers
+    const answers = userAnswers || session.userAnswers;
+
     // Calculate score
     const totalQuestions = session.questions.length;
     const correctAnswers: Record<number, string> = {};
-    
+
     // Extract correct answers from questions
     session.questions.forEach(q => {
       if (q.correctAnswer) {
@@ -81,21 +83,21 @@ export const useTestWorkflow = () => {
     });
 
     const correctCount = session.questions.filter(
-      q => session.userAnswers[q.id] === q.correctAnswer
+      q => answers[q.id] === q.correctAnswer
     ).length;
 
-    const score = (correctCount / totalQuestions) * 100;
+    const score = Math.round((correctCount / totalQuestions) * 100);
 
     // Create result object
     const result: Omit<TestResult, 'id' | 'completedAt'> = {
       testId: session.testId,
       testTitle: session.testTitle,
-      userAnswers: session.userAnswers,
+      userAnswers: answers,
       correctAnswers,
-      score: Math.round(score),
+      score,
       totalQuestions,
-      timeSpent: session.timeLimit && session.timeRemaining 
-        ? (session.timeLimit * 60) - session.timeRemaining 
+      timeSpent: session.timeLimit && session.timeRemaining
+        ? (session.timeLimit * 60) - session.timeRemaining
         : undefined,
       questions: session.questions
     };
