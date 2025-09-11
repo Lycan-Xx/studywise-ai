@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useResultsStore } from "@/stores";
+import { useLocation } from "wouter";
 
 export default function Results() {
+  const [, setLocation] = useLocation();
   const { testResults, loadResults, recentResults, totalTestsTaken, averageScore, bestScore } = useResultsStore();
 
   useEffect(() => {
@@ -70,7 +72,7 @@ export default function Results() {
           <div className="text-center py-12">
             <p className="text-studywise-gray-600 mb-4">No test results yet. Take your first test to see results here!</p>
             <Button 
-              onClick={() => window.location.href = '/dashboard'}
+              onClick={() => setLocation('/dashboard')}
               size="lg"
               className="bg-primary hover:bg-primary/90"
             >

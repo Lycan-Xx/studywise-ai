@@ -53,6 +53,7 @@ export function TestResultsOverlay({
   onReturnToLibrary
 }: TestResultsOverlayProps) {
   const [selectedTab, setSelectedTab] = useState("summary");
+  const [, setLocation] = useLocation();
   const [notesModalOpen, setNotesModalOpen] = useState(false);
   const [sourceModalOpen, setSourceModalOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
@@ -307,13 +308,9 @@ export function TestResultsOverlay({
           <div className="flex justify-between">
             <Button
               onClick={() => {
-                // Use callback if provided, otherwise use client-side navigation
-                if (onReturnToLibrary) {
-                  onReturnToLibrary();
-                } else {
-                  // Fallback to client-side navigation
-                  navigate('/library');
-                }
+                // Use client-side navigation to avoid page refresh
+                setLocation('/library');
+                onBack();
               }}
               variant="outline"
               size="lg"
