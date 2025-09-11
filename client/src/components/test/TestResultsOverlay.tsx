@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Question } from "@/types";
 import { SourcePreviewModal } from "./SourcePreviewModal";
+import { useLocation } from "wouter";
 
 interface TestResultsOverlayProps {
   testTitle: string;
@@ -50,6 +51,7 @@ export function TestResultsOverlay({
   onBack
 }: TestResultsOverlayProps) {
   const [selectedTab, setSelectedTab] = useState("summary");
+  const [, setLocation] = useLocation();
   const [notesModalOpen, setNotesModalOpen] = useState(false);
   const [sourceModalOpen, setSourceModalOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
@@ -303,8 +305,9 @@ export function TestResultsOverlay({
           <div className="flex justify-between">
             <Button
               onClick={() => {
-                // Always navigate to library page
-                window.location.href = '/library';
+                // Use client-side navigation to avoid page refresh
+                setLocation('/library');
+                onBack();
               }}
               variant="outline"
               size="lg"
