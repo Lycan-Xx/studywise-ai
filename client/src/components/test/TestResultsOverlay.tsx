@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Question } from "@/types";
 import { SourcePreviewModal } from "./SourcePreviewModal";
+import { useLocation } from "wouter";
 
 interface TestResultsOverlayProps {
   testTitle: string;
@@ -33,6 +34,7 @@ interface TestResultsOverlayProps {
   onRetakeWrong: () => void;
   onViewNotes: () => void;
   onBack: () => void;
+  onReturnToLibrary?: () => void; // Optional callback for navigation
 }
 
 export function TestResultsOverlay({
@@ -47,12 +49,14 @@ export function TestResultsOverlay({
   onRetake,
   onRetakeWrong,
   onViewNotes,
-  onBack
+  onBack,
+  onReturnToLibrary
 }: TestResultsOverlayProps) {
   const [selectedTab, setSelectedTab] = useState("summary");
   const [notesModalOpen, setNotesModalOpen] = useState(false);
   const [sourceModalOpen, setSourceModalOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
+  const [, navigate] = useLocation();
 
   // Use the passed score prop instead of calculating it
   const percentage = score;
@@ -303,8 +307,13 @@ export function TestResultsOverlay({
           <div className="flex justify-between">
             <Button
               onClick={() => {
-                // Always navigate to library page
-                window.location.href = '/library';
+                // Use callback if provided, otherwise use client-side navigation
+                if (onReturnToLibrary) {
+                  onReturnToLibrary();
+                } else {
+                  // Fallback to client-side navigation
+                  navigate('/library');
+                }
               }}
               variant="outline"
               size="lg"
