@@ -101,7 +101,7 @@ export default function AuthRoot() {
         supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken
-        }).then(({ error }) => {
+        }).then(({ error }: { error: any }) => {
           if (error) {
             console.error('Error setting session from reset link:', error);
             setErrors({ general: 'Invalid or expired reset link. Please request a new one.' });

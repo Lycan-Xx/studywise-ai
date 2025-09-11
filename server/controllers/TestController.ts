@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { aiService } from '../services/AIService';
+import { nanoid } from 'nanoid';
 
 class TestController {
   static async generateQuestions(req: Request, res: Response) {
@@ -53,7 +54,7 @@ class TestController {
 
       // For now, return a simple structure. You can enhance this later
       const flashcards = [];
-      const concepts = content.split(/[.!?]+/).filter(s => s.trim().length > 20).slice(0, count);
+      const concepts = content.split(/[.!?]+/).filter((s: string) => s.trim().length > 20).slice(0, count);
 
       for (let i = 0; i < Math.min(count, concepts.length); i++) {
         flashcards.push({
