@@ -12,7 +12,7 @@ import Results from "@/pages/results";
 import Settings from "@/pages/settings";
 import PrivacyPolicy from "@/pages/privacy-policy";
 import TermsOfService from "@/pages/terms-of-service";
-import NotFound from "@/pages/not-found";;
+import NotFound from "@/pages/not-found";
 import AuthRoot from "@/auth/AuthRoot";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useEffect } from "react";
