@@ -24,6 +24,7 @@ import {
   Menu
 } from "lucide-react";
 import { Question } from "@/types";
+import { useTestSessionStore } from "@/stores";
 
 interface TestTakingOverlayProps {
   testTitle: string;
@@ -33,14 +34,15 @@ interface TestTakingOverlayProps {
   onBack: () => void;
 }
 
-export function TestTakingOverlay({ 
-  testTitle, 
-  questions, 
+export function TestTakingOverlay({
+  testTitle,
+  questions,
   timeLimit,
   onSubmit,
   onBack
 }: TestTakingOverlayProps) {
   // ALL HOOKS MUST BE CALLED FIRST - NEVER CONDITIONALLY
+  const { answerQuestion, currentSession } = useTestSessionStore();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<Record<number, string>>({});
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<number>>(new Set());
@@ -49,6 +51,13 @@ export function TestTakingOverlay({
   );
   const [showQuestionList, setShowQuestionList] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
+
+  // Initialize userAnswers from session if available
+  useEffect(() => {
+    if (currentSession?.userAnswers) {
+      setUserAnswers(currentSession.userAnswers);
+    }
+  }, [currentSession?.userAnswers]);
 
   // Timer effect - ALWAYS CALL THIS HOOK
   useEffect(() => {
@@ -116,6 +125,8 @@ export function TestTakingOverlay({
       ...prev,
       [currentQuestion.id]: answer
     }));
+    // Also update the session store
+    answerQuestion(currentQuestion.id, answer);
   };
 
   const handlePrevious = () => {
@@ -169,6 +180,13 @@ export function TestTakingOverlay({
       {/* Header */}
       <div className="bg-white border-b border-slate-200 p-3 sm:p-4 flex-shrink-0">
         <div className="max-w-6xl mx-auto">
+          {/* Page Title - Centered */}
+          <div className="text-center mb-3 sm:mb-4">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-900">Test in Progress</h1>
+            <p className="text-sm sm:text-base text-slate-600 mt-1">{testTitle}</p>
+          </div>
+
+          {/* Progress and Controls */}
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <div className="flex items-center gap-2 sm:gap-4">
               <Button
@@ -180,26 +198,23 @@ export function TestTakingOverlay({
                 <ChevronLeft className="w-4 h-4" />
                 <span className="text-xs sm:text-sm">Exit</span>
               </Button>
-              
-              <div className="min-w-0 flex-1">
-                <h1 className="text-sm sm:text-lg md:text-xl font-bold text-slate-900 truncate">{testTitle}</h1>
-                <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-slate-600 mt-1 flex-wrap">
-                  <span className="whitespace-nowrap">Q {safeCurrentQuestionIndex + 1}/{questions.length}</span>
-                  <span className="hidden sm:inline">•</span>
-                  <span className="whitespace-nowrap">{answeredCount} done</span>
-                  {timeRemaining && (
-                    <>
-                      <span className="hidden sm:inline">•</span>
-                      <div className={`flex items-center gap-1 whitespace-nowrap ${timeRemaining < 300 ? 'text-red-600 font-semibold' : ''}`}>
-                        <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
-                        <span className="text-xs sm:text-sm">{formatTime(timeRemaining)}</span>
-                      </div>
-                    </>
-                  )}
-                </div>
+
+              <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-slate-600">
+                <span className="whitespace-nowrap">Q {safeCurrentQuestionIndex + 1}/{questions.length}</span>
+                <span className="hidden sm:inline">•</span>
+                <span className="whitespace-nowrap">{answeredCount} done</span>
+                {timeRemaining && (
+                  <>
+                    <span className="hidden sm:inline">•</span>
+                    <div className={`flex items-center gap-1 whitespace-nowrap px-2 py-1 rounded-md ${timeRemaining < 300 ? 'bg-red-100 text-red-700 font-bold' : 'bg-blue-100 text-blue-700 font-semibold'}`}>
+                      <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <span className="text-sm sm:text-base font-mono">{formatTime(timeRemaining)}</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
-            
+
             <div className="flex items-center gap-1 sm:gap-2">
               <Button
                 onClick={() => setShowQuestionList(!showQuestionList)}
@@ -210,13 +225,13 @@ export function TestTakingOverlay({
                 <Menu className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Questions</span>
               </Button>
-              
+
               <Button
                 onClick={toggleFlag}
                 variant="outline"
                 size="sm"
                 className={`flex items-center gap-1 px-2 sm:px-3 py-2 text-xs sm:text-sm ${
-                  flaggedQuestions.has(currentQuestion.id) 
+                  flaggedQuestions.has(currentQuestion.id)
                     ? 'bg-yellow-50 border-yellow-300 text-yellow-700'
                     : ''
                 }`}
@@ -473,7 +488,7 @@ export function TestTakingOverlay({
           <DialogHeader>
             <DialogTitle>Exit Test</DialogTitle>
             <DialogDescription>
-              Are you sure you want to exit the test? Your progress will be saved, but you can continue later.
+              Are you sure you want to submit and exit the test? Your answers will be saved and you'll see your results.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex flex-col sm:flex-row gap-2">
@@ -487,11 +502,12 @@ export function TestTakingOverlay({
             <Button
               onClick={() => {
                 setShowExitModal(false);
-                onBack();
+                handleSubmit(); // Submit the test first
+                onBack(); // Then exit
               }}
               className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white"
             >
-              Exit Test
+              Submit and Exit
             </Button>
           </DialogFooter>
         </DialogContent>

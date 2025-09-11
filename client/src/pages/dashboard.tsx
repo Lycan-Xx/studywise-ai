@@ -152,6 +152,11 @@ export default function Dashboard() {
     }
   };
 
+  const handleTestExit = () => {
+    // When exiting test, go back to preview instead of dashboard
+    showPreview();
+  };
+
   // Calculate score and time spent for results display
   const calculateScoreAndTime = () => {
     if (!currentSession || !generatedQuestions.length) {
@@ -368,7 +373,7 @@ export default function Dashboard() {
         questions={generatedQuestions}
         timeLimit={testTimeLimit}
         onSubmit={handleTestSubmit}
-        onBack={backToDashboard}
+        onBack={handleTestExit}
       />
     );
   }
