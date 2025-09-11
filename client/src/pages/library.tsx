@@ -21,7 +21,7 @@ import { useLocation } from "wouter";
 import { TestConfig } from "@/types";
 
 export default function Library() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [selectedTest, setSelectedTest] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [testToDelete, setTestToDelete] = useState<string | null>(null);
@@ -317,6 +317,9 @@ export default function Library() {
         }}
         onSave={handleSaveNotes}
         onStartTest={handleStartTest}
+        questionCount={selectedTestData.questionCount}
+        questionType={selectedTestData.config?.questionType === 'mcq' ? 'Multiple Choice' : 'True/False'}
+        difficulty={selectedTestData.config?.difficulty || 'medium'}
       />
     );
   }
@@ -360,7 +363,7 @@ export default function Library() {
         <div className="text-center py-12">
           <p className="text-studywise-gray-600 mb-4">No study materials saved yet. Start by creating your first test!</p>
           <Button 
-            onClick={() => window.location.href = '/dashboard'}
+            onClick={() => setLocation('/dashboard')}
             size="lg"
             className="bg-primary hover:bg-primary/90"
           >
