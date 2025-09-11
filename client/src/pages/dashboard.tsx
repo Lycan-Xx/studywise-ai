@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Paperclip, Plus, X, BookOpen, Wand2, Settings } from "lucide-react";
+import { Paperclip, Plus, X, BookOpen, Wand2, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,8 +9,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTestStore, useLibraryStore, useTestSessionStore, useTestWorkflow } from "@/stores";
 import { TestConfig } from "@/types";
 import { useToast } from "@/hooks/use-toast";
+import TestCustomizationPanel from './mobileDashboard/TestCustomizationPanel';
+import { MobileBottomSheet } from './mobileDashboard/MobileBottomSheet';
 
 export default function Dashboard() {
+  const [showMobileCustomization, setShowMobileCustomization] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const [isDragOver, setIsDragOver] = useState(false);
@@ -37,6 +40,7 @@ export default function Dashboard() {
   const { completeTest } = useTestWorkflow();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const customizationRef = useRef<HTMLDivElement | null>(null);
 
   const maxLength = 50000;
 
@@ -415,67 +419,115 @@ export default function Dashboard() {
   // Dashboard view (same as before)
   return (
     <div className="h-full md:h-auto flex flex-col">
-      {/* MOBILE */}
-      <div className="md:hidden flex flex-col h-[100dvh] overflow-hidden">
-        <div className="flex-1 flex items-start justify-start pt-12 px-6 pb-32">
-          <h1 className="mx-auto text-[3.6rem] leading-tight font-light text-center">
-            Turn your notes into smart tests
-          </h1>
-        </div>
 
-        <div className="fixed left-4 right-4 bottom-6 z-50">
-          <div className={`bg-white rounded-full border flex items-center gap-3 px-4 py-3 ${isDragOver ? 'border-blue-400 bg-blue-50' : 'border-black'}`}>
-            <button onClick={handleFileUpload} className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center border border-gray-400">
-              <Paperclip className="w-6 h-6 text-gray-700" />
-            </button>
 
-            <div className="flex-1 relative">
-              <textarea
-                ref={textareaRef}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                onInput={adjustTextareaHeight}
-                onFocus={handleFocus}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                placeholder={isDragOver ? "Drop your file here..." : "Paste or upload your notes here to get started..."}
-                maxLength={maxLength}
-                className={`w-full min-h-[30px] max-h-[36vh] resize-none bg-white 
-                  placeholder:text-gray-400 text-base text-gray-900
-                  border-none 
-                  focus:outline-none 
-                  focus:ring-0 
-                  focus:border-transparent 
-                  outline-0 
-                  ring-0 
-                  text-center
-                  ${isDragOver ? 'bg-blue-50' : ''}`}
-                style={{ textAlign: "center", alignItems: "center", justifyContent: "center" }}
-              />
+{/* MOBILE */}
+<div className="md:hidden flex flex-col h-screen overflow-hidden">
+  <div className="flex-1 flex items-center justify-center pt-12 px-6 pb-24">
+    <h1 className="text-[3.6rem] leading-tight font-light text-center">
+      Turn your notes into smart tests
+    </h1>
+  </div>
 
-              {isDragOver && (
-                <div className="absolute inset-0 flex items-center justify-center bg-blue-100 bg-opacity-50 pointer-events-none rounded-full text-blue-600 text-center">
-                  Drop your file
-                </div>
-              )}
-            </div>
+  <div className="fixed left-2 right-2 bottom-6 z-50">
+    <div className={`bg-white rounded-full border flex items-center gap-3 px-2 py-3 ${isDragOver ? 'border-blue-400 bg-blue-50' : 'border-black'}`}>
+      <button onClick={handleFileUpload} className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center border border-gray-400">
+        <Paperclip className="w-6 h-6 text-gray-700" />
+      </button>
 
-            <button 
-              onClick={handleGenerateWithDefaults} 
-              disabled={!notes.trim() || isGenerating} 
-              className={`w-12 h-12 rounded-full border flex items-center justify-center ${notes.trim() && !isGenerating ? "bg-primary text-white border-transparent" : "bg-white text-gray-400 border-gray-200 cursor-not-allowed"}`}
-            >
-              {isGenerating ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <ArrowUp className="w-6 h-6" />
-              )}
-            </button>
+      <div className="flex-1 relative">
+        <textarea
+          ref={textareaRef}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          onInput={adjustTextareaHeight}
+          onFocus={handleFocus}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          placeholder={isDragOver ? "Drop your file here..." : "Paste or upload your notes here to get started..."}
+          maxLength={maxLength}
+          className={ `resize-none bg-white
+            placeholder:text-gray-400 text-base text-gray-900
+            border-none
+            focus:outline-none
+            focus:ring-0
+            focus:border-transparent
+            outline-0
+            ring-0
+            text-center
+            ${isDragOver ? 'bg-blue-50' : ''}`}
+          style={{ textAlign: "left", alignItems: "center", justifyContent: "center" }}
+        />
+
+        {isDragOver && (
+          <div className="absolute inset-0 flex items-center justify-center bg-blue-100 bg-opacity-50 pointer-events-none rounded-full text-blue-600 text-center">
+            Drop your file
           </div>
-          <input ref={fileInputRef} type="file" accept=".txt,.md,.doc,.docx,.pdf" onChange={handleFileChange} className="hidden" />
-        </div>
+        )}
       </div>
+
+      <button
+        onClick={handleGenerateWithDefaults}
+        disabled={!notes.trim() || isGenerating}
+        className={`w-12 h-12 rounded-full border flex items-center justify-center ${notes.trim() && !isGenerating ? "bg-primary text-white border-transparent" : "bg-white text-gray-400 border-gray-200 cursor-not-allowed"}`}
+      >
+        {isGenerating ? (
+          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <Wand2 className="w-6 h-6" />
+        )}
+      </button>
+    </div>
+
+    {/* Mobile Action Buttons */}
+    {notes.trim() && (
+      <div className="flex justify-end mt-4">
+        <Button
+          onClick={() => setShowMobileCustomization(true)}
+          variant="outline"
+          size="sm"
+          className="px-4 py-2 border border-gray-500 text-gray-700 hover:bg-gray-50 flex items-center gap-2 text-sm"
+        >
+          <Settings className="w-3 h-3" />
+          Customize
+        </Button>
+      </div>
+    )}
+
+    <input ref={fileInputRef} type="file" accept=".txt,.md,.doc,.docx,.pdf" onChange={handleFileChange} className="hidden" />
+  </div>
+
+  {/* Mobile Bottom Sheet - ADD THIS */}
+  <MobileBottomSheet 
+    isOpen={showMobileCustomization}
+    onClose={() => setShowMobileCustomization(false)}
+    title="Customize Your Test"
+  >
+    <TestCustomizationPanel
+      config={testConfig}
+      setConfig={(updater) => {
+        if (typeof updater === 'function') {
+          setTestConfig(updater);
+        } else {
+          setTestConfig(prev => ({ ...prev, ...updater }));
+        }
+      }}
+      customTopic={customTopic}
+      setCustomTopic={setCustomTopic}
+      addTopic={addTopic}
+      removeTopic={removeTopic}
+      topicsArray={topicsArray}
+      isGenerating={isGenerating}
+      onGenerate={() => {
+        handleGenerateCustom();
+        setShowMobileCustomization(false); // Close bottom sheet after generation
+      }}
+      compact={true} // Enable compact styling for mobile
+    />
+  </MobileBottomSheet>
+</div>
+
 
       {/* DESKTOP */}
       <div className="hidden md:flex flex-col">
@@ -546,6 +598,25 @@ export default function Dashboard() {
             {notes.trim() && (
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button
+                  onClick={() => {
+                    setShowCustomization(!showCustomization);
+                    // Smooth scroll to customization section after state update
+                    setTimeout(() => {
+                      customizationRef.current?.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                      });
+                    }, 100);
+                  }}
+                  variant="outline"
+                  size="lg"
+                  className="px-8 py-3 border-2 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center gap-2"
+                >
+                  <Settings className="w-4 h-4" />
+                  Customize
+                </Button>
+
+                <Button
                   onClick={handleGenerateWithDefaults}
                   disabled={isGenerating}
                   size="lg"
@@ -563,22 +634,12 @@ export default function Dashboard() {
                     </>
                   )}
                 </Button>
-
-                <Button
-                  onClick={() => setShowCustomization(!showCustomization)}
-                  variant="outline"
-                  size="lg"
-                  className="px-8 py-3 border-2 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center gap-2"
-                >
-                  <Settings className="w-4 h-4" />
-                  Customize
-                </Button>
               </div>
             )}
 
             {/* Customization Section */}
             {showCustomization && notes.trim() && (
-              <Card className="border-2 border-studywise-gray-300 shadow-lg">
+              <Card ref={customizationRef} className="border-2 border-studywise-gray-300 shadow-lg">
                 <CardContent className="p-6 space-y-6">
                   <div className="flex items-center gap-2 mb-4">
                     <BookOpen className="w-5 h-5 text-primary" />
