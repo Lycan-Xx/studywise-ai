@@ -90,23 +90,11 @@ export function TestResultsOverlay({
     <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white border-b border-slate-200">
-        <div className="flex items-center justify-between p-4 max-w-6xl mx-auto">
-          <Button
-            onClick={onBack}
-            variant="outline"
-            size="lg"
-            className="border-2 px-6 py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center gap-2"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Back to Dashboard</span>
-          </Button>
-
+        <div className="flex items-center justify-center p-4 max-w-6xl mx-auto">
           <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
             <Trophy className="w-6 h-6 text-primary" />
             Test Results
           </h1>
-
-          <div className="w-32"></div> {/* Spacer for centering */}
         </div>
       </div>
 
