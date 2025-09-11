@@ -261,6 +261,16 @@ export default function Library() {
           console.log("View notes clicked");
         }}
         onBack={handleResultsBack}
+        onReturnToLibrary={() => {
+          // Reset all test-related state and return to library main view
+          resetSession();
+          setStartingTest(null);
+          setShowTestPreview(false);
+          setShowTestResults(false);
+          setTestTimeLimit(null);
+          setSelectedTest(null);
+          setCompletedTestData(null);
+        }}
       />
     );
   }

@@ -404,6 +404,10 @@ export default function Dashboard() {
         }}
         onViewNotes={backToDashboard}
         onBack={backToDashboard}
+        onReturnToLibrary={() => {
+          // Navigate to library page instead of back to dashboard
+          window.location.href = '/library';
+        }}
       />
     );
   }
