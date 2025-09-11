@@ -3,56 +3,25 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useResultsStore } from "@/stores";
 
-const mockResults = [
-  {
-    id: "1",
-    score: 85,
-    timeTaken: "25 min",
-    subject: "History",
-    date: "2024-01-15",
-
-
-  },
-  {
-    id: "2",
-    score: 70,
-    timeTaken: "30 min",
-    subject: "Math",
-    date: "2024-01-10",
-
-  },
-  {
-    id: "3",
-    score: 90,
-    timeTaken: "20 min",
-    subject: "Science",
-    date: "2024-01-05",
-
-  },
-  {
-    id: "4",
-    score: 60,
-    timeTaken: "40 min",
-    subject: "English",
-    date: "2023-12-20",
-
-  },
-  {
-    id: "5",
-    score: 75,
-    timeTaken: "35 min",
-    subject: "Geography",
-    date: "2023-12-15",
-
-  }
-];
-
 export default function Results() {
   const { testResults, loadResults, recentResults, totalTestsTaken, averageScore, bestScore } = useResultsStore();
 
   useEffect(() => {
+    console.log('Results page mounted, loading results...');
     loadResults();
   }, [loadResults]);
+
+  // Force re-render when testResults change
+  useEffect(() => {
+    console.log('Results updated:', testResults.length, 'total results');
+    console.log('Recent results:', recentResults.length);
+    if (testResults.length > 0) {
+      console.log('First test result:', testResults[0].testTitle, testResults[0].score, testResults[0].completedAt);
+    }
+    if (recentResults.length > 0) {
+      console.log('First recent result:', recentResults[0].testTitle, recentResults[0].score);
+    }
+  }, [testResults, recentResults]);
 
   const handleViewDetails = (resultId: string) => {
     // TODO: Navigate to detailed results view

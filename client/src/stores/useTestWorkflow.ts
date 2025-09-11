@@ -71,6 +71,9 @@ export const useTestWorkflow = () => {
     // Use provided answers or session answers
     const answers = userAnswers || session.userAnswers;
 
+    console.log('completeTest called with answers:', Object.keys(answers).length);
+    console.log('Session questions:', session.questions.length);
+
     // Calculate score
     const totalQuestions = session.questions.length;
     const correctAnswers: Record<number, string> = {};
@@ -88,6 +91,8 @@ export const useTestWorkflow = () => {
 
     const score = Math.round((correctCount / totalQuestions) * 100);
 
+    console.log('Calculated score:', score, 'correct:', correctCount, 'total:', totalQuestions);
+
     // Create result object
     const result: Omit<TestResult, 'id' | 'completedAt'> = {
       testId: session.testId,
@@ -102,8 +107,10 @@ export const useTestWorkflow = () => {
       questions: session.questions
     };
 
+    console.log('Saving result to store...');
     // Save result
     await resultsStore.saveResult(result);
+    console.log('Result saved successfully');
 
     // Submit test in session store
     sessionStore.submitTest();
