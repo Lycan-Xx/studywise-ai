@@ -322,7 +322,7 @@ export default function Settings() {
         </CardContent>
       </Card>
 
-      {/* Notifications */}
+      {/* Notifications
       <Card className="shadow-sm border-studywise-gray-200 mb-6">
         <div className="px-6 py-4 border-b border-studywise-gray-200 flex items-center gap-2">
           <Bell className="w-5 h-5 text-studywise-gray-600" />
@@ -372,7 +372,7 @@ export default function Settings() {
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Privacy Settings */}
       <Card className="shadow-sm border-studywise-gray-200 mb-6">

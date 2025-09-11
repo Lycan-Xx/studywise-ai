@@ -422,14 +422,16 @@ export default function Dashboard() {
 
 
 {/* MOBILE */}
-<div className="md:hidden flex flex-col h-screen overflow-hidden">
-  <div className="flex-1 flex items-center justify-center pt-12 px-6 pb-24">
+<div className="md:hidden flex flex-col min-h-[calc(100vh-8rem)] overflow-hidden">
+  {/* Welcome text in center */}
+  <div className="flex-1 flex items-center justify-center px-6">
     <h1 className="text-[3.6rem] leading-tight font-light text-center">
       Turn your notes into smart tests
     </h1>
   </div>
 
-  <div className="fixed left-2 right-2 bottom-6 z-50">
+  {/* Fixed bottom textarea */}
+  <div className="fixed left-4 right-4 bottom-6 z-50">
     <div className={`bg-white rounded-full border flex items-center gap-3 px-2 py-3 ${isDragOver ? 'border-blue-400 bg-blue-50' : 'border-black'}`}>
       <button onClick={handleFileUpload} className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center border border-gray-400">
         <Paperclip className="w-6 h-6 text-gray-700" />
@@ -498,8 +500,8 @@ export default function Dashboard() {
     <input ref={fileInputRef} type="file" accept=".txt,.md,.doc,.docx,.pdf" onChange={handleFileChange} className="hidden" />
   </div>
 
-  {/* Mobile Bottom Sheet - ADD THIS */}
-  <MobileBottomSheet 
+  {/* Mobile Bottom Sheet */}
+  <MobileBottomSheet
     isOpen={showMobileCustomization}
     onClose={() => setShowMobileCustomization(false)}
     title="Customize Your Test"

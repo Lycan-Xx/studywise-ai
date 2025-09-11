@@ -34,24 +34,24 @@ export default function Results() {
     <div>
       {/* Summary Stats */}
       {testResults.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
           <Card className="border-studywise-gray-200">
-            <CardContent className="p-6 text-center">
-              <div className="text-3xl font-bold text-studywise-gray-900">{totalTestsTaken}</div>
+            <CardContent className="p-4 md:p-6 text-center">
+              <div className="text-2xl md:text-3xl font-bold text-studywise-gray-900">{totalTestsTaken}</div>
               <div className="text-sm text-studywise-gray-600">Tests Taken</div>
             </CardContent>
           </Card>
-          
+
           <Card className="border-studywise-gray-200">
-            <CardContent className="p-6 text-center">
-              <div className="text-3xl font-bold text-studywise-gray-900">{averageScore}%</div>
+            <CardContent className="p-4 md:p-6 text-center">
+              <div className="text-2xl md:text-3xl font-bold text-studywise-gray-900">{averageScore}%</div>
               <div className="text-sm text-studywise-gray-600">Average Score</div>
             </CardContent>
           </Card>
-          
+
           <Card className="border-studywise-gray-200">
-            <CardContent className="p-6 text-center">
-              <div className="text-3xl font-bold text-studywise-gray-900">{bestScore}%</div>
+            <CardContent className="p-4 md:p-6 text-center">
+              <div className="text-2xl md:text-3xl font-bold text-studywise-gray-900">{bestScore}%</div>
               <div className="text-sm text-studywise-gray-600">Best Score</div>
             </CardContent>
           </Card>

@@ -21,7 +21,9 @@ import {
   Circle,
   AlertTriangle,
   X,
-  Menu
+  Menu,
+  FileText,
+  ArrowLeft
 } from "lucide-react";
 import { Question } from "@/types";
 import { useTestSessionStore } from "@/stores";
@@ -180,75 +182,107 @@ export function TestTakingOverlay({
       {/* Header */}
       <div className="bg-white border-b border-slate-200 p-3 sm:p-4 flex-shrink-0">
         <div className="max-w-6xl mx-auto">
-          {/* Page Title - Centered */}
-          <div className="text-center mb-3 sm:mb-4">
-            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-900">Test in Progress</h1>
-            <p className="text-sm sm:text-base text-slate-600 mt-1">{testTitle}</p>
-          </div>
+          {/* Desktop Header Layout */}
+          <div className="hidden sm:flex items-center justify-between">
+            {/* Exit button - Left */}
+            <Button
+              onClick={() => setShowExitModal(true)}
+              variant="outline"
+              size="lg"
+              className="border-2 px-6 py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Exit</span>
+            </Button>
 
-          {/* Progress and Controls */}
-          <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <div className="flex items-center gap-2 sm:gap-4">
-              <Button
-                onClick={() => setShowExitModal(true)}
-                variant="outline"
-                size="sm"
-                className="border-2 px-3 py-2 sm:px-6 sm:py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center gap-1 sm:gap-2"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                <span className="text-xs sm:text-sm">Exit</span>
-              </Button>
-
-              <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-slate-600">
-                <span className="whitespace-nowrap">Q {safeCurrentQuestionIndex + 1}/{questions.length}</span>
-                <span className="hidden sm:inline">•</span>
-                <span className="whitespace-nowrap">{answeredCount} done</span>
-                {timeRemaining && (
-                  <>
-                    <span className="hidden sm:inline">•</span>
-                    <div className={`flex items-center gap-1 whitespace-nowrap px-2 py-1 rounded-md ${timeRemaining < 300 ? 'bg-red-100 text-red-700 font-bold' : 'bg-blue-100 text-blue-700 font-semibold'}`}>
-                      <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
-                      <span className="text-sm sm:text-base font-mono">{formatTime(timeRemaining)}</span>
-                    </div>
-                  </>
-                )}
-              </div>
+            {/* Page Title - Centered */}
+            <div className="text-center flex-1 mx-4">
+              <h1 className="text-xl sm:text-2xl font-bold flex items-center justify-center gap-2">
+                <FileText className="w-6 h-6 text-primary" />
+                Test in Progress
+              </h1>
+              <p className="text-sm sm:text-base text-slate-600">{testTitle}</p>
             </div>
 
-            <div className="flex items-center gap-1 sm:gap-2">
+            {/* Question and Flag buttons - Right */}
+            <div className="flex items-center gap-2">
               <Button
                 onClick={() => setShowQuestionList(!showQuestionList)}
                 variant="outline"
                 size="sm"
-                className="flex items-center gap-1 px-2 sm:px-3 py-2 text-xs sm:text-sm"
+                className="flex items-center gap-1 px-3 py-2 text-sm"
               >
-                <Menu className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Questions</span>
+                <Menu className="w-4 h-4" />
+                <span className="hidden lg:inline">Questions</span>
               </Button>
 
               <Button
                 onClick={toggleFlag}
                 variant="outline"
                 size="sm"
-                className={`flex items-center gap-1 px-2 sm:px-3 py-2 text-xs sm:text-sm ${
+                className={`flex items-center gap-1 px-3 py-2 text-sm ${
                   flaggedQuestions.has(currentQuestion.id)
                     ? 'bg-yellow-50 border-yellow-300 text-yellow-700'
                     : ''
                 }`}
               >
-                <Flag className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Flag</span>
+                <Flag className="w-4 h-4" />
+                <span className="hidden lg:inline">Flag</span>
               </Button>
             </div>
           </div>
 
-          <Progress value={progress} className="h-1.5 sm:h-2" />
+          {/* Mobile Header Layout - Compact */}
+          <div className="sm:hidden space-y-3">
+            {/* Title at top */}
+            <div className="text-center">
+              <h1 className="text-xl font-bold flex items-center justify-center gap-2">
+                <FileText className="w-6 h-6 text-primary" />
+                Test in Progress
+              </h1>
+              <p className="text-sm text-slate-600">{testTitle}</p>
+            </div>
+
+            {/* Exit button below */}
+            <div className="flex justify-start">
+              <Button
+                onClick={() => setShowExitModal(true)}
+                variant="outline"
+                size="lg"
+                className="border-2 px-6 py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Exit</span>
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
         {/* Main Test Area */}
+
+
         <div className="flex-1 flex flex-col">
+          {/* Progress Bar */}
+          <Progress value={progress} className="h-1.5 sm:h-2" />
+
+          {/* Question Info */}
+          <div className="flex items-center justify-center gap-2 sm:gap-4 text-xs sm:text-sm text-slate-600 py-4 sm:py-6">
+            <span className="whitespace-nowrap">Q {safeCurrentQuestionIndex + 1}/{questions.length}</span>
+            <span className="hidden sm:inline">•</span>
+            <span className="whitespace-nowrap">{answeredCount} done</span>
+            {timeRemaining && (
+              <>
+                <span className="hidden sm:inline">•</span>
+                <div className={`flex items-center gap-1 whitespace-nowrap px-2 py-1 rounded-md ${timeRemaining < 300 ? 'bg-red-100 text-red-700 font-bold' : 'bg-blue-100 text-blue-700 font-semibold'}`}>
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="text-sm sm:text-base font-mono">{formatTime(timeRemaining)}</span>
+                </div>
+              </>
+            )}
+          </div>
+
           {/* Question Content */}
           <div className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto">
             <div className="max-w-4xl mx-auto">
