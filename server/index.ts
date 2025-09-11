@@ -18,12 +18,8 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Add user middleware (mock for now)
-app.use((req, res, next) => {
-  // Mock user authentication
-  req.user = { id: 'user123' };
-  next();
-});
+// User authentication middleware will be handled by Supabase/Auth0
+// This will be replaced with proper authentication middleware
 
 // API routes
 app.use('/api', router);
