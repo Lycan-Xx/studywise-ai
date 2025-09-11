@@ -91,6 +91,7 @@ export function TestPreviewOverlay({
       toast({
         title: "Test saved to library",
         description: "Your test has been successfully saved and is now available in your library.",
+        duration: 4000,
       });
     } catch (error) {
       console.error("Failed to save test:", error);
@@ -280,8 +281,17 @@ export function TestPreviewOverlay({
               size="lg"
               className="px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white flex items-center gap-2"
             >
-              <PlayCircle className="w-4 h-4" />
-              {showTimeSelector ? 'Start Test Now' : 'Start Test'}
+              {showTimeSelector ? (
+                <>
+                  <PlayCircle className="w-4 h-4" />
+                  Begin Test
+                </>
+              ) : (
+                <>
+                  <Clock className="w-4 h-4" />
+                  Set Time Limit
+                </>
+              )}
             </Button>
           </div>
         </div>
