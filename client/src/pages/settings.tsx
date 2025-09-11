@@ -300,7 +300,7 @@ export default function Settings() {
         </CardContent>
       </Card>
 
-      {/* Account Settings */}
+      {/* Account Settings
       <Card className="shadow-sm border-studywise-gray-200 mb-6">
         <div className="px-6 py-4 border-b border-studywise-gray-200">
           <h2 className="text-lg font-semibold text-studywise-gray-900">Account & Security</h2>
@@ -320,7 +320,7 @@ export default function Settings() {
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Notifications
       <Card className="shadow-sm border-studywise-gray-200 mb-6">
