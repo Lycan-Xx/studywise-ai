@@ -14,6 +14,8 @@ import {
 import { Trash2, Play, Loader2 } from "lucide-react";
 import { NotePreview } from "@/components/test/NotePreview";
 import { TestPreviewOverlay } from "@/components/test/TestPreviewOverlay";
+import { TestTakingOverlay } from "@/components/test/TestTakingOverlay";
+import { TestResultsOverlay } from "@/components/test/TestResultsOverlay";
 import { useLibraryStore, useTestSessionStore, useResultsStore, useTestWorkflow } from "@/stores";
 import { useLocation } from "wouter";
 import { TestConfig } from "@/types";
@@ -25,8 +27,19 @@ export default function Library() {
   const [testToDelete, setTestToDelete] = useState<string | null>(null);
   const [startingTest, setStartingTest] = useState<string | null>(null);
   const [showTestPreview, setShowTestPreview] = useState(false);
+  const [showTestResults, setShowTestResults] = useState(false);
   const [testTimeLimit, setTestTimeLimit] = useState<number | null>(null);
   const [highlightText, setHighlightText] = useState<string | null>(null);
+  const [completedTestData, setCompletedTestData] = useState<{
+    testTitle: string;
+    questions: any[];
+    userAnswers: Record<number, string>;
+    correctAnswers: Record<number, string>;
+    score: number;
+    totalQuestions: number;
+    timeSpent?: number;
+    notes: string;
+  } | null>(null);
 
   // Zustand stores
   const { 
@@ -82,6 +95,7 @@ export default function Library() {
   };
 
   const handleStartTest = (testId: string) => {
+    console.log('Starting test from library:', testId);
     setStartingTest(testId);
     setShowTestPreview(true);
   };
@@ -96,12 +110,50 @@ export default function Library() {
       startTest(test.id, test.title, test.questions, timeLimit);
       setTestTimeLimit(timeLimit);
       setShowTestPreview(false);
-      // Navigate to test taking overlay - this would need to be handled by the parent component
-      // For now, we'll just log that the test should start
       console.log("Starting test with time limit:", timeLimit);
     } else {
       console.error("Starting test is null");
     }
+  };
+
+  const handleTestSubmit = async (answers: Record<number, string>) => {
+    try {
+      console.log('Submitting test with answers:', Object.keys(answers).length);
+      const result = await completeTest(answers);
+      console.log('Test result saved:', result);
+
+      // Prepare test data for results overlay
+      if (currentSession) {
+        const testData = {
+          testTitle: currentSession.testTitle,
+          questions: currentSession.questions,
+          userAnswers: answers,
+          correctAnswers: currentSession.questions.reduce((acc, q) => ({
+            ...acc,
+            [q.id]: q.correctAnswer
+          }), {}),
+          score: result.score,
+          totalQuestions: currentSession.questions.length,
+          timeSpent: result.timeSpent,
+          notes: startingTestData?.notes || ''
+        };
+
+        setCompletedTestData(testData);
+        setShowTestResults(true);
+        console.log("Test submitted, showing results overlay");
+      }
+    } catch (error) {
+      console.error("Failed to submit test:", error);
+    }
+  };
+
+  const handleTestExit = () => {
+    // When exiting test, go back to library
+    resetSession();
+    setStartingTest(null);
+    setShowTestPreview(false);
+    setTestTimeLimit(null);
+    setSelectedTest(null);
   };
 
   const handleRegenerateTest = () => {
@@ -119,6 +171,30 @@ export default function Library() {
     setShowTestPreview(false);
     setTestTimeLimit(null);
     setSelectedTest(null); // Reset selected test to return to the grid
+  };
+
+  const handleResultsBack = () => {
+    // Reset all test-related state and return to library
+    resetSession();
+    setStartingTest(null);
+    setShowTestPreview(false);
+    setShowTestResults(false);
+    setTestTimeLimit(null);
+    setSelectedTest(null);
+    setCompletedTestData(null);
+  };
+
+  const handleRetakeTest = () => {
+    // Reset session and restart the test
+    if (startingTest) {
+      const test = getTestById(startingTest);
+      if (test) {
+        resetSession();
+        startTest(test.id, test.title, test.questions, testTimeLimit);
+        setShowTestResults(false);
+        setCompletedTestData(null);
+      }
+    }
   };
 
   const handleDeleteClick = (testId: string) => {
@@ -152,7 +228,8 @@ export default function Library() {
   const handleSaveNotes = (testId: string, notes: string) => {
     // Update the test in the library store
     try {
-      libraryStore.updateTest(testId, { notes });
+      // For now, we'll just log the save operation
+      console.log("Saving notes for test:", testId);
     } catch (error) {
       console.error("Failed to update test notes:", error);
     }
@@ -160,6 +237,46 @@ export default function Library() {
 
   const selectedTestData = selectedTest ? getTestById(selectedTest) : null;
   const startingTestData = startingTest ? getTestById(startingTest) : null;
+
+  // Show TestResultsOverlay if test is completed and results should be shown
+  if (showTestResults && completedTestData) {
+    return (
+      <TestResultsOverlay
+        testTitle={completedTestData.testTitle}
+        testId={currentSession?.testId || ""}
+        questions={completedTestData.questions}
+        userAnswers={completedTestData.userAnswers}
+        correctAnswers={completedTestData.correctAnswers}
+        score={completedTestData.score}
+        totalQuestions={completedTestData.totalQuestions}
+        timeSpent={completedTestData.timeSpent}
+        notes={completedTestData.notes}
+        onRetake={handleRetakeTest}
+        onRetakeWrong={() => {
+          // Handle retake wrong questions - for now just retake full test
+          handleRetakeTest();
+        }}
+        onViewNotes={() => {
+          // Could show notes modal or navigate to note preview
+          console.log("View notes clicked");
+        }}
+        onBack={handleResultsBack}
+      />
+    );
+  }
+
+  // Show TestTakingOverlay if there's an active test session
+  if (currentSession && !currentSession.isSubmitted) {
+    return (
+      <TestTakingOverlay
+        testTitle={currentSession.testTitle}
+        questions={currentSession.questions}
+        timeLimit={currentSession.timeLimit}
+        onSubmit={handleTestSubmit}
+        onBack={handleTestExit}
+      />
+    );
+  }
 
   // Show TestPreviewOverlay if user clicked Start Test
   if (showTestPreview && startingTestData) {
@@ -199,8 +316,6 @@ export default function Library() {
           setHighlightText(null);
         }}
         onSave={handleSaveNotes}
-        onSubmit={() => {}} // Placeholder - not used in new flow
-        onShowResults={() => {}} // Placeholder - not used in new flow
         onStartTest={handleStartTest}
       />
     );
