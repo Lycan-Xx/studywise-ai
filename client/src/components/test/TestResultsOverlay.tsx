@@ -134,12 +134,17 @@ export function TestResultsOverlay({
                         <XCircle className="w-4 h-4 text-red-600" />
                         {wrongCount} Incorrect
                       </div>
-                      {timeSpent && (
+
+
+                      {/* {timeSpent && (
                         <div className="flex items-center gap-2">
                           <Clock className="w-4 h-4 text-blue-600" />
                           {formatTime(timeSpent)}
                         </div>
-                      )}
+                      )} */}
+
+
+                      
                     </div>
                   </div>
                 </div>
@@ -174,7 +179,7 @@ export function TestResultsOverlay({
                 </CardContent>
               </Card>
 
-            {timeSpent && (
+            {/* {timeSpent && (
               <Card className="border-slate-200">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
@@ -186,7 +191,7 @@ export function TestResultsOverlay({
                   </div>
                 </CardContent>
               </Card>
-            )}
+            )} */}
             </div>
           </TabsContent>
 

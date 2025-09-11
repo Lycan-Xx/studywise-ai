@@ -119,31 +119,64 @@ export function TestPreviewOverlay({
     <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white border-b border-slate-200">
-        <div className="flex items-center justify-between p-4 max-w-6xl mx-auto">
-          <Button
-            onClick={onBack}
-            variant="outline"
-            size="lg"
-            className="border-2 px-6 py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Back to Dashboard</span>
-          </Button>
+        <div className="p-4 max-w-6xl mx-auto">
+          {/* Desktop Header Layout */}
+          <div className="hidden sm:flex items-center justify-between">
+            {/* Exit button - Left */}
+            <Button
+              onClick={onBack}
+              variant="outline"
+              size="lg"
+              className="border-2 px-6 py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Back to Dashboard</span>
+            </Button>
 
-          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-            <FileText className="w-6 h-6 text-primary" />
-            Test Preview
-          </h1>
+            {/* Title centered */}
+            <div className="text-center flex-1 mx-4">
+              <h1 className="text-xl sm:text-2xl font-bold flex items-center justify-center gap-2">
+                <FileText className="w-6 h-6 text-primary" />
+                Test Preview
+              </h1>
+              <p className="text-sm sm:text-base text-slate-600">{config.title}</p>
+            </div>
 
-          <div className="w-32"></div> {/* Spacer for centering */}
+            {/* Spacer for centering */}
+            <div className="w-32"></div>
+          </div>
+
+          {/* Mobile Header Layout - Compact */}
+          <div className="sm:hidden space-y-3">
+            {/* Title at top */}
+            <div className="text-center">
+              <h1 className="text-xl font-bold flex items-center justify-center gap-2">
+                <FileText className="w-6 h-6 text-primary" />
+                Test Preview
+              </h1>
+              <p className="text-sm text-slate-600">{config.title}</p>
+            </div>
+
+            {/* Exit button below */}
+            <div className="flex justify-start">
+              <Button
+                onClick={onBack}
+                variant="outline"
+                size="lg"
+                className="border-2 px-6 py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Return</span>
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Content */}
       <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
-        {/* Note Title */}
-        <div className="text-center">
-          <h2 className="text-lg font-medium text-studywise-gray-900">{config.title}</h2>
+
+              <div className="text-center">
           {/* Cache indicator */}
           {isUsingCache && (
             <div className="mt-2 flex items-center justify-center gap-2">
@@ -201,6 +234,38 @@ export function TestPreviewOverlay({
             </div>
           </div>
         )}
+
+        {/* Test Progress and Info Above Questions */}
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-slate-600" />
+                <span className="font-medium text-slate-600">Questions:</span>
+                <span className="font-semibold text-slate-900">{questions.length}</span>
+              </div>
+              {selectedTimeLimit && (
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-slate-600" />
+                  <span className="font-medium text-slate-600">Time:</span>
+                  <span className="font-semibold text-slate-900">{selectedTimeLimit} min</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-slate-600">Preview:</span>
+                <span className="font-semibold text-slate-900">
+                  {Math.min(3, questions.length)}/{questions.length} shown
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="w-full bg-slate-200 rounded-full h-2">
+            <div
+              className="bg-primary h-2 rounded-full transition-all duration-300"
+              style={{ width: `${Math.min(3, questions.length) / questions.length * 100}%` }}
+            ></div>
+          </div>
+        </div>
 
         {/* Questions Preview */}
         <div>
