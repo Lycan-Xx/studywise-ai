@@ -3,11 +3,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
-import { 
-  Clock, 
-  ChevronLeft, 
-  ChevronRight, 
-  Flag, 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Clock,
+  ChevronLeft,
+  ChevronRight,
+  Flag,
   List,
   CheckCircle2,
   Circle,
@@ -40,6 +48,7 @@ export function TestTakingOverlay({
     timeLimit ? timeLimit * 60 : null
   );
   const [showQuestionList, setShowQuestionList] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
 
   // Timer effect - ALWAYS CALL THIS HOOK
   useEffect(() => {
@@ -163,7 +172,7 @@ export function TestTakingOverlay({
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <div className="flex items-center gap-2 sm:gap-4">
               <Button
-                onClick={onBack}
+                onClick={() => setShowExitModal(true)}
                 variant="outline"
                 size="sm"
                 className="border-2 px-3 py-2 sm:px-6 sm:py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center gap-1 sm:gap-2"
@@ -457,6 +466,36 @@ export function TestTakingOverlay({
           </>
         )}
       </div>
+
+      {/* Exit Confirmation Modal */}
+      <Dialog open={showExitModal} onOpenChange={setShowExitModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Exit Test</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to exit the test? Your progress will be saved, but you can continue later.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowExitModal(false)}
+              className="w-full sm:w-auto"
+            >
+              Cancel and Return
+            </Button>
+            <Button
+              onClick={() => {
+                setShowExitModal(false);
+                onBack();
+              }}
+              className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white"
+            >
+              Exit Test
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

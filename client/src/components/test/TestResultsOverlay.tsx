@@ -54,9 +54,10 @@ export function TestResultsOverlay({
   const [sourceModalOpen, setSourceModalOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
 
+  // Use the passed score prop instead of calculating it
+  const percentage = score;
   const correctCount = questions.filter(q => userAnswers[q.id] === q.correctAnswer).length;
   const wrongCount = totalQuestions - correctCount;
-  const percentage = Math.round((correctCount / totalQuestions) * 100);
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-green-600";
