@@ -1,0 +1,215 @@
+# AI Agent Prompt: Comprehensive Frontend & Server Refactoring for Enhanced Learning Platform
+
+## Context & Project Overview
+
+You are an expert full-stack developer tasked with refactoring a learning platform application to integrate with a significantly enhanced Supabase database schema. The application is a comprehensive learning management system that allows users to:
+
+- Create and take tests with multiple question types (multiple-choice, true-false, short-answer, essay)
+- Generate flashcards and use spaced repetition learning
+- Upload and manage study materials
+- Track learning progress and performance analytics
+- Organize content with categories and collections
+
+## Current Technology Stack
+
+**Frontend:**
+- React with TypeScript
+- Zustand for state management (stores in `client/src/stores/`)
+- Tailwind CSS for styling
+- React components in `client/src/components/`
+- Authentication handled via `client/src/contexts/AuthContext.tsx`
+- Supabase client configuration in `client/src/lib/supabase.ts`
+
+**Backend/Database:**
+- Supabase (PostgreSQL with Row Level Security)
+- Supabase Auth for user authentication
+- Supabase Storage for file uploads
+
+## Database Schema Enhancement Details
+
+The database has been upgraded from a basic schema to an enterprise-ready structure with the following new capabilities:
+
+### New Tables Added:
+1. **user_preferences** - User settings and preferences
+2. **categories** - Content categorization system
+3. **test_categories** - Many-to-many relationship for test categorization
+4. **flashcard_decks** - Organized flashcard collections
+5. **flashcard_reviews** - Spaced repetition tracking
+6. **user_activity** - User behavior analytics
+7. **learning_streaks** - Gamification and progress tracking
+8. **study_goals** - Goal setting and progress monitoring
+9. **collections** - Content organization system
+10. **collection_items** - Polymorphic content collections
+11. **notifications** - In-app notification system
+12. **shared_content** - Content sharing and collaboration
+
+### Enhanced Existing Tables:
+- **tests**: Added tags, metadata, versioning, soft deletes, search vectors
+- **study_materials**: Added tags, file metadata, soft deletes, search vectors
+- **profiles**: Added avatar_url, timezone, last_active_at
+- All tables now have comprehensive RLS policies and performance indexes
+
+### New Features Available:
+- Full-text search across tests and materials
+- Advanced analytics and progress tracking
+- Content organization with categories and collections
+- Spaced repetition flashcard system
+- User preferences and notifications
+- Learning streaks and gamification
+- Content sharing and collaboration
+- Comprehensive audit logging
+
+## Current Store Structure (Existing)
+
+The application currently uses Zustand stores including:
+- `useLibraryStore.ts` - Manages saved tests and library content
+- `useResultsStore.ts` - Handles test results and performance data
+- Additional stores for different app sections
+
+## Refactoring Requirements
+
+### 1. Database Integration Tasks
+
+**Update Existing Stores:**
+- Refactor `useLibraryStore.ts` to work with the new schema structure
+- Enhance `useResultsStore.ts` to leverage advanced analytics capabilities
+- Update all database queries to use the new table structure and relationships
+- Implement proper error handling and loading states
+- Add real-time subscriptions where appropriate
+
+**Create New Stores:**
+- `useCategoriesStore.ts` - Category management
+- `useCollectionsStore.ts` - Content collections
+- `useFlashcardStore.ts` - Enhanced flashcard system with decks and spaced repetition
+- `useUserPreferencesStore.ts` - User settings management
+- `useNotificationsStore.ts` - In-app notifications
+- `useAnalyticsStore.ts` - Learning analytics and progress tracking
+- `useSearchStore.ts` - Full-text search functionality
+
+### 2. Component Enhancement Tasks
+
+**Update Existing Components:**
+- Enhance dashboard components to display comprehensive analytics
+- Update library components to show categories and collections
+- Modify test components to handle new metadata and categorization
+- Update flashcard components for deck-based organization
+
+**Create New Components:**
+- Category management interface
+- Collection creation and management
+- Advanced search interface with filters
+- User preferences/settings page
+- Notifications center
+- Learning analytics dashboard
+- Progress tracking visualizations
+- Content sharing interface
+
+### 3. New Feature Implementation
+
+**Search System:**
+- Implement full-text search across tests and materials
+- Add advanced filtering and sorting options
+- Create search results interface with highlighting
+
+**Analytics Dashboard:**
+- Create comprehensive learning analytics
+- Implement progress visualization charts
+- Add streak tracking and goal progress displays
+
+**Content Organization:**
+- Category creation and assignment interface
+- Collection builder with drag-and-drop
+- Content tagging system
+
+**Spaced Repetition System:**
+- Enhanced flashcard review interface
+- Deck management system
+- Review scheduling and progress tracking
+
+**User Experience:**
+- Preferences management interface
+- Notification system with real-time updates
+- Content sharing and collaboration features
+
+### 4. Backend/API Integration
+
+**Supabase Integration:**
+- Update all database queries to use new schema
+- Implement proper RLS policy compliance
+- Add real-time subscriptions for collaborative features
+- Optimize queries for performance with new indexes
+
+**File Management:**
+- Integrate Supabase Storage for study materials
+- Handle file upload progress and metadata
+- Implement file sharing and access control
+
+**Authentication Flow:**
+- Ensure user profile creation with new fields
+- Handle user preferences initialization
+- Implement proper session management
+
+## Technical Implementation Guidelines
+
+### Code Quality Standards:
+- Use TypeScript throughout with proper typing
+- Implement comprehensive error handling
+- Add loading states for all async operations
+- Follow React best practices (hooks, memoization, etc.)
+- Maintain clean, readable code with proper documentation
+
+### Performance Considerations:
+- Implement pagination for large datasets
+- Use React Query or similar for server state management
+- Implement proper caching strategies
+- Optimize database queries with proper indexes
+
+### Security Requirements:
+- Ensure all database access respects RLS policies
+- Implement proper input validation
+- Handle sensitive data appropriately
+- Follow authentication best practices
+
+### User Experience:
+- Maintain responsive design across all screen sizes
+- Implement intuitive navigation and organization
+- Add proper loading states and error messages
+- Ensure accessibility compliance
+
+## Specific Deliverables Expected
+
+1. **Refactored Zustand Stores** - All existing stores updated + new stores created
+2. **Enhanced React Components** - Updated UI components with new functionality
+3. **Database Query Updates** - All queries optimized for new schema
+4. **New Feature Components** - Search, analytics, categories, collections, etc.
+5. **Type Definitions** - Comprehensive TypeScript interfaces for new data structures
+6. **API Integration** - Proper Supabase integration with real-time features
+7. **Error Handling** - Comprehensive error boundaries and user feedback
+8. **Performance Optimization** - Efficient data fetching and caching strategies
+
+## Migration Strategy
+
+1. **Phase 1**: Update core stores and basic CRUD operations
+2. **Phase 2**: Implement new organizational features (categories, collections)
+3. **Phase 3**: Add advanced features (search, analytics, spaced repetition)
+4. **Phase 4**: Implement collaboration and sharing features
+5. **Phase 5**: Polish UX and add real-time features
+
+## Success Criteria
+
+- All existing functionality works with new schema
+- New features are fully functional and intuitive
+- Application performance is maintained or improved
+- Code is well-documented and maintainable
+- User experience is enhanced with new capabilities
+- Database integration is secure and efficient
+
+## Notes
+
+- Maintain backward compatibility where possible
+- Prioritize user experience and performance
+- Ensure all new features are accessible and responsive
+- Follow the existing project structure and naming conventions
+- Implement proper testing for critical functionality
+
+Focus on creating a cohesive, professional learning platform that leverages all the new database capabilities while maintaining the existing user experience and improving upon it significantly.

@@ -1,0 +1,495 @@
+Based on the provided project structure and files, I'll explain in detail how to set up a store and storage services for each user in Supabase. This will ensure that each user's saved notes, test results, and other data are securely stored per user, leveraging Supabase's authentication and database features. I'll break this down step-by-step, referencing your existing codebase where relevant.
+
+## Prerequisites
+- You have a Supabase project set up (as indicated by `client/src/lib/supabase.ts`).
+- Users are authenticated via Supabase Auth (handled in `client/src/contexts/AuthContext.tsx`).
+- Your app uses Zustand for state management (stores in `client/src/stores/`).
+
+## Step 1: Define the Database Schema in Supabase
+First, you need to create tables in Supabase to store user-specific data. Based on your app's functionality (notes, tests, results), here's a recommended schema. You can run this SQL in your Supabase SQL Editor or use the `database_schema.sql` file you have.
+
+### Key Tables
+1. **profiles** (extends Supabase's auth.users)
+2. **notes** (user's study notes)
+3. **tests** (generated tests)
+4. **test_results** (user's test performance)
+5. **user_settings** (optional: user preferences)
+
+```sql
+-- Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Profiles table (extends auth.users)
+CREATE TABLE profiles (
+  id UUID REFERENCES auth.users(id) PRIMARY KEY,
+  full_name TEXT,
+  username TEXT UNIQUE,
+  avatar_url TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Notes table
+CREATE TABLE notes (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  subject TEXT,
+  tags TEXT[],
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Tests table
+CREATE TABLE tests (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  title TEXT NOT NULL,
+  config JSONB NOT NULL, -- Store test configuration (difficulty, question types, etc.)
+  questions JSONB NOT NULL, -- Store generated questions
+  notes_id UUID REFERENCES notes(id) ON DELETE SET NULL, -- Link to source notes
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Test Results table
+CREATE TABLE test_results (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  test_id UUID REFERENCES tests(id) ON DELETE CASCADE NOT NULL,
+  score INTEGER NOT NULL,
+  total_questions INTEGER NOT NULL,
+  user_answers JSONB NOT NULL,
+  correct_answers JSONB NOT NULL,
+  time_spent INTEGER, -- in seconds
+  completed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- User Settings table (optional)
+CREATE TABLE user_settings (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  preferences JSONB DEFAULT '{}',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for performance
+CREATE INDEX idx_notes_user_id ON notes(user_id);
+CREATE INDEX idx_tests_user_id ON tests(user_id);
+CREATE INDEX idx_test_results_user_id ON test_results(user_id);
+CREATE INDEX idx_test_results_test_id ON test_results(test_id);
+```
+
+## Step 2: Enable Row Level Security (RLS)
+RLS ensures users can only access their own data. Enable it for each table:
+
+```sql
+-- Enable RLS on all tables
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE test_results ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for profiles
+CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
+
+-- Create policies for notes
+CREATE POLICY "Users can view own notes" ON notes FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own notes" ON notes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own notes" ON notes FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own notes" ON notes FOR DELETE USING (auth.uid() = user_id);
+
+-- Create policies for tests
+CREATE POLICY "Users can view own tests" ON tests FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own tests" ON tests FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own tests" ON tests FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own tests" ON tests FOR DELETE USING (auth.uid() = user_id);
+
+-- Create policies for test_results
+CREATE POLICY "Users can view own test results" ON test_results FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own test results" ON test_results FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Create policies for user_settings
+CREATE POLICY "Users can view own settings" ON user_settings FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own settings" ON user_settings FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own settings" ON user_settings FOR UPDATE USING (auth.uid() = user_id);
+```
+
+## Step 3: Update Client-Side Stores to Use Supabase
+Your existing Zustand stores (e.g., `useLibraryStore.ts`, `useResultsStore.ts`) need to be updated to interact with Supabase instead of local storage or in-memory state. Here's how to modify them:
+
+### Example: Updating `useLibraryStore.ts`
+Assuming your current `useLibraryStore.ts` looks something like this (based on typical patterns), here's how to integrate Supabase:
+
+```typescript
+// client/src/stores/useLibraryStore.ts
+import { create } from 'zustand';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
+
+interface SavedTest {
+  id: string;
+  title: string;
+  subject: string;
+  questionCount: number;
+  config: any;
+  questions: any[];
+  notes: string;
+  createdDate: string;
+}
+
+interface LibraryState {
+  savedTests: SavedTest[];
+  isLoading: boolean;
+  error: string | null;
+  loadTests: () => Promise<void>;
+  saveTest: (test: Omit<SavedTest, 'id' | 'createdDate'>) => Promise<void>;
+  deleteTest: (testId: string) => Promise<void>;
+  getTestById: (testId: string) => SavedTest | undefined;
+}
+
+export const useLibraryStore = create<LibraryState>((set, get) => ({
+  savedTests: [],
+  isLoading: false,
+  error: null,
+
+  loadTests: async () => {
+    const { user } = useAuth.getState();
+    if (!user) return;
+
+    set({ isLoading: true, error: null });
+    try {
+      const { data, error } = await supabase
+        .from('tests')
+        .select(`
+          id,
+          title,
+          config,
+          questions,
+          created_at,
+          notes:notes(title, content, subject)
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedTests: SavedTest[] = data.map(test => ({
+        id: test.id,
+        title: test.title,
+        subject: test.notes?.subject || 'General',
+        questionCount: test.questions?.length || 0,
+        config: test.config,
+        questions: test.questions || [],
+        notes: test.notes?.content || '',
+        createdDate: new Date(test.created_at).toLocaleDateString()
+      }));
+
+      set({ savedTests: formattedTests, isLoading: false });
+    } catch (error) {
+      console.error('Error loading tests:', error);
+      set({ error: 'Failed to load tests', isLoading: false });
+    }
+  },
+
+  saveTest: async (test) => {
+    const { user } = useAuth.getState();
+    if (!user) throw new Error('User not authenticated');
+
+    try {
+      // First, save the notes if they don't exist
+      let notesId = null;
+      if (test.notes) {
+        const { data: notesData, error: notesError } = await supabase
+          .from('notes')
+          .insert({
+            user_id: user.id,
+            title: test.title,
+            content: test.notes,
+            subject: test.subject
+          })
+          .select('id')
+          .single();
+
+        if (notesError) throw notesError;
+        notesId = notesData.id;
+      }
+
+      // Then save the test
+      const { data, error } = await supabase
+        .from('tests')
+        .insert({
+          user_id: user.id,
+          title: test.title,
+          config: test.config,
+          questions: test.questions,
+          notes_id: notesId
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Reload tests to update the store
+      get().loadTests();
+    } catch (error) {
+      console.error('Error saving test:', error);
+      throw error;
+    }
+  },
+
+  deleteTest: async (testId) => {
+    const { user } = useAuth.getState();
+    if (!user) throw new Error('User not authenticated');
+
+    try {
+      const { error } = await supabase
+        .from('tests')
+        .delete()
+        .eq('id', testId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      // Update local state
+      set(state => ({
+        savedTests: state.savedTests.filter(test => test.id !== testId)
+      }));
+    } catch (error) {
+      console.error('Error deleting test:', error);
+      throw error;
+    }
+  },
+
+  getTestById: (testId) => {
+    return get().savedTests.find(test => test.id === testId);
+  }
+}));
+```
+
+### Example: Updating `useResultsStore.ts`
+```typescript
+// client/src/stores/useResultsStore.ts
+import { create } from 'zustand';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
+
+interface TestResult {
+  id: string;
+  testTitle: string;
+  score: number;
+  totalQuestions: number;
+  timeSpent?: number;
+  completedAt: string;
+}
+
+interface ResultsState {
+  testResults: TestResult[];
+  recentResults: TestResult[];
+  isLoading: boolean;
+  error: string | null;
+  loadResults: () => Promise<void>;
+  saveResult: (result: Omit<TestResult, 'id' | 'completedAt'>) => Promise<void>;
+  totalTestsTaken: number;
+  averageScore: number;
+  bestScore: number;
+}
+
+export const useResultsStore = create<ResultsState>((set, get) => ({
+  testResults: [],
+  recentResults: [],
+  isLoading: false,
+  error: null,
+  totalTestsTaken: 0,
+  averageScore: 0,
+  bestScore: 0,
+
+  loadResults: async () => {
+    const { user } = useAuth.getState();
+    if (!user) return;
+
+    set({ isLoading: true, error: null });
+    try {
+      const { data, error } = await supabase
+        .from('test_results')
+        .select(`
+          id,
+          score,
+          total_questions,
+          time_spent,
+          completed_at,
+          tests(title)
+        `)
+        .eq('user_id', user.id)
+        .order('completed_at', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedResults: TestResult[] = data.map(result => ({
+        id: result.id,
+        testTitle: result.tests?.title || 'Unknown Test',
+        score: result.score,
+        totalQuestions: result.total_questions,
+        timeSpent: result.time_spent,
+        completedAt: result.completed_at
+      }));
+
+      const totalTests = formattedResults.length;
+      const averageScore = totalTests > 0 
+        ? Math.round(formattedResults.reduce((sum, r) => sum + r.score, 0) / totalTests)
+        : 0;
+      const bestScore = totalTests > 0 
+        ? Math.max(...formattedResults.map(r => r.score))
+        : 0;
+
+      set({
+        testResults: formattedResults,
+        recentResults: formattedResults.slice(0, 10),
+        totalTestsTaken: totalTests,
+        averageScore,
+        bestScore,
+        isLoading: false
+      });
+    } catch (error) {
+      console.error('Error loading results:', error);
+      set({ error: 'Failed to load results', isLoading: false });
+    }
+  },
+
+  saveResult: async (result) => {
+    const { user } = useAuth.getState();
+    if (!user) throw new Error('User not authenticated');
+
+    try {
+      const { error } = await supabase
+        .from('test_results')
+        .insert({
+          user_id: user.id,
+          test_id: result.testId, // You'll need to pass testId
+          score: result.score,
+          total_questions: result.totalQuestions,
+          user_answers: result.userAnswers,
+          correct_answers: result.correctAnswers,
+          time_spent: result.timeSpent
+        });
+
+      if (error) throw error;
+
+      // Reload results to update the store
+      get().loadResults();
+    } catch (error) {
+      console.error('Error saving result:', error);
+      throw error;
+    }
+  }
+}));
+```
+
+## Step 4: Update Authentication Flow
+Ensure your `AuthContext.tsx` creates a profile entry when a user signs up:
+
+```typescript
+// In AuthContext.tsx, update the signUp function
+const signUp = async (email: string, password: string, metadata?: any) => {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: metadata
+    }
+  });
+
+  // Create profile entry if signup successful
+  if (data.user && !error) {
+    await supabase.from('profiles').insert({
+      id: data.user.id,
+      full_name: metadata?.full_name || '',
+      username: metadata?.username || email.split('@')[0]
+    });
+  }
+
+  return { data, error };
+};
+```
+
+## Step 5: Handle Data Migration (If Needed)
+If you have existing local data, create a migration script:
+
+```typescript
+// Migration script example
+const migrateLocalData = async () => {
+  const { user } = useAuth.getState();
+  if (!user) return;
+
+  // Get local data from localStorage or existing stores
+  const localTests = JSON.parse(localStorage.getItem('savedTests') || '[]');
+  
+  for (const test of localTests) {
+    try {
+      // Save to Supabase
+      await supabase.from('tests').insert({
+        user_id: user.id,
+        title: test.title,
+        config: test.config,
+        questions: test.questions,
+        // ... other fields
+      });
+    } catch (error) {
+      console.error('Migration error:', error);
+    }
+  }
+  
+  // Clear local data after successful migration
+  localStorage.removeItem('savedTests');
+};
+```
+
+## Step 6: Update Components to Use New Stores
+Your components (e.g., `dashboard.tsx`, `library.tsx`) should already work with the updated stores, but ensure they call the appropriate load functions on mount:
+
+```typescript
+// In components that use the stores
+useEffect(() => {
+  // Load data when component mounts and user is available
+  if (user) {
+    loadTests();
+    loadResults();
+  }
+}, [user, loadTests, loadResults]);
+```
+
+## Step 7: Error Handling and Offline Support
+Add error handling and consider offline scenarios:
+
+```typescript
+// In your stores, add error states and retry mechanisms
+const handleSupabaseError = (error: any) => {
+  if (error.code === 'PGRST116') {
+    // No rows returned - handle gracefully
+    return [];
+  }
+  throw error;
+};
+
+// For offline support, consider using local storage as fallback
+const saveToLocalStorage = (key: string, data: any) => {
+  localStorage.setItem(key, JSON.stringify(data));
+};
+
+const loadFromLocalStorage = (key: string) => {
+  const data = localStorage.getItem(key);
+  return data ? JSON.parse(data) : null;
+};
+```
+
+## Step 8: Testing and Security
+1. **Test RLS Policies**: Ensure users can't access other users' data.
+2. **Test Authentication Flow**: Verify profile creation and data isolation.
+3. **Performance**: Add pagination for large datasets.
+4. **Backup**: Set up Supabase backups for user data.
+
+This setup provides a robust, scalable solution for user-specific data storage in Supabase, ensuring security, performance, and a seamless user experience. Your existing components should integrate smoothly with these changes.
