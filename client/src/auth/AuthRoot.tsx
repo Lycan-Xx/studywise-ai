@@ -15,7 +15,7 @@ export default function AuthRoot() {
     learningGoal: ""
   });
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<{general?: string; learningGoal?: string}>({});
 
   const { signInWithGoogle, user } = useAuth();
   const [, setLocation] = useLocation();
@@ -78,7 +78,7 @@ export default function AuthRoot() {
 
   // Animation variants
   const cardVariants = {
-    initial: (direction) => ({
+    initial: (direction: number) => ({
       x: direction > 0 ? 300 : -300,
       opacity: 0,
       scale: 0.95
@@ -94,7 +94,7 @@ export default function AuthRoot() {
         duration: 0.5
       }
     },
-    exit: (direction) => ({
+    exit: (direction: number) => ({
       x: direction > 0 ? -300 : 300,
       opacity: 0,
       scale: 0.95,
