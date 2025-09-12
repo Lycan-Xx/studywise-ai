@@ -40,253 +40,229 @@ interface AIResponse {
   };
 }
 
-interface RateLimitState {
+interface AIProvider {
+  name: string;
+  available: boolean;
   requestCount: number;
-  windowStart: number;
-  lastRequestTime: number;
+  lastReset: number;
+  maxRequests: number;
+  resetInterval: number;
+  priority: number;
 }
 
-class AIService {
-  private genAI: GoogleGenerativeAI | null;
-  private flashModel: any;
-  private proModel: any;
-  private cache = new Map<
-    string,
-    { data: AIResponse; timestamp: number; expiresAt: number }
-  >();
-
-  // Rate limiting state
-  private rateLimitState: RateLimitState = {
-    requestCount: 0,
-    windowStart: Date.now(),
-    lastRequestTime: 0,
-  };
-
-  // Rate limiting configuration
-  private readonly REQUESTS_PER_MINUTE = 10; // Conservative limit
-  private readonly REQUESTS_PER_HOUR = 100;
-  private readonly MIN_REQUEST_INTERVAL = 2000; // 2 seconds between requests
-  private readonly RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+class MultiProviderAIService {
+  private providers: Map<string, AIProvider> = new Map();
+  private geminiAI: GoogleGenerativeAI | null = null;
+  private cache = new Map<string, { data: AIResponse; timestamp: number; expiresAt: number }>();
 
   constructor() {
-    const apiKey =
-      process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-
-    if (!apiKey) {
-      console.error(
-        "GEMINI_API_KEY not found! AI service requires API key for production use.",
-      );
-      console.error(
-        "Please set GEMINI_API_KEY or VITE_GEMINI_API_KEY environment variable.",
-      );
-      this.genAI = null;
-      this.flashModel = null;
-      this.proModel = null;
-      return;
-    }
-
-    console.log("✅ Gemini API key found, initializing AI service");
-
-    this.genAI = new GoogleGenerativeAI(apiKey);
-    this.flashModel = this.genAI.getGenerativeModel({
-      model: process.env.VITE_GEMINI_FLASH_MODEL || "gemini-1.5-flash",
-    });
-    this.proModel = this.genAI.getGenerativeModel({
-      model: process.env.VITE_GEMINI_MODEL || "gemini-1.5-pro",
-    });
-
-    // Cleanup cache every hour
+    this.initializeProviders();
     setInterval(() => this.cleanupCache(), 60 * 60 * 1000);
+    setInterval(() => this.resetProviderLimits(), 60 * 1000); // Reset every minute
   }
 
-  async generateQuestions(
-    options: GenerateQuestionsOptions,
-  ): Promise<AIResponse> {
-    if (!this.genAI) {
-      throw new Error("AI service not initialized - missing API key");
+  private initializeProviders() {
+    // Initialize Gemini
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    if (geminiKey) {
+      this.geminiAI = new GoogleGenerativeAI(geminiKey);
+      this.providers.set('gemini-flash', {
+        name: 'Gemini Flash',
+        available: true,
+        requestCount: 0,
+        lastReset: Date.now(),
+        maxRequests: 8, // Conservative limit
+        resetInterval: 60 * 1000,
+        priority: 1
+      });
+      this.providers.set('gemini-pro', {
+        name: 'Gemini Pro',
+        available: true,
+        requestCount: 0,
+        lastReset: Date.now(),
+        maxRequests: 3, // Very conservative for Pro
+        resetInterval: 60 * 1000,
+        priority: 3
+      });
+      console.log("✅ Gemini providers initialized");
     }
 
+    // Initialize OpenAI (if available)
+    const openaiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
+    if (openaiKey) {
+      this.providers.set('openai-gpt-3.5', {
+        name: 'OpenAI GPT-3.5',
+        available: true,
+        requestCount: 0,
+        lastReset: Date.now(),
+        maxRequests: 5,
+        resetInterval: 60 * 1000,
+        priority: 2
+      });
+      console.log("✅ OpenAI provider initialized");
+    }
+
+    console.log(`🤖 Multi-provider AI service initialized with ${this.providers.size} providers`);
+  }
+
+  private resetProviderLimits() {
+    const now = Date.now();
+    for (const [key, provider] of this.providers) {
+      if (now - provider.lastReset >= provider.resetInterval) {
+        provider.requestCount = 0;
+        provider.lastReset = now;
+      }
+    }
+  }
+
+  private getAvailableProvider(): string | null {
+    const availableProviders = Array.from(this.providers.entries())
+      .filter(([_, provider]) => provider.available && provider.requestCount < provider.maxRequests)
+      .sort(([_, a], [__, b]) => a.priority - b.priority);
+
+    return availableProviders.length > 0 ? availableProviders[0][0] : null;
+  }
+
+  private async makeGeminiRequest(model: string, prompt: string): Promise<string> {
+    if (!this.geminiAI) throw new Error("Gemini not initialized");
+
+    const aiModel = this.geminiAI.getGenerativeModel({
+      model: model === 'gemini-flash' ? 'gemini-1.5-flash' : 'gemini-1.5-pro'
+    });
+
+    const result = await aiModel.generateContent(prompt);
+    const response = await result.response;
+    return response.text();
+  }
+
+  private async makeOpenAIRequest(prompt: string): Promise<string> {
+    const openaiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openaiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 2000,
+        temperature: 0.7
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
+  }
+
+  private async makeProviderRequest(providerId: string, prompt: string): Promise<string> {
+    const provider = this.providers.get(providerId);
+    if (!provider) throw new Error(`Provider ${providerId} not found`);
+
+    // Increment request count
+    provider.requestCount++;
+
+    try {
+      let response: string;
+
+      if (providerId.startsWith('gemini')) {
+        response = await this.makeGeminiRequest(providerId, prompt);
+      } else if (providerId.startsWith('openai')) {
+        response = await this.makeOpenAIRequest(prompt);
+      } else {
+        throw new Error(`Unknown provider: ${providerId}`);
+      }
+
+      console.log(`✅ Request successful with ${provider.name}`);
+      return response;
+
+    } catch (error) {
+      console.error(`❌ Request failed with ${provider.name}:`, error);
+
+      // Mark provider as temporarily unavailable on rate limit
+      if (error instanceof Error && error.message.includes('429')) {
+        provider.available = false;
+        setTimeout(() => {
+          provider.available = true;
+          provider.requestCount = 0;
+        }, 60000); // 1 minute cooldown
+      }
+
+      throw error;
+    }
+  }
+
+  async generateQuestions(options: GenerateQuestionsOptions): Promise<AIResponse> {
     const contentHash = this.generateContentHash(options);
 
     // Check cache first
     const cached = this.getCachedQuestions(contentHash);
     if (cached) {
-      console.log(
-        "Returning cached questions for content hash:",
-        contentHash.substring(0, 8),
-      );
+      console.log("📋 Returning cached questions");
       return cached;
     }
 
-    console.log(`Generating ${options.questionCount} questions for user`);
+    console.log(`🤖 Generating ${options.questionCount} questions using multi-provider system`);
 
-    try {
-      // Apply rate limiting before making API call
-      await this.enforceRateLimit();
+    const prompt = this.buildPrompt(options);
+    let lastError: Error | null = null;
 
-      // Use Flash as primary model for better rate limits and speed
-      const response = await this.generateWithFlash(options);
+    // Try each available provider in order of priority
+    const maxAttempts = this.providers.size;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const providerId = this.getAvailableProvider();
 
-      // Cache the response
-      this.setCachedQuestions(contentHash, response);
-
-      return response;
-    } catch (error) {
-      console.error("Primary Flash generation failed:", error);
-
-      // Only fallback to Pro for small requests if Flash fails
-      if (options.questionCount <= 5 && options.content.length <= 2000) {
-        console.log("Attempting fallback to Gemini Pro for small request");
-        try {
-          await this.enforceRateLimit();
-          const fallbackResponse = await this.generateWithPro(options);
-          this.setCachedQuestions(contentHash, fallbackResponse);
-          return fallbackResponse;
-        } catch (fallbackError) {
-          console.error("Pro fallback also failed:", fallbackError);
-        }
+      if (!providerId) {
+        console.log("⏳ No providers available, waiting 30 seconds...");
+        await this.sleep(30000);
+        continue;
       }
 
-      // If all else fails, throw the original error
-      throw new Error(
-        `Question generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
-    }
-  }
-
-  private async enforceRateLimit(): Promise<void> {
-    const now = Date.now();
-
-    // Reset window if needed
-    if (now - this.rateLimitState.windowStart >= this.RATE_LIMIT_WINDOW) {
-      this.rateLimitState.requestCount = 0;
-      this.rateLimitState.windowStart = now;
-    }
-
-    // Check if we're at the rate limit
-    if (this.rateLimitState.requestCount >= this.REQUESTS_PER_MINUTE) {
-      const waitTime =
-        this.RATE_LIMIT_WINDOW - (now - this.rateLimitState.windowStart);
-      console.log(
-        `Rate limit reached. Waiting ${waitTime}ms before next request`,
-      );
-      await this.sleep(waitTime);
-
-      // Reset after waiting
-      this.rateLimitState.requestCount = 0;
-      this.rateLimitState.windowStart = Date.now();
-    }
-
-    // Enforce minimum interval between requests
-    const timeSinceLastRequest = now - this.rateLimitState.lastRequestTime;
-    if (timeSinceLastRequest < this.MIN_REQUEST_INTERVAL) {
-      const waitTime = this.MIN_REQUEST_INTERVAL - timeSinceLastRequest;
-      console.log(`Enforcing minimum interval. Waiting ${waitTime}ms`);
-      await this.sleep(waitTime);
-    }
-
-    // Update rate limit state
-    this.rateLimitState.requestCount++;
-    this.rateLimitState.lastRequestTime = Date.now();
-  }
-
-  private async makeAPICall(
-    model: any,
-    prompt: string,
-    maxRetries = 3,
-  ): Promise<any> {
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        return response.text();
-      } catch (error: any) {
-        if (error.status === 429 && attempt < maxRetries) {
-          // Extract retry delay from error or calculate exponential backoff
-          let retryDelay = 1000 * Math.pow(2, attempt); // 1s, 2s, 4s
+        console.log(`🔄 Attempting with provider: ${this.providers.get(providerId)?.name}`);
 
-          // Check if Google provided a retry delay
-          if (error.errorDetails) {
-            const retryInfo = error.errorDetails.find(
-              (detail: any) =>
-                detail["@type"] === "type.googleapis.com/google.rpc.RetryInfo",
-            );
-            if (retryInfo?.retryDelay) {
-              const delaySeconds = parseInt(
-                retryInfo.retryDelay.replace("s", ""),
-              );
-              retryDelay = Math.min(delaySeconds * 1000, 60000); // Max 60s
-            }
-          }
+        const response = await this.makeProviderRequest(providerId, prompt);
+        const parsedResponse = this.parseAIResponse(response);
+        const processedResponse = this.processGeneratedQuestions(parsedResponse, options);
 
-          console.log(
-            `Rate limit hit (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${retryDelay}ms`,
-          );
-          await this.sleep(retryDelay);
-          continue;
-        }
+        // Cache the successful response
+        this.setCachedQuestions(contentHash, processedResponse);
 
-        // If it's not a rate limit error or we've exhausted retries, throw
-        throw error;
+        console.log(`✅ Successfully generated questions with ${this.providers.get(providerId)?.name}`);
+        return processedResponse;
+
+      } catch (error) {
+        lastError = error as Error;
+        console.log(`❌ Provider ${providerId} failed, trying next...`);
+
+        // Small delay before trying next provider
+        await this.sleep(2000);
       }
     }
+
+    // If all providers failed
+    console.error("❌ All providers failed");
+    throw new Error(`Question generation failed: ${lastError?.message || "All providers exhausted"}`);
   }
 
-  private async generateWithFlash(
-    options: GenerateQuestionsOptions,
-  ): Promise<AIResponse> {
-    const prompt = this.buildOptimizedPrompt(options);
+  private buildPrompt(options: GenerateQuestionsOptions): string {
+    const { content, difficulty, questionCount, questionTypes, focus } = options;
 
-    try {
-      const text = await this.makeAPICall(this.flashModel, prompt);
-      const parsedResponse = this.parseAIResponse(text);
-      return this.processGeneratedQuestions(parsedResponse, options);
-    } catch (error) {
-      throw new Error(
-        `Gemini Flash API error: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
-    }
-  }
+    // Optimize content length
+    const maxContentLength = 2500;
+    const optimizedContent = content.length > maxContentLength
+      ? content.substring(0, maxContentLength) + "..."
+      : content;
 
-  private async generateWithPro(
-    options: GenerateQuestionsOptions,
-  ): Promise<AIResponse> {
-    const prompt = this.buildOptimizedPrompt(options);
+    // Extract source snippets for better source mapping
+    const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 20);
 
-    try {
-      const text = await this.makeAPICall(this.proModel, prompt);
-      const parsedResponse = this.parseAIResponse(text);
-      return this.processGeneratedQuestions(parsedResponse, options);
-    } catch (error) {
-      throw new Error(
-        `Gemini Pro API error: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
-    }
-  }
-
-  private buildOptimizedPrompt(options: GenerateQuestionsOptions): string {
-    const {
-      content,
-      difficulty,
-      questionCount,
-      questionTypes,
-      subject,
-      focus,
-    } = options;
-
-    // Optimize content length to stay within token limits
-    const maxContentLength = 3000; // Conservative limit for Flash
-    const optimizedContent =
-      content.length > maxContentLength
-        ? content.substring(0, maxContentLength) + "..."
-        : content;
-
-    const isTrueFalse = questionTypes.includes("true-false");
-    const isMultipleChoice =
-      questionTypes.includes("mcq") ||
-      questionTypes.includes("multiple-choice");
-
-    return `Generate exactly ${questionCount} high-quality ${difficulty} test questions from this content:
+    return `Generate exactly ${questionCount} ${difficulty} test questions from this content:
 
 CONTENT:
 ${optimizedContent}
@@ -294,14 +270,11 @@ ${optimizedContent}
 REQUIREMENTS:
 - Question Types: ${questionTypes.join(", ")}
 - Difficulty: ${difficulty}
-- Each question must be answerable from the provided content
-- Include source text that supports each answer
-${subject ? `- Subject: ${subject}` : ""}
-${focus ? `- Focus: ${focus}` : ""}
+- Each question must reference specific content
+- Include the exact source text for each question
+${focus ? `- Focus areas: ${focus}` : ""}
 
-FORMAT RULES:
-${isTrueFalse ? '- True-False: Use options ["True", "False"], correctAnswer must be exactly "True" or "False"' : ""}
-${isMultipleChoice ? "- Multiple-Choice: Use exactly 4 options, correctAnswer must match one option exactly" : ""}
+IMPORTANT: For each question, include the exact text from the content that supports the answer as "sourceText".
 
 Return valid JSON:
 {
@@ -310,12 +283,12 @@ Return valid JSON:
       "id": "unique_id",
       "type": "${questionTypes[0]}",
       "question": "Clear question text",
-      "options": ${isTrueFalse ? '["True", "False"]' : '["Option A", "Option B", "Option C", "Option D"]'},
-      "correctAnswer": "${isTrueFalse ? "True" : "Option A"}",
-      "explanation": "Brief explanation referencing content",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correctAnswer": "Option A",
+      "explanation": "Brief explanation",
       "difficulty": "${difficulty}",
       "points": ${difficulty === "easy" ? 1 : difficulty === "medium" ? 2 : 3},
-      "sourceText": "Exact text from content supporting answer"
+      "sourceText": "EXACT text from content that supports this question"
     }
   ]
 }
@@ -325,41 +298,31 @@ Generate ${questionCount} questions now:`;
 
   private parseAIResponse(text: string): any {
     try {
-      // Clean up common JSON formatting issues
       let jsonText = text.trim();
-
-      // Remove markdown code block markers if present
       jsonText = jsonText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
 
-      // Try to extract JSON from the response
       const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        throw new Error("No JSON found in AI response");
+        throw new Error("No JSON found in response");
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
-
       if (!parsed.questions || !Array.isArray(parsed.questions)) {
-        throw new Error("Invalid response format: questions array not found");
+        throw new Error("Invalid response format");
       }
 
       return parsed;
     } catch (error) {
       console.error("Failed to parse AI response:", error);
-      console.error("Response text:", text.substring(0, 500) + "...");
       throw new Error("Invalid JSON response from AI");
     }
   }
 
-  private processGeneratedQuestions(
-    parsedResponse: any,
-    options: GenerateQuestionsOptions,
-  ): AIResponse {
+  private processGeneratedQuestions(parsedResponse: any, options: GenerateQuestionsOptions): AIResponse {
     const questions = parsedResponse.questions || [];
 
-    // Process and validate each question
     const processedQuestions = questions.map((q: any, index: number) => {
-      // Generate source text details
+      // Find source text in original content
       let sourceText = q.sourceText || "Generated from your content";
       let sourceOffset = 0;
       let sourceLength = 0;
@@ -373,70 +336,132 @@ Generate ${questionCount} questions now:`;
           sourceOffset = foundIndex;
           sourceLength = q.sourceText.length;
         } else {
-          // Find a relevant sentence from the content
-          const sentences = options.content
-            .split(/[.!?]+/)
-            .filter((s) => s.trim().length > 20);
-          if (sentences.length > 0) {
-            const relevantSentence =
-              sentences[Math.min(index, sentences.length - 1)];
-            sourceText = relevantSentence.trim();
-            sourceOffset = options.content.indexOf(relevantSentence);
-            sourceLength = relevantSentence.length;
+          // Find similar content using partial matching
+          const words = q.sourceText.split(/\s+/).filter(w => w.length > 3);
+          for (const word of words) {
+            const wordIndex = contentLower.indexOf(word.toLowerCase());
+            if (wordIndex !== -1) {
+              // Find sentence containing this word
+              const start = Math.max(0, wordIndex - 50);
+              const end = Math.min(options.content.length, wordIndex + 100);
+              sourceText = options.content.substring(start, end).trim();
+              sourceOffset = start;
+              sourceLength = sourceText.length;
+              break;
+            }
           }
         }
       }
 
-      // Validate and clean up the question data
-      const processedQuestion: GeneratedQuestion = {
+      return {
         id: q.id || nanoid(),
-        type:
-          q.type ||
-          (questionTypes.includes("true-false")
-            ? "true-false"
-            : "multiple-choice"),
+        type: q.type || "multiple-choice",
         question: q.question || `Generated question ${index + 1}`,
-        options:
-          q.options ||
-          (q.type === "true-false"
-            ? ["True", "False"]
-            : ["Option A", "Option B", "Option C", "Option D"]),
+        options: q.options || ["Option A", "Option B", "Option C", "Option D"],
         correctAnswer: q.correctAnswer,
         explanation: q.explanation || "Explanation based on source content",
         difficulty: q.difficulty || options.difficulty,
-        points:
-          q.points ||
-          (options.difficulty === "easy"
-            ? 1
-            : options.difficulty === "medium"
-              ? 2
-              : 3),
+        points: q.points || (options.difficulty === "easy" ? 1 : options.difficulty === "medium" ? 2 : 3),
         sourceText,
         sourceOffset,
         sourceLength,
-        confidence: 0.8, // Fixed confidence since we removed validation
-      };
-
-      return processedQuestion;
+        confidence: 0.8
+      } as GeneratedQuestion;
     });
-
-    const estimatedTime =
-      processedQuestions.length *
-      (options.difficulty === "easy"
-        ? 1
-        : options.difficulty === "medium"
-          ? 2
-          : 3);
 
     return {
       questions: processedQuestions,
       metadata: {
         totalQuestions: processedQuestions.length,
-        estimatedTime,
+        estimatedTime: processedQuestions.length * (options.difficulty === "easy" ? 1 : options.difficulty === "medium" ? 2 : 3),
         difficulty: options.difficulty,
         subject: options.subject,
-        contentHash: this.generateContentHash(options),
-      },
+        contentHash: this.generateContentHash(options)
+      }
+    };
+  }
+
+  async generateTestInsights(testResult: {
+    score: number;
+    totalQuestions: number;
+    questions: GeneratedQuestion[];
+    userAnswers: Record<string, string>;
+    correctAnswers: Record<string, string>;
+    testTitle: string;
+    sourceContent: string;
+  }): Promise<{
+    overallPerformance: string;
+    strengths: string[];
+    weaknesses: string[];
+    studyRecommendations: string[];
+    focusAreas: string[];
+  }> {
+    const wrongQuestions = testResult.questions.filter(
+      (q) => testResult.userAnswers[q.id] !== testResult.correctAnswers[q.id]
+    );
+
+    const prompt = `Analyze this test performance:
+
+SCORE: ${testResult.score}% (${testResult.totalQuestions - wrongQuestions.length}/${testResult.totalQuestions})
+
+INCORRECT QUESTIONS:
+${wrongQuestions.slice(0, 3).map((q, i) => `
+${i + 1}. ${q.question}
+   Correct: ${testResult.correctAnswers[q.id]}
+   User: ${testResult.userAnswers[q.id]}
+`).join("")}
+
+Return JSON:
+{
+  "overallPerformance": "Brief assessment",
+  "strengths": ["List 2-3 strengths"],
+  "weaknesses": ["List 2-3 areas for improvement"],
+  "studyRecommendations": ["List 3-4 specific study strategies"],
+  "focusAreas": ["List 2-3 topics to review"]
+}`;
+
+    try {
+      const providerId = this.getAvailableProvider();
+      if (!providerId) {
+        return this.generateBasicInsights(testResult);
+      }
+
+      const response = await this.makeProviderRequest(providerId, prompt);
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+
+      return this.generateBasicInsights(testResult);
+    } catch (error) {
+      console.error("Insights generation failed:", error);
+      return this.generateBasicInsights(testResult);
+    }
+  }
+
+  private generateBasicInsights(testResult: any) {
+    const score = testResult.score;
+    const wrongCount = testResult.questions.length - Math.floor((score / 100) * testResult.totalQuestions);
+
+    return {
+      overallPerformance: score >= 80 ? "Strong performance showing good understanding" :
+                         score >= 60 ? "Satisfactory performance with room for improvement" :
+                         "Needs improvement - consider reviewing the material",
+      strengths: score >= 70 ? ["Good comprehension of key concepts", "Effective study approach"] :
+                              ["Completed all questions", "Shows engagement with material"],
+      weaknesses: wrongCount > 0 ? [`Missed ${wrongCount} questions`, "Some concepts need reinforcement"] : [],
+      studyRecommendations: [
+        "Review explanations for missed questions",
+        "Focus on understanding key concepts",
+        "Practice with similar material",
+        "Create summary notes of important points"
+      ],
+      focusAreas: [
+        "Areas where questions were missed",
+        "Key concepts from source material",
+        "Practice similar question types"
+      ]
     };
   }
 
@@ -461,117 +486,12 @@ Generate ${questionCount} questions now:`;
     this.cache.set(contentHash, {
       data: response,
       timestamp: Date.now(),
-      expiresAt,
+      expiresAt
     });
   }
 
-  async generateTestInsights(testResult: {
-    score: number;
-    totalQuestions: number;
-    questions: GeneratedQuestion[];
-    userAnswers: Record<string, string>;
-    correctAnswers: Record<string, string>;
-    testTitle: string;
-    sourceContent: string;
-  }): Promise<{
-    overallPerformance: string;
-    strengths: string[];
-    weaknesses: string[];
-    studyRecommendations: string[];
-    focusAreas: string[];
-  }> {
-    if (!this.genAI) {
-      throw new Error("AI service not initialized");
-    }
-
-    // Apply rate limiting
-    await this.enforceRateLimit();
-
-    const wrongQuestions = testResult.questions.filter(
-      (q) => testResult.userAnswers[q.id] !== testResult.correctAnswers[q.id],
-    );
-
-    const prompt = `Analyze this test performance and provide insights:
-
-PERFORMANCE:
-- Score: ${testResult.score}% (${testResult.totalQuestions - wrongQuestions.length}/${testResult.totalQuestions})
-- Wrong: ${wrongQuestions.length}
-
-INCORRECT QUESTIONS:
-${wrongQuestions
-  .slice(0, 3)
-  .map(
-    (q, i) => `
-${i + 1}. ${q.question}
-   Correct: ${testResult.correctAnswers[q.id]}
-   User: ${testResult.userAnswers[q.id]}
-`,
-  )
-  .join("")}
-
-Return JSON:
-{
-  "overallPerformance": "Brief assessment",
-  "strengths": ["List strengths"],
-  "weaknesses": ["List weaknesses"],
-  "studyRecommendations": ["Study strategies"],
-  "focusAreas": ["Topics to review"]
-}`;
-
-    try {
-      const text = await this.makeAPICall(this.flashModel, prompt);
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-
-      if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
-      }
-
-      // Fallback insights if parsing fails
-      return this.generateBasicInsights(testResult);
-    } catch (error) {
-      console.error("Test insights generation failed:", error);
-      return this.generateBasicInsights(testResult);
-    }
-  }
-
-  private generateBasicInsights(testResult: any) {
-    const score = testResult.score;
-    const wrongCount =
-      testResult.questions.length -
-      Math.floor((score / 100) * testResult.totalQuestions);
-
-    return {
-      overallPerformance:
-        score >= 80
-          ? "Strong performance showing good understanding"
-          : score >= 60
-            ? "Satisfactory performance with room for improvement"
-            : "Needs improvement - consider reviewing the material",
-      strengths:
-        score >= 70
-          ? ["Good comprehension of key concepts", "Effective study approach"]
-          : ["Completed all questions", "Shows engagement"],
-      weaknesses:
-        wrongCount > 0
-          ? [
-              `Missed ${wrongCount} questions`,
-              "Some concepts need reinforcement",
-            ]
-          : [],
-      studyRecommendations: [
-        "Review explanations for missed questions",
-        "Focus on understanding key concepts",
-        "Practice with similar material",
-      ],
-      focusAreas: [
-        "Areas where questions were missed",
-        "Key concepts from source material",
-      ],
-    };
-  }
-
   private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   private cleanupCache(): void {
@@ -586,27 +506,26 @@ Return JSON:
     }
 
     if (cleanedCount > 0) {
-      console.log(`Cleaned up ${cleanedCount} expired cache entries`);
+      console.log(`🧹 Cleaned up ${cleanedCount} expired cache entries`);
     }
   }
 
-  // Public method to check current rate limit status
-  public getRateLimitStatus(): {
-    requestsRemaining: number;
-    windowResetIn: number;
-  } {
-    const now = Date.now();
-    const windowAge = now - this.rateLimitState.windowStart;
+  public getProviderStatus(): Record<string, any> {
+    const status: Record<string, any> = {};
 
-    return {
-      requestsRemaining: Math.max(
-        0,
-        this.REQUESTS_PER_MINUTE - this.rateLimitState.requestCount,
-      ),
-      windowResetIn: Math.max(0, this.RATE_LIMIT_WINDOW - windowAge),
-    };
+    for (const [key, provider] of this.providers) {
+      status[key] = {
+        name: provider.name,
+        available: provider.available,
+        requestsUsed: provider.requestCount,
+        maxRequests: provider.maxRequests,
+        priority: provider.priority
+      };
+    }
+
+    return status;
   }
 }
 
-export const aiService = new AIService();
+export const aiService = new MultiProviderAIService();
 export type { GenerateQuestionsOptions, GeneratedQuestion, AIResponse };
