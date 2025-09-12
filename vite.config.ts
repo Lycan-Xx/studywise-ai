@@ -32,15 +32,15 @@ export default defineConfig(async () => ({
     port: 8080,
     host: true, // Allow all hosts
     proxy: {
-      '/api': {
-        target: 'http://localhost:5000',
+      "/api": {
+        target: "http://localhost:5000",
         changeOrigin: true,
         secure: false,
       },
     },
     allowedHosts: [
       "*", // Allow all hosts
-      "407affd2-cc72-4cfd-aee0-3d7f009d3a6d-00-6ekzo1e15fsw.spock.replit.dev", // Specific Replit host
+      "6844a182-fd51-4b7c-9740-8690830e1d7d-00-1e0r0uvp0d3y9.worf.replit.dev", // Specific Replit host", // Specific Replit host
     ],
     fs: {
       strict: true,
