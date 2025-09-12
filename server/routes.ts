@@ -9,7 +9,7 @@ router.post('/tests/generate', TestController.generateQuestions);
 router.post('/tests/flashcards', TestController.generateFlashcards);
 
 // Test submission endpoint
-router.post('/api/tests/:testId/results', async (req, res) => {
+router.post('/tests/:testId/results', async (req, res) => {
   try {
     const { testId } = req.params;
     const results = req.body;
@@ -34,7 +34,7 @@ router.post('/api/tests/:testId/results', async (req, res) => {
 });
 
 // Test insights endpoint
-router.post('/api/tests/:testId/insights', async (req, res) => {
+router.post('/tests/:testId/insights', async (req, res) => {
   try {
     const { testId } = req.params;
     const testResult = req.body;
