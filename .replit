@@ -43,5 +43,22 @@ args = "cd server && npx tsx index.ts"
 task = "shell.exec"
 args = "cd client && npm run dev"
 
+[[workflows.workflow]]
+name = "Clean Start Server"
+author = 46511181
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pkill -f \"npx tsx index.ts\" || true"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "sleep 2"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd server && npx tsx index.ts"
+
 [agent]
 expertMode = true

@@ -63,6 +63,12 @@ export function TestResultsOverlay({
   const [, navigate] = useLocation();
   const [insights, setInsights] = useState<any>(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsError, setInsightsError] = useState<string | null>(null); // State for insights error
+
+  // Dummy `result` object and `setIsLoadingInsights` to make the provided changes runnable.
+  // In a real scenario, `result` would be passed as a prop or fetched.
+  const result = { testId, questions, userAnswers, correctAnswers, score, totalQuestions, testTitle };
+  const setIsLoadingInsights = setInsightsLoading; // Alias for clarity with the provided snippet
 
   // Use the passed score prop instead of calculating it
   const percentage = score;
@@ -71,38 +77,73 @@ export function TestResultsOverlay({
 
   // Generate AI insights when component mounts
   useEffect(() => {
-    const generateInsights = async () => {
-      setInsightsLoading(true);
-      try {
-        const response = await fetch(`/api/tests/${testId}/insights`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            score: percentage,
-            totalQuestions,
-            questions,
-            userAnswers,
-            correctAnswers,
-            testTitle,
-            sourceContent: notes // Pass the original notes as source content
-          }),
-        });
+    if (result && !insights) {
+      console.log('🔍 Starting insights generation...');
+      generateInsights();
+    }
+  }, [result, insights]);
 
-        if (response.ok) {
-          const data = await response.json();
-          setInsights(data.insights);
-        }
-      } catch (error) {
-        console.error('Failed to generate insights:', error);
-      } finally {
-        setInsightsLoading(false);
+  const generateInsights = async () => {
+    if (!result) return;
+
+    setIsLoadingInsights(true);
+    setInsightsError(null);
+
+    try {
+      console.log('📊 Generating insights for result:', result.testId);
+
+      // Reconstruct source content from questions
+      const sourceContent = result.questions?.map(q => q.sourceText).join(' ') || '';
+
+      // Create the test result payload for insights
+      const testResultPayload = {
+        score: result.score,
+        totalQuestions: result.totalQuestions,
+        questions: result.questions || [],
+        userAnswers: result.userAnswers || {},
+        correctAnswers: result.correctAnswers || {},
+        testTitle: result.testTitle,
+        sourceContent
+      };
+
+      console.log('📤 Sending insights request payload:', testResultPayload);
+
+      const response = await fetch(`/api/tests/${result.testId}/insights`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(testResultPayload)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Insights API error:', response.status, errorText);
+        throw new Error(`Failed to generate insights: ${response.statusText}`);
       }
-    };
 
-    generateInsights();
-  }, [percentage, totalQuestions, questions, userAnswers, correctAnswers, testTitle, notes, testId]);
+      const insightsData = await response.json();
+      console.log('✅ Insights generated:', insightsData);
+      setInsights(insightsData);
+
+    } catch (error) {
+      console.error('❌ Error generating insights:', error);
+      setInsightsError(error instanceof Error ? error.message : 'Failed to generate insights');
+
+      // Provide fallback insights if API fails
+      const fallbackInsights = {
+        overallPerformance: result.score >= 70 ? "Good performance!" : "Room for improvement",
+        strengths: result.score >= 70 ? ["Good understanding of concepts"] : ["Completed the test"],
+        weaknesses: result.score < 70 ? ["Review missed questions"] : [],
+        studyRecommendations: ["Review explanations", "Focus on weak areas"],
+        focusAreas: ["Key concepts from the material"]
+      };
+
+      setInsights(fallbackInsights);
+    } finally {
+      setIsLoadingInsights(false);
+    }
+  };
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-green-600";
@@ -387,7 +428,7 @@ export function TestResultsOverlay({
                         <h4 className="font-medium text-orange-800 mb-2">Areas for Improvement</h4>
                         <p className="text-orange-700">
                           Consider reviewing the material related to the {wrongCount} incorrect answer{wrongCount > 1 ? 's' : ''}.
-                          Focus on understanding the underlying concepts rather than memorization.
+                          Focus on understanding the concepts rather than memorization.
                         </p>
                       </div>
                     )}
@@ -407,6 +448,13 @@ export function TestResultsOverlay({
                         )}
                       </ul>
                     </div>
+                  </div>
+                )}
+
+                {insightsError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 mt-4">
+                    <h4 className="font-medium text-red-800 mb-2">Error Generating Insights</h4>
+                    <p className="text-red-700">{insightsError}</p>
                   </div>
                 )}
               </CardContent>
