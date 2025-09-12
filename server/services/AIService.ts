@@ -320,18 +320,47 @@ Respond with JSON:
     const questions = parsedResponse.questions || [];
 
     // Ensure all questions have required fields
-    const processedQuestions = questions.map((q: any, index: number) => ({
-      id: q.id || `q_${index + 1}`,
-      type: q.type || 'multiple-choice',
-      question: q.question || 'Generated question',
-      options: q.options,
-      correctAnswer: q.correctAnswer,
-      explanation: q.explanation || 'No explanation provided',
-      difficulty: q.difficulty || options.difficulty,
-      points: q.points || (options.difficulty === 'easy' ? 1 : options.difficulty === 'medium' ? 2 : 3),
-      sourceText: q.sourceText,
-      confidence: q.confidence || 0.8
-    }));
+    const processedQuestions = questions.map((q: any, index: number) => {
+      // Find the source text in the content if available
+      let sourceText = q.sourceText || 'Generated from your content';
+      let sourceOffset = 0;
+      let sourceLength = 0;
+
+      if (q.sourceText && options.content) {
+        const contentLower = options.content.toLowerCase();
+        const sourceTextLower = q.sourceText.toLowerCase();
+        const foundIndex = contentLower.indexOf(sourceTextLower);
+        
+        if (foundIndex !== -1) {
+          sourceOffset = foundIndex;
+          sourceLength = q.sourceText.length;
+        } else {
+          // Try to find partial matches or related sentences
+          const sentences = options.content.split(/[.!?]+/).filter(s => s.trim().length > 10);
+          const relevantSentence = sentences[Math.min(index, sentences.length - 1)] || sentences[0];
+          if (relevantSentence) {
+            sourceText = relevantSentence.trim();
+            sourceOffset = options.content.indexOf(relevantSentence);
+            sourceLength = relevantSentence.length;
+          }
+        }
+      }
+
+      return {
+        id: q.id || `q_${index + 1}`,
+        type: q.type || 'multiple-choice',
+        question: q.question || 'Generated question',
+        options: q.options,
+        correctAnswer: q.correctAnswer,
+        explanation: q.explanation || 'No explanation provided',
+        difficulty: q.difficulty || options.difficulty,
+        points: q.points || (options.difficulty === 'easy' ? 1 : options.difficulty === 'medium' ? 2 : 3),
+        sourceText,
+        sourceOffset,
+        sourceLength,
+        confidence: q.confidence || 0.8
+      };
+    });
 
     const estimatedTime = processedQuestions.length * (options.difficulty === 'easy' ? 1 : options.difficulty === 'medium' ? 2 : 3);
 
@@ -348,14 +377,25 @@ Respond with JSON:
   }
 
   private generateMockQuestions(options: GenerateQuestionsOptions): AIResponse {
-    const { questionCount, difficulty, questionTypes } = options;
+    const { questionCount, difficulty, questionTypes, content } = options;
     const questions: GeneratedQuestion[] = [];
 
     // Determine the question type from the request
     const questionType = questionTypes[0]; // Use the first question type
     const isTrueFalse = questionType === 'true-false';
 
+    // Extract sentences from content for source text
+    const sentences = content ? content.split(/[.!?]+/).filter(s => s.trim().length > 10) : [];
+
     for (let i = 0; i < questionCount; i++) {
+      // Get a source sentence for this question
+      const sourceText = sentences.length > 0 
+        ? sentences[Math.min(i, sentences.length - 1)].trim()
+        : 'Sample source text from your document';
+      
+      const sourceOffset = content ? content.indexOf(sourceText) : 0;
+      const sourceLength = sourceText.length;
+
       if (isTrueFalse) {
         questions.push({
           id: nanoid(),
@@ -366,7 +406,9 @@ Respond with JSON:
           explanation: 'This is a sample explanation for the mock true/false question.',
           difficulty,
           points: difficulty === 'easy' ? 1 : difficulty === 'medium' ? 2 : 3,
-          sourceText: 'Mock source text from your document',
+          sourceText,
+          sourceOffset,
+          sourceLength,
           confidence: 0.5
         });
       } else {
@@ -379,7 +421,9 @@ Respond with JSON:
           explanation: 'This is a sample explanation for the mock multiple choice question.',
           difficulty,
           points: difficulty === 'easy' ? 1 : difficulty === 'medium' ? 2 : 3,
-          sourceText: 'Mock source text from your document',
+          sourceText,
+          sourceOffset,
+          sourceLength,
           confidence: 0.5
         });
       }

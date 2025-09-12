@@ -186,7 +186,7 @@ export const useResultsStore = create<ResultsStore>()(
 
           if (results.length === 0) return [];
 
-          const sorted = results
+          const sorted = [...results] // Create a copy to avoid mutating original array
             .sort((a, b) => {
               const dateA = new Date(a.completedAt).getTime();
               const dateB = new Date(b.completedAt).getTime();

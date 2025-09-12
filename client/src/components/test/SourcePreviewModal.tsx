@@ -27,31 +27,37 @@ export function SourcePreviewModal({
 
   // Handle text highlighting when modal opens or sourceText changes
   useEffect(() => {
-    if (isOpen && sourceText && textareaRef.current) {
+    if (isOpen && textareaRef.current) {
       const textarea = textareaRef.current;
       
       // Small delay to ensure textarea is rendered
       setTimeout(() => {
-        // Find the source text in the notes
-        const index = notes.toLowerCase().indexOf(sourceText.toLowerCase());
-        
-        if (index !== -1) {
-          // Focus the textarea and select the found text
-          textarea.focus();
-          textarea.setSelectionRange(index, index + sourceText.length);
-          
-          // Scroll to make the selection visible
-          textarea.scrollTop = Math.max(0, 
-            (index / notes.length) * textarea.scrollHeight - textarea.clientHeight / 2
-          );
-        } else if (sourceOffset !== undefined && sourceLength !== undefined) {
-          // Fallback to using offset and length if available
+        // First try using sourceOffset and sourceLength if available
+        if (sourceOffset !== undefined && sourceLength !== undefined && sourceOffset >= 0) {
           textarea.focus();
           textarea.setSelectionRange(sourceOffset, sourceOffset + sourceLength);
           
+          // Scroll to make the selection visible
           textarea.scrollTop = Math.max(0, 
             (sourceOffset / notes.length) * textarea.scrollHeight - textarea.clientHeight / 2
           );
+        } else if (sourceText && sourceText !== 'Generated from your content' && sourceText !== 'Mock source text from your document') {
+          // Try to find the source text in the notes
+          const index = notes.toLowerCase().indexOf(sourceText.toLowerCase());
+          
+          if (index !== -1) {
+            // Focus the textarea and select the found text
+            textarea.focus();
+            textarea.setSelectionRange(index, index + sourceText.length);
+            
+            // Scroll to make the selection visible
+            textarea.scrollTop = Math.max(0, 
+              (index / notes.length) * textarea.scrollHeight - textarea.clientHeight / 2
+            );
+          }
+        } else {
+          // If no specific source text, just focus the textarea
+          textarea.focus();
         }
       }, 100);
     }
