@@ -41,6 +41,7 @@ interface TestResultsOverlayProps {
 
 export function TestResultsOverlay({
   testTitle,
+  testId,
   questions,
   userAnswers,
   correctAnswers,
@@ -73,7 +74,7 @@ export function TestResultsOverlay({
     const generateInsights = async () => {
       setInsightsLoading(true);
       try {
-        const response = await fetch('/api/generate-insights', {
+        const response = await fetch(`/api/tests/${testId}/insights`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -85,7 +86,7 @@ export function TestResultsOverlay({
             userAnswers,
             correctAnswers,
             testTitle,
-            sourceContent: notes
+            sourceContent: notes // Pass the original notes as source content
           }),
         });
 
@@ -101,7 +102,7 @@ export function TestResultsOverlay({
     };
 
     generateInsights();
-  }, [percentage, totalQuestions, questions, userAnswers, correctAnswers, testTitle, notes]);
+  }, [percentage, totalQuestions, questions, userAnswers, correctAnswers, testTitle, notes, testId]);
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-green-600";
@@ -183,11 +184,11 @@ export function TestResultsOverlay({
                       )} */}
 
 
-                      
+
                     </div>
                   </div>
                 </div>
-                
+
                 <Progress value={percentage} className="h-3 mt-6" />
               </CardContent>
             </Card>
@@ -239,7 +240,7 @@ export function TestResultsOverlay({
               {questions.map((question, index) => {
                 const userAnswer = userAnswers[question.id];
                 const isCorrect = userAnswer === question.correctAnswer;
-                
+
                 return (
                   <Card key={question.id} className="border-slate-200">
                     <CardContent className="p-4">
@@ -307,7 +308,7 @@ export function TestResultsOverlay({
                   <Brain className="w-5 h-5 text-primary" />
                   <h3 className="font-semibold text-slate-900">AI-Powered Performance Analysis</h3>
                 </div>
-                
+
                 {insightsLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -385,7 +386,7 @@ export function TestResultsOverlay({
                       <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                         <h4 className="font-medium text-orange-800 mb-2">Areas for Improvement</h4>
                         <p className="text-orange-700">
-                          Consider reviewing the material related to the {wrongCount} incorrect answer{wrongCount > 1 ? 's' : ''}. 
+                          Consider reviewing the material related to the {wrongCount} incorrect answer{wrongCount > 1 ? 's' : ''}.
                           Focus on understanding the underlying concepts rather than memorization.
                         </p>
                       </div>
