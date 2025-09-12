@@ -75,6 +75,7 @@ interface LibraryStore {
   createTest: (test: Partial<Test>) => Promise<Test>;
   updateTest: (id: string, updates: Partial<Test>) => Promise<void>;
   deleteTest: (id: string) => Promise<void>;
+  saveTest: (testData: any) => Promise<Test>;
   
   // Study material actions
   createStudyMaterial: (material: Partial<StudyMaterial>) => Promise<StudyMaterial>;
@@ -121,19 +122,8 @@ export const useLibraryStore = create<LibraryStore>()(
 
           const { data, error } = await supabase
             .from('tests')
-            .select(`
-              *,
-              test_categories (
-                category_id,
-                categories (
-                  id,
-                  name,
-                  color
-                )
-              )
-            `)
+            .select('*')
             .eq('user_id', user.id)
-            .eq('is_deleted', false)
             .order('updated_at', { ascending: false });
 
           if (error) throw error;
@@ -159,7 +149,6 @@ export const useLibraryStore = create<LibraryStore>()(
             .from('study_materials')
             .select('*')
             .eq('user_id', user.id)
-            .eq('is_deleted', false)
             .order('updated_at', { ascending: false });
 
           if (error) throw error;
@@ -275,7 +264,7 @@ export const useLibraryStore = create<LibraryStore>()(
         try {
           const { error } = await supabase
             .from('tests')
-            .update({ is_deleted: true })
+            .delete()
             .eq('id', id);
 
           if (error) throw error;
@@ -290,6 +279,56 @@ export const useLibraryStore = create<LibraryStore>()(
             error: error instanceof Error ? error.message : 'Failed to delete test',
             loading: false
           });
+        }
+      },
+
+      saveTest: async (testData) => {
+        set({ loading: true, error: null });
+
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error('User not authenticated');
+
+          const testToSave = {
+            user_id: user.id,
+            title: testData.title || 'Generated Test',
+            description: testData.notes || '',
+            subject: testData.subject || testData.config?.topics || 'General',
+            difficulty: testData.config?.difficulty || 'medium',
+            question_count: testData.questions?.length || 0,
+            question_types: testData.config?.questionType === 'mcq' ? ['multiple-choice'] : ['true-false'],
+            tags: [],
+            metadata: {
+              questions: testData.questions || [],
+              notes: testData.notes || '',
+              config: testData.config || {}
+            },
+            version: 1,
+            estimated_duration: (testData.questions?.length || 0) * 2,
+            passing_score: 70
+          };
+
+          const { data, error } = await supabase
+            .from('tests')
+            .insert(testToSave)
+            .select()
+            .single();
+
+          if (error) throw error;
+
+          set(state => ({
+            tests: [data, ...state.tests],
+            loading: false
+          }));
+
+          return data;
+        } catch (error) {
+          console.error('Error saving test:', error);
+          set({
+            error: error instanceof Error ? error.message : 'Failed to save test',
+            loading: false
+          });
+          throw error;
         }
       },
 
@@ -361,7 +400,7 @@ export const useLibraryStore = create<LibraryStore>()(
         try {
           const { error } = await supabase
             .from('study_materials')
-            .update({ is_deleted: true })
+            .delete()
             .eq('id', id);
 
           if (error) throw error;
