@@ -44,8 +44,16 @@ export function SourcePreviewModal({
 
       // Small delay to ensure textarea is rendered
       setTimeout(() => {
-        // First try using sourceOffset and sourceLength if available
-        if (sourceOffset !== undefined && sourceLength !== undefined && sourceOffset >= 0) {
+        // First try using question's sourceOffset and sourceLength if available
+        if (question?.sourceOffset !== undefined && question?.sourceLength !== undefined && question.sourceOffset >= 0) {
+          textarea.focus();
+          textarea.setSelectionRange(question.sourceOffset, question.sourceOffset + question.sourceLength);
+
+          // Scroll to make the selection visible
+          textarea.scrollTop = Math.max(0,
+            (question.sourceOffset / notes.length) * textarea.scrollHeight - textarea.clientHeight / 2
+          );
+        } else if (sourceOffset !== undefined && sourceLength !== undefined && sourceOffset >= 0) {
           textarea.focus();
           textarea.setSelectionRange(sourceOffset, sourceOffset + sourceLength);
 
@@ -53,6 +61,20 @@ export function SourcePreviewModal({
           textarea.scrollTop = Math.max(0,
             (sourceOffset / notes.length) * textarea.scrollHeight - textarea.clientHeight / 2
           );
+        } else if (question?.sourceText && question.sourceText !== 'Generated from your content' && question.sourceText !== 'Mock source text from your document') {
+          // Try to find the source text in the notes using question's sourceText
+          const index = notes.toLowerCase().indexOf(question.sourceText.toLowerCase());
+
+          if (index !== -1) {
+            // Focus the textarea and select the found text
+            textarea.focus();
+            textarea.setSelectionRange(index, index + question.sourceText.length);
+
+            // Scroll to make the selection visible
+            textarea.scrollTop = Math.max(0,
+              (index / notes.length) * textarea.scrollHeight - textarea.clientHeight / 2
+            );
+          }
         } else if (sourceText && sourceText !== 'Generated from your content' && sourceText !== 'Mock source text from your document') {
           // Try to find the source text in the notes
           const index = notes.toLowerCase().indexOf(sourceText.toLowerCase());
@@ -73,7 +95,7 @@ export function SourcePreviewModal({
         }
       }, 100);
     }
-  }, [isOpen, sourceText, sourceOffset, sourceLength, notes]);
+  }, [isOpen, sourceText, sourceOffset, sourceLength, notes, question]);
 
   // Find the source text and highlight it
   const highlightedText = useMemo(() => {
