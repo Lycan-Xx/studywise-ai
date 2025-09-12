@@ -24,7 +24,9 @@ interface GeneratedQuestion {
   explanation: string;
   difficulty: 'easy' | 'medium' | 'hard';
   points: number;
-  sourceText?: string;
+  sourceText: string;
+  sourceOffset?: number;
+  sourceLength?: number;
   confidence?: number;
 }
 
@@ -173,9 +175,10 @@ CRITICAL REQUIREMENTS:
 5. For short-answer: Focus on key concepts that require explanation or analysis
 6. For essay: Create questions that require synthesis and critical thinking
 7. Provide detailed explanations that reference specific parts of the content
-8. Assign appropriate point values (1-5) based on question complexity and difficulty
-9. Ensure cognitive diversity: include recall, comprehension, application, and analysis questions
-10. Avoid questions that require external knowledge not present in the content
+8. Include the EXACT text from the source that supports each question and answer
+9. Assign appropriate point values (1-5) based on question complexity and difficulty
+10. Ensure cognitive diversity: include recall, comprehension, application, and analysis questions
+11. Avoid questions that require external knowledge not present in the content
 
 QUALITY STANDARDS:
 - Questions should test understanding, not just memorization
@@ -417,6 +420,102 @@ Respond with JSON:
       timestamp: Date.now(),
       expiresAt
     });
+  }
+
+  async generateTestInsights(testResult: {
+    score: number;
+    totalQuestions: number;
+    questions: GeneratedQuestion[];
+    userAnswers: Record<string, string>;
+    correctAnswers: Record<string, string>;
+    testTitle: string;
+    sourceContent: string;
+  }): Promise<{
+    overallPerformance: string;
+    strengths: string[];
+    weaknesses: string[];
+    studyRecommendations: string[];
+    focusAreas: string[];
+  }> {
+    if (!this.genAI) {
+      return this.generateMockInsights(testResult);
+    }
+
+    const wrongQuestions = testResult.questions.filter(q => 
+      testResult.userAnswers[q.id] !== testResult.correctAnswers[q.id]
+    );
+
+    const prompt = `You are an educational assessment expert. Analyze this test performance and provide personalized learning insights.
+
+TEST RESULTS:
+- Test Title: ${testResult.testTitle}
+- Score: ${testResult.score}% (${testResult.totalQuestions - wrongQuestions.length}/${testResult.totalQuestions} correct)
+- Wrong Questions: ${wrongQuestions.length}
+
+INCORRECT QUESTIONS ANALYSIS:
+${wrongQuestions.map((q, index) => `
+${index + 1}. Question: ${q.question}
+   Correct Answer: ${testResult.correctAnswers[q.id]}
+   User Answer: ${testResult.userAnswers[q.id]}
+   Source Text: ${q.sourceText}
+   Explanation: ${q.explanation}
+`).join('')}
+
+SOURCE CONTENT PREVIEW:
+${testResult.sourceContent.substring(0, 2000)}...
+
+Provide a comprehensive analysis in JSON format:
+{
+  "overallPerformance": "Brief assessment of overall performance",
+  "strengths": ["List of demonstrated strengths"],
+  "weaknesses": ["List of areas needing improvement"],
+  "studyRecommendations": ["Specific study strategies"],
+  "focusAreas": ["Key topics to review from the source material"]
+}`;
+
+    try {
+      const result = await this.flashModel.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+
+      return this.generateMockInsights(testResult);
+    } catch (error) {
+      console.error('Test insights generation failed:', error);
+      return this.generateMockInsights(testResult);
+    }
+  }
+
+  private generateMockInsights(testResult: any) {
+    const score = testResult.score;
+    const wrongCount = testResult.questions.length - Math.floor((score / 100) * testResult.totalQuestions);
+
+    return {
+      overallPerformance: score >= 80 
+        ? "Strong performance demonstrating good understanding of the material."
+        : score >= 60 
+        ? "Satisfactory performance with room for improvement in key areas."
+        : "Needs significant improvement. Consider reviewing the material thoroughly.",
+      strengths: score >= 70 
+        ? ["Good grasp of basic concepts", "Effective reading comprehension"]
+        : ["Attempted all questions", "Shows engagement with the material"],
+      weaknesses: wrongCount > 0 
+        ? [`Struggled with ${wrongCount} question${wrongCount > 1 ? 's' : ''}`, "May need to review key concepts"]
+        : [],
+      studyRecommendations: [
+        "Review incorrect answers and their explanations",
+        "Focus on understanding rather than memorization",
+        "Practice with similar questions"
+      ],
+      focusAreas: [
+        "Key concepts from the source material",
+        "Areas where incorrect answers were selected"
+      ]
+    };
   }
 
   // Cleanup old cache entries periodically

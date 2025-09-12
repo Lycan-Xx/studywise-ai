@@ -1,6 +1,5 @@
-
 import { Router } from 'express';
-import TestController from './controllers/TestController';
+import TestController from './controllers/TestController.js';
 
 const router = Router();
 
@@ -13,5 +12,8 @@ router.post('/tests/:testId/results', TestController.submitResults);
 router.get('/library', (req, res) => {
   res.json([]);
 });
+
+// Add insights route
+router.post('/tests/:testId/insights', TestController.generateInsights);
 
 export default router;

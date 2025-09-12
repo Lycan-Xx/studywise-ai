@@ -8,7 +8,7 @@ export interface TestConfig {
 }
 
 export interface Question {
-  id: number;
+  id: string;
   type: 'mcq' | 'true-false';
   question: string;
   options: string[];
@@ -42,6 +42,7 @@ export interface TestResult {
   timeSpent?: number; // in seconds
   completedAt: string;
   questions: Question[];
+  aiInsight?: string; // AI-generated insights
 }
 
 export interface TestSession {

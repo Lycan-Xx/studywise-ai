@@ -101,6 +101,45 @@ class TestController {
       });
     }
   }
+
+  static async generateInsights(req: Request, res: Response) {
+    try {
+      const userId = req.user?.id || 'anonymous';
+      const { 
+        score, 
+        totalQuestions, 
+        questions, 
+        userAnswers, 
+        correctAnswers, 
+        testTitle, 
+        sourceContent 
+      } = req.body;
+
+      if (!score || !totalQuestions || !questions || !userAnswers || !correctAnswers) {
+        return res.status(400).json({ error: 'Missing required parameters for insights generation' });
+      }
+
+      console.log(`Generating insights for user ${userId}, test ${testTitle}`);
+
+      const insights = await aiService.generateTestInsights({
+        score,
+        totalQuestions,
+        questions,
+        userAnswers,
+        correctAnswers,
+        testTitle,
+        sourceContent
+      });
+
+      res.json({ insights });
+    } catch (error) {
+      console.error('Insights generation error:', error);
+      res.status(500).json({
+        error: 'Failed to generate insights',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
 }
 
 export default TestController;

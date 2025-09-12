@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,7 +14,9 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
-  ExternalLink
+  ExternalLink,
+  Brain,
+  Loader2
 } from "lucide-react";
 import { Question } from "@/types";
 import { SourcePreviewModal } from "./SourcePreviewModal";
@@ -58,11 +60,48 @@ export function TestResultsOverlay({
   const [sourceModalOpen, setSourceModalOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
   const [, navigate] = useLocation();
+  const [insights, setInsights] = useState<any>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
 
   // Use the passed score prop instead of calculating it
   const percentage = score;
   const correctCount = questions.filter(q => userAnswers[q.id] === q.correctAnswer).length;
   const wrongCount = totalQuestions - correctCount;
+
+  // Generate AI insights when component mounts
+  useEffect(() => {
+    const generateInsights = async () => {
+      setInsightsLoading(true);
+      try {
+        const response = await fetch('/api/generate-insights', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            score: percentage,
+            totalQuestions,
+            questions,
+            userAnswers,
+            correctAnswers,
+            testTitle,
+            sourceContent: notes
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setInsights(data.insights);
+        }
+      } catch (error) {
+        console.error('Failed to generate insights:', error);
+      } finally {
+        setInsightsLoading(false);
+      }
+    };
+
+    generateInsights();
+  }, [percentage, totalQuestions, questions, userAnswers, correctAnswers, testTitle, notes]);
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-green-600";
@@ -264,43 +303,111 @@ export function TestResultsOverlay({
           <TabsContent value="insights" className="space-y-4 mt-6">
             <Card className="border-slate-200">
               <CardContent className="p-6">
-                <h3 className="font-semibold text-slate-900 mb-4">Performance Analysis</h3>
-                <div className="space-y-4">
-                  {percentage >= 80 && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                      <h4 className="font-medium text-green-800 mb-2">Strengths</h4>
-                      <p className="text-green-700">
-                        You demonstrate strong comprehension of the material. Your performance indicates solid understanding of key concepts.
-                      </p>
-                    </div>
-                  )}
-
-                  {wrongCount > 0 && (
-                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                      <h4 className="font-medium text-orange-800 mb-2">Areas for Improvement</h4>
-                      <p className="text-orange-700">
-                        Consider reviewing the material related to the {wrongCount} incorrect answer{wrongCount > 1 ? 's' : ''}. 
-                        Focus on understanding the underlying concepts rather than memorization.
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h4 className="font-medium text-blue-800 mb-2">Recommendations</h4>
-                    <ul className="text-blue-700 space-y-1">
-                      {percentage < 70 && (
-                        <li>• Review your notes thoroughly before taking another test</li>
-                      )}
-                      {wrongCount > 0 && (
-                        <li>• Retake questions you got wrong to reinforce learning</li>
-                      )}
-                      <li>• Practice with similar questions to build confidence</li>
-                      {percentage >= 80 && (
-                        <li>• Consider moving to more advanced material or increasing difficulty</li>
-                      )}
-                    </ul>
-                  </div>
+                <div className="flex items-center gap-2 mb-4">
+                  <Brain className="w-5 h-5 text-primary" />
+                  <h3 className="font-semibold text-slate-900">AI-Powered Performance Analysis</h3>
                 </div>
+                
+                {insightsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    <span className="ml-2 text-slate-600">Analyzing your performance...</span>
+                  </div>
+                ) : insights ? (
+                  <div className="space-y-4">
+                    {/* Overall Performance */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h4 className="font-medium text-blue-800 mb-2">Overall Performance</h4>
+                      <p className="text-blue-700">{insights.overallPerformance}</p>
+                    </div>
+
+                    {/* Strengths */}
+                    {insights.strengths && insights.strengths.length > 0 && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <h4 className="font-medium text-green-800 mb-2">Strengths</h4>
+                        <ul className="text-green-700 space-y-1">
+                          {insights.strengths.map((strength: string, index: number) => (
+                            <li key={index}>• {strength}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Areas for Improvement */}
+                    {insights.weaknesses && insights.weaknesses.length > 0 && (
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                        <h4 className="font-medium text-orange-800 mb-2">Areas for Improvement</h4>
+                        <ul className="text-orange-700 space-y-1">
+                          {insights.weaknesses.map((weakness: string, index: number) => (
+                            <li key={index}>• {weakness}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Study Recommendations */}
+                    {insights.studyRecommendations && insights.studyRecommendations.length > 0 && (
+                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                        <h4 className="font-medium text-purple-800 mb-2">Study Recommendations</h4>
+                        <ul className="text-purple-700 space-y-1">
+                          {insights.studyRecommendations.map((recommendation: string, index: number) => (
+                            <li key={index}>• {recommendation}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Focus Areas */}
+                    {insights.focusAreas && insights.focusAreas.length > 0 && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <h4 className="font-medium text-yellow-800 mb-2">Key Topics to Review</h4>
+                        <ul className="text-yellow-700 space-y-1">
+                          {insights.focusAreas.map((area: string, index: number) => (
+                            <li key={index}>• {area}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Fallback to original static insights */}
+                    {percentage >= 80 && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <h4 className="font-medium text-green-800 mb-2">Strengths</h4>
+                        <p className="text-green-700">
+                          You demonstrate strong comprehension of the material. Your performance indicates solid understanding of key concepts.
+                        </p>
+                      </div>
+                    )}
+
+                    {wrongCount > 0 && (
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                        <h4 className="font-medium text-orange-800 mb-2">Areas for Improvement</h4>
+                        <p className="text-orange-700">
+                          Consider reviewing the material related to the {wrongCount} incorrect answer{wrongCount > 1 ? 's' : ''}. 
+                          Focus on understanding the underlying concepts rather than memorization.
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h4 className="font-medium text-blue-800 mb-2">Recommendations</h4>
+                      <ul className="text-blue-700 space-y-1">
+                        {percentage < 70 && (
+                          <li>• Review your notes thoroughly before taking another test</li>
+                        )}
+                        {wrongCount > 0 && (
+                          <li>• Retake questions you got wrong to reinforce learning</li>
+                        )}
+                        <li>• Practice with similar questions to build confidence</li>
+                        {percentage >= 80 && (
+                          <li>• Consider moving to more advanced material or increasing difficulty</li>
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

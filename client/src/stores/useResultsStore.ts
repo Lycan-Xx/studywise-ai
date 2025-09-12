@@ -196,6 +196,7 @@ export const useResultsStore = create<ResultsStore>()(
             .slice(0, 10);
 
           console.log('Recent results count:', sorted.length);
+          console.log('Recent results data:', sorted.map(r => ({ id: r.id, title: r.testTitle, score: r.score })));
           return sorted;
         },
 
@@ -208,7 +209,7 @@ export const useResultsStore = create<ResultsStore>()(
             .sort((a, b) => new Date(a.completedAt).getTime() - new Date(b.completedAt).getTime())
             .map(result => ({
               date: result.completedAt.split('T')[0],
-              score: (result.score / result.totalQuestions) * 100
+              score: result.score // Score is already a percentage
             }));
         }
       }),
