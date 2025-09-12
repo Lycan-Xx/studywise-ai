@@ -1,0 +1,316 @@
+[vite] connecting... client:495:9
+[vite] connected. client:618:15
+🎯 Store rehydrated with 0 results useResultsStore.ts:75:19
+PDF.js worker configured for development (local): /pdf.worker.min.mjs documentProcessor.ts:8:11
+Error in parsing value for ‘-webkit-text-size-adjust’.  Declaration dropped. 6844a182-fd51-4b7c-9740-8690830e1d7d-00-1e0r0uvp0d3y9.worf.replit.dev:8080:139:29
+Unknown property ‘-moz-osx-font-smoothing’.  Declaration dropped. 6844a182-fd51-4b7c-9740-8690830e1d7d-00-1e0r0uvp0d3y9.worf.replit.dev:8080:444:27
+Unknown property ‘backdrop-filter’.  Declaration dropped. 6844a182-fd51-4b7c-9740-8690830e1d7d-00-1e0r0uvp0d3y9.worf.replit.dev:8080:3032:19
+Expected attribute name or namespace but found ‘1200px’.  Ruleset ignored due to bad selector. 6844a182-fd51-4b7c-9740-8690830e1d7d-00-1e0r0uvp0d3y9.worf.replit.dev:8080:3074:16
+Found a sectioned h1 element with no specified font-size or margin properties. More information: https://developer.mozilla.org/docs/Web/HTML/Element/Heading_Elements#specifying_a_uniform_font_size_for_h1 6844a182-fd51-4b7c-9740-8690830e1d7d-00-1e0r0uvp0d3y9.worf.replit.dev:8080
+XHRPOST
+https://fjmtxacdjahkbtrmcvfk.supabase.co/auth/v1/token?grant_type=refresh_token
+[HTTP/3 200  988ms]
+
+XHROPTIONS
+https://fjmtxacdjahkbtrmcvfk.supabase.co/auth/v1/token?grant_type=refresh_token
+[HTTP/3 200  517ms]
+
+Results page mounted, loading results... results.tsx:28:13
+Results updated: 0 total results results.tsx:32:13
+Recent results: 0 results.tsx:33:13
+Results updated: 0 total results results.tsx:32:13
+Recent results: 0 results.tsx:33:13
+Using cached questions for key: shmxtw 2 useTestStore.ts:72:21
+Submitting test with answers: 6 dashboard.tsx:133:15
+🚀 Starting completeTest workflow... useTestWorkflow.ts:41:13
+🚀 Active session found: feat: remove mock data and prepare app for product... useTestWorkflow.ts:47:13
+🚀 Session questions count: 10 useTestWorkflow.ts:48:13
+🚀 completeTest called with answers: 6 useTestWorkflow.ts:50:13
+🚀 Answer details: 
+Array(6) [ {…}, {…}, {…}, {…}, {…}, {…} ]
+useTestWorkflow.ts:51:13
+🚀 Session questions: 10 useTestWorkflow.ts:52:13
+🚀 Correct answers: 
+Array(10) [ {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…} ]
+useTestWorkflow.ts:60:13
+🚀 Score calculation: useTestWorkflow.ts:65:13
+🚀 - Correct answers: 3 useTestWorkflow.ts:66:13
+🚀 - Total questions: 10 useTestWorkflow.ts:67:13
+🚀 - Final score: 30 % useTestWorkflow.ts:68:13
+🚀 Complete result object created: 
+Object { testId: "1757670116338", testTitle: "feat: remove mock data and prepare app for product...", score: 30, totalQuestions: 10, answerCount: 6 }
+useTestWorkflow.ts:79:13
+🚀 Saving result to store... useTestWorkflow.ts:86:13
+🎯 Saving result to results store: feat: remove mock data and prepare app for product... 30 useResultsStore.ts:15:17
+🎯 Result data: {
+  "testId": "1757670116338",
+  "testTitle": "feat: remove mock data and prepare app for product...",
+  "userAnswers": {
+    "1": "Mock authentication removed, real authentication required",
+    "2": "It was improved and optimized",
+    "3": "Enhanced error messaging is provided",
+    "4": "It's used for database connections",
+    "5": "They were kept as a fallback",
+    "10": "It was removed"
+  },
+  "correctAnswers": {
+    "1": "Mock authentication removed, real authentication required",
+    "2": "It was removed",
+    "3": "Enhanced error messaging is provided",
+    "4": "It's required for the AI service to function",
+    "5": "They were removed and replaced with error handling",
+    "6": "Production-ready error handling",
+    "7": "It relies on a database",
+    "8": "Authentication is now required for production",
+    "9": "Preparing the application for production deployment",
+    "10": "It was removed"
+  },
+  "score": 30,
+  "totalQuestions": 10,
+  "timeSpent": 0,
+  "questions": [
+    {
+      "id": 1,
+      "type": "mcq",
+      "question": "What major change was implemented in this commit regarding authentication?",
+      "options": [
+        "Optional authentication added",
+        "Mock authentication removed, real authentication required",
+        "Authentication system entirely replaced with a new one",
+        "No changes to authentication"
+      ],
+      "correctAnswer": "Mock authentication removed, real authentication required",
+      "sourceText": "Generated from your content",
+      "sourceOffset": 0,
+      "sourceLength": 0
+    },
+    {
+      "id": 2,
+      "type": "mcq",
+      "question": "What happened to the mock user authentication middleware?",
+      "options": [
+        "It was improved and optimized",
+        "It was updated to use real user data",
+        "It was replaced with a database-driven system",
+        "It was removed"
+      ],
+      "correctAnswer": "It was removed",
+      "sourceText": "Generated from your content",
+      "sourceOffset": 0,
+      "sourceLength": 0
+    },
+    {
+      "id": 3,
+      "type": "mcq",
+      "question": "How are missing API keys now handled by the AI service?",
+      "options": [
+        "Ignored",
+        "A default key is used",
+        "Enhanced error messaging is provided",
+        "The application crashes"
+      ],
+      "correctAnswer": "Enhanced error messaging is provided",
+      "sourceText": "Generated from your content",
+      "sourceOffset": 0,
+      "sourceLength": 0
+    },
+    {
+      "id": 4,
+      "type": "mcq",
+      "question": "What is the purpose of the GEMINI_API_KEY environment variable?",
+      "options": [
+        "It's optional and only used for debugging",
+        "It stores user credentials",
+        "It's required for the AI service to function",
+        "It's used for database connections"
+      ],
+      "correctAnswer": "It's required for the AI service to function",
+      "sourceText": "Generated from your content",
+      "sourceOffset": 0,
+      "sourceLength": 0
+    },
+    {
+      "id": 5,
+      "type": "mcq",
+      "question": "What happened to the hardcoded mock questions?",
+      "options": [
+        "They were updated with real data",
+        "They were kept as a fallback",
+        "They were removed and replaced with error handling",
+        "They were improved for better performance"
+      ],
+      "correctAnswer": "They were removed and replaced with error handling",
+      "sourceText": "Generated from your content",
+      "sourceOffset": 0,
+      "sourceLength": 0
+    },
+    {
+      "id": 6,
+      "type": "mcq",
+      "question": "What type of error handling was added for question generation failures?",
+      "options": [
+        "Basic logging",
+        "Production-ready error handling",
+        "Custom exceptions",
+        "No changes to error handling"
+      ],
+      "correctAnswer": "Production-ready error handling",
+      "sourceText": "Generated from your content",
+      "sourceOffset": 0,
+      "sourceLength": 0
+    },
+    {
+      "id": 7,
+      "type": "mcq",
+      "question": "How does this commit affect the app's data handling?",
+      "options": [
+        "It uses more mock data",
+        "It relies on a database",
+        "It continues to use hardcoded data",
+        "It has no database interactions"
+      ],
+      "correctAnswer": "It relies on a database",
+      "sourceText": "Generated from your content",
+      "sourceOffset": 0,
+      "sourceLength": 0
+    },
+    {
+      "id": 8,
+      "type": "mcq",
+      "question": "What is a 'BREAKING CHANGE' mentioned in this commit?",
+      "options": [
+        "Improved user interface",
+        "Added new features",
+        "Authentication is now required for production",
+        "Deprecated legacy code"
+      ],
+      "correctAnswer": "Authentication is now required for production",
+      "sourceText": "Generated from your content",
+      "sourceOffset": 0,
+      "sourceLength": 0
+    },
+    {
+      "id": 9,
+      "type": "mcq",
+      "question": "What is the overall purpose of this commit?",
+      "options": [
+        "Adding new features to the application",
+        "Improving the user interface",
+        "Preparing the application for production deployment",
+        "Fixing minor bugs"
+      ],
+      "correctAnswer": "Preparing the application for production deployment",
+      "sourceText": "Generated from your content",
+      "sourceOffset": 0,
+      "sourceLength": 0
+    },
+    {
+      "id": 10,
+      "type": "mcq",
+      "question": "What happened to the mock data fallback?",
+      "options": [
+        "It's still in place as a backup",
+        "It was improved for better performance",
+        "It was removed",
+        "It was updated to use new data sources"
+      ],
+      "correctAnswer": "It was removed",
+      "sourceText": "Generated from your content",
+      "sourceOffset": 0,
+      "sourceLength": 0
+    }
+  ]
+} useResultsStore.ts:16:17
+🎯 Updated results count: 1 useResultsStore.ts:28:19
+🎯 All results: 
+Array [ {…} ]
+useResultsStore.ts:29:19
+🎯 Current localStorage before update: 
+{"state":{"testResults":[{"testId":"1757670116338","testTitle":"feat: remove mock data and prepare app for product...","userAnswers":{"1":"Mock authentication removed, real authentication required","2":"It was improved and optimized","3":"Enhanced error messaging is provided","4":"It's used for database connections","5":"They were kept as a fallback","10":"It was removed"},"correctAnswers":{"1":"Mock authentication removed, real authentication required","2":"It was removed","3":"Enhanced error messaging is provided","4":"It's required for the AI service to function","5":"They were removed and replaced with error handling","6":"Production-ready error handling","7":"It relies on a database","8":"Authentication is now required for production","9":"Preparing the application for production deployment","10":"It was removed"},"score":30,"totalQuestions":10,"timeSpent":0,"questions":[{"id":1,"type":"mcq","question":"What major change was implemented in this commit regarding authentication?","o…
+useResultsStore.ts:33:17
+🚀 Result saved successfully useTestWorkflow.ts:88:13
+🚀 Test session submitted useTestWorkflow.ts:90:13
+Test result saved: 
+Object { testId: "1757670116338", testTitle: "feat: remove mock data and prepare app for product...", userAnswers: {…}, correctAnswers: {…}, score: 30, totalQuestions: 10, timeSpent: 0, questions: (10) […] }
+dashboard.tsx:135:15
+🔍 Starting insights generation... TestResultsOverlay.tsx:69:15
+📊 Generating insights for result: 1757670116338 TestResultsOverlay.tsx:78:15
+📤 Sending insights request payload: 
+Object { score: 30, totalQuestions: 10, questions: (10) […], userAnswers: {…}, correctAnswers: {…}, testTitle: "feat: remove mock data and prepare app for product...", sourceContent: "Generated from your content Generated from your content Generated from your content Generated from your content Generated from your content Generated from your content Generated from your content Generated from your content Generated from your content Generated from your content" }
+TestResultsOverlay.tsx:89:15
+XHRPOST
+https://6844a182-fd51-4b7c-9740-8690830e1d7d-00-1e0r0uvp0d3y9.worf.replit.dev:8080/api/tests/1757670116338/insights
+[HTTP/1.1 404 Not Found 1429ms]
+
+🔍 Starting insights generation... TestResultsOverlay.tsx:69:15
+📊 Generating insights for result: 1757670116338 TestResultsOverlay.tsx:78:15
+📤 Sending insights request payload: 
+Object { score: 30, totalQuestions: 10, questions: (10) […], userAnswers: {…}, correctAnswers: {…}, testTitle: "feat: remove mock data and prepare app for product...", sourceContent: "Generated from your content Generated from your content Generated from your content Generated from your content Generated from your content Generated from your content Generated from your content Generated from your content Generated from your content Generated from your content" }
+TestResultsOverlay.tsx:89:15
+🎯 localStorage after update: 
+{"state":{"testResults":[{"testId":"1757670116338","testTitle":"feat: remove mock data and prepare app for product...","userAnswers":{"1":"Mock authentication removed, real authentication required","2":"It was improved and optimized","3":"Enhanced error messaging is provided","4":"It's used for database connections","5":"They were kept as a fallback","10":"It was removed"},"correctAnswers":{"1":"Mock authentication removed, real authentication required","2":"It was removed","3":"Enhanced error messaging is provided","4":"It's required for the AI service to function","5":"They were removed and replaced with error handling","6":"Production-ready error handling","7":"It relies on a database","8":"Authentication is now required for production","9":"Preparing the application for production deployment","10":"It was removed"},"score":30,"totalQuestions":10,"timeSpent":0,"questions":[{"id":1,"type":"mcq","question":"What major change was implemented in this commit regarding authentication?","o…
+useResultsStore.ts:36:19
+XHRPOST
+https://6844a182-fd51-4b7c-9740-8690830e1d7d-00-1e0r0uvp0d3y9.worf.replit.dev:8080/api/tests/1757670116338/insights
+[HTTP/1.1 404 Not Found 1305ms]
+
+❌ Insights API error: 404 <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>Cannot POST /api/tests/1757670116338/insights</pre>
+</body>
+</html>
+<anonymous code>:1:147461
+❌ Error generating insights: Error: Failed to generate insights: Not Found
+    generateInsights TestResultsOverlay.tsx:122
+    TestResultsOverlay TestResultsOverlay.tsx:82
+    React 15
+    showResults dashboard.tsx:78
+    handleTestSubmit dashboard.tsx:155
+    handleSubmit TestTakingOverlay.tsx:159
+    React 23
+    <anonymous> main.tsx:5
+<anonymous code>:1:147461
+❌ Insights API error: 404 <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>Cannot POST /api/tests/1757670116338/insights</pre>
+</body>
+</html>
+<anonymous code>:1:147461
+❌ Error generating insights: Error: Failed to generate insights: Not Found
+    generateInsights TestResultsOverlay.tsx:122
+    TestResultsOverlay TestResultsOverlay.tsx:82
+    React 13
+    workLoop scheduler.development.js:266
+    flushWork scheduler.development.js:239
+    performWorkUntilDeadline scheduler.development.js:533
+    js scheduler.development.js:571
+    js scheduler.development.js:633
+    __require chunk-4B2QHNJT.js:15
+    js index.js:6
+    __require chunk-4B2QHNJT.js:15
+    React 2
+    __require chunk-4B2QHNJT.js:15
+    js React
+    __require chunk-4B2QHNJT.js:15
+    js React
+    __require chunk-4B2QHNJT.js:15
+    <anonymous> react-dom_client.js:38
+<anonymous code>:1:147461
+Source map error: Error: JSON.parse: unexpected character at line 1 column 1 of the JSON data
+Stack in the worker:parseSourceMapInput@resource://devtools/client/shared/vendor/source-map/lib/util.js:163:15
+_factory@resource://devtools/client/shared/vendor/source-map/lib/source-map-consumer.js:1066:22
+SourceMapConsumer@resource://devtools/client/shared/vendor/source-map/lib/source-map-consumer.js:26:12
+_fetch@resource://devtools/client/shared/source-map-loader/utils/fetchSourceMap.js:83:19
+
+Resource URL: https://6844a182-fd51-4b7c-9740-8690830e1d7d-00-1e0r0uvp0d3y9.worf.replit.dev:8080/%3Canonymous%20code%3E
+Source Map URL: installHook.js.map

@@ -33,7 +33,7 @@ args = "npm run dev"
 [[workflows.workflow]]
 name = "Full Stack Dev"
 author = 46511181
-mode = "parallel"
+mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
