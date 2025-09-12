@@ -48,6 +48,8 @@ interface AIProvider {
   maxRequests: number;
   resetInterval: number;
   priority: number;
+  costPerToken?: number;
+  maxTokens?: number;
 }
 
 class MultiProviderAIService {
@@ -58,7 +60,7 @@ class MultiProviderAIService {
   constructor() {
     this.initializeProviders();
     setInterval(() => this.cleanupCache(), 60 * 60 * 1000);
-    setInterval(() => this.resetProviderLimits(), 60 * 1000); // Reset every minute
+    setInterval(() => this.resetProviderLimits(), 60 * 1000);
   }
 
   private initializeProviders() {
@@ -71,35 +73,81 @@ class MultiProviderAIService {
         available: true,
         requestCount: 0,
         lastReset: Date.now(),
-        maxRequests: 8, // Conservative limit
+        maxRequests: 15,
         resetInterval: 60 * 1000,
-        priority: 1
+        priority: 1,
+        costPerToken: 0.000125,
+        maxTokens: 1000000
       });
       this.providers.set('gemini-pro', {
         name: 'Gemini Pro',
         available: true,
         requestCount: 0,
         lastReset: Date.now(),
-        maxRequests: 3, // Very conservative for Pro
+        maxRequests: 5,
         resetInterval: 60 * 1000,
-        priority: 3
+        priority: 4,
+        costPerToken: 0.00025,
+        maxTokens: 30720
       });
       console.log("✅ Gemini providers initialized");
     }
 
-    // Initialize OpenAI (if available)
-    const openaiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
-    if (openaiKey) {
-      this.providers.set('openai-gpt-3.5', {
-        name: 'OpenAI GPT-3.5',
+    // Initialize OpenRouter (supports 200+ models)
+    const openrouterKey = process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY;
+    if (openrouterKey) {
+      // GPT models via OpenRouter
+      this.providers.set('gpt-4o-mini', {
+        name: 'GPT-4o Mini (OpenRouter)',
         available: true,
         requestCount: 0,
         lastReset: Date.now(),
-        maxRequests: 5,
+        maxRequests: 10,
         resetInterval: 60 * 1000,
-        priority: 2
+        priority: 2,
+        costPerToken: 0.00015,
+        maxTokens: 128000
       });
-      console.log("✅ OpenAI provider initialized");
+
+      this.providers.set('gpt-3.5-turbo', {
+        name: 'GPT-3.5 Turbo (OpenRouter)',
+        available: true,
+        requestCount: 0,
+        lastReset: Date.now(),
+        maxRequests: 15,
+        resetInterval: 60 * 1000,
+        priority: 3,
+        costPerToken: 0.0005,
+        maxTokens: 16385
+      });
+
+      // Claude models via OpenRouter
+      this.providers.set('claude-3-haiku', {
+        name: 'Claude 3 Haiku (OpenRouter)',
+        available: true,
+        requestCount: 0,
+        lastReset: Date.now(),
+        maxRequests: 8,
+        resetInterval: 60 * 1000,
+        priority: 5,
+        costPerToken: 0.00025,
+        maxTokens: 200000
+      });
+
+      // Meta Llama via OpenRouter
+      this.providers.set('llama-3.1-8b', {
+        name: 'Llama 3.1 8B (OpenRouter)',
+        available: true,
+        requestCount: 0,
+        lastReset: Date.now(),
+        maxRequests: 12,
+        resetInterval: 60 * 1000,
+        priority: 6,
+        costPerToken: 0.00005,
+        maxTokens: 131072
+      });
+
+      console.log("✅ OpenRouter providers initialized");
     }
 
     console.log(`🤖 Multi-provider AI service initialized with ${this.providers.size} providers`);
@@ -115,10 +163,36 @@ class MultiProviderAIService {
     }
   }
 
-  private getAvailableProvider(): string | null {
+  private getAvailableProvider(options?: GenerateQuestionsOptions): string | null {
+    const contentLength = options?.content?.length || 0;
+    
     const availableProviders = Array.from(this.providers.entries())
-      .filter(([_, provider]) => provider.available && provider.requestCount < provider.maxRequests)
-      .sort(([_, a], [__, b]) => a.priority - b.priority);
+      .filter(([_, provider]) => {
+        // Check availability and rate limits
+        if (!provider.available || provider.requestCount >= provider.maxRequests) {
+          return false;
+        }
+        
+        // Check if provider can handle content size
+        if (provider.maxTokens && contentLength > provider.maxTokens * 0.6) { // 60% buffer
+          return false;
+        }
+        
+        return true;
+      })
+      .sort(([_, a], [__, b]) => {
+        // Smart provider selection based on request size
+        if (options && options.questionCount >= 15) {
+          // Large requests: prioritize cost-effectiveness
+          return (a.costPerToken || 0) - (b.costPerToken || 0);
+        } else if (options && options.questionCount <= 5) {
+          // Small requests: prioritize speed (lower priority number = higher priority)
+          return a.priority - b.priority;
+        } else {
+          // Medium requests: balance priority and cost
+          return a.priority - b.priority;
+        }
+      });
 
     return availableProviders.length > 0 ? availableProviders[0][0] : null;
   }
@@ -135,28 +209,48 @@ class MultiProviderAIService {
     return response.text();
   }
 
-  private async makeOpenAIRequest(prompt: string): Promise<string> {
-    const openaiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
+  private async makeOpenRouterRequest(model: string, prompt: string): Promise<string> {
+    const openrouterKey = process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY;
+    const siteUrl = process.env.SITE_URL || process.env.VITE_SITE_URL || "http://localhost:3000";
+    const appName = process.env.APP_NAME || process.env.VITE_APP_NAME || "AI Test Generator";
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Map internal model names to OpenRouter model IDs
+    const modelMapping: Record<string, string> = {
+      'gpt-4o-mini': 'openai/gpt-4o-mini',
+      'gpt-3.5-turbo': 'openai/gpt-3.5-turbo',
+      'claude-3-haiku': 'anthropic/claude-3-haiku',
+      'llama-3.1-8b': 'meta-llama/llama-3.1-8b-instruct:free'
+    };
+
+    const openrouterModel = modelMapping[model] || model;
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${openaiKey}`
+        'Authorization': `Bearer ${openrouterKey}`,
+        'HTTP-Referer': siteUrl,
+        'X-Title': appName
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
+        model: openrouterModel,
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 2000,
-        temperature: 0.7
+        temperature: 0.3
       })
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.statusText}`);
+      const errorText = await response.text();
+      throw new Error(`OpenRouter API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
     const data = await response.json();
+    
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      throw new Error('Invalid response format from OpenRouter');
+    }
+
     return data.choices[0].message.content;
   }
 
@@ -172,10 +266,9 @@ class MultiProviderAIService {
 
       if (providerId.startsWith('gemini')) {
         response = await this.makeGeminiRequest(providerId, prompt);
-      } else if (providerId.startsWith('openai')) {
-        response = await this.makeOpenAIRequest(prompt);
       } else {
-        throw new Error(`Unknown provider: ${providerId}`);
+        // All other models go through OpenRouter
+        response = await this.makeOpenRouterRequest(providerId, prompt);
       }
 
       console.log(`✅ Request successful with ${provider.name}`);
@@ -184,13 +277,24 @@ class MultiProviderAIService {
     } catch (error) {
       console.error(`❌ Request failed with ${provider.name}:`, error);
 
-      // Mark provider as temporarily unavailable on rate limit
-      if (error instanceof Error && error.message.includes('429')) {
-        provider.available = false;
-        setTimeout(() => {
-          provider.available = true;
-          provider.requestCount = 0;
-        }, 60000); // 1 minute cooldown
+      // Handle rate limiting and temporary unavailability
+      if (error instanceof Error) {
+        if (error.message.includes('429') || error.message.includes('rate limit')) {
+          provider.available = false;
+          console.log(`⏳ Provider ${provider.name} rate limited, cooldown for 60 seconds`);
+          setTimeout(() => {
+            provider.available = true;
+            provider.requestCount = 0;
+            console.log(`✅ Provider ${provider.name} back online`);
+          }, 60000);
+        } else if (error.message.includes('quota') || error.message.includes('insufficient')) {
+          provider.available = false;
+          console.log(`💰 Provider ${provider.name} quota exceeded, disabling for 1 hour`);
+          setTimeout(() => {
+            provider.available = true;
+            provider.requestCount = 0;
+          }, 3600000); // 1 hour
+        }
       }
 
       throw error;
@@ -208,23 +312,25 @@ class MultiProviderAIService {
     }
 
     console.log(`🤖 Generating ${options.questionCount} questions using multi-provider system`);
+    this.logProviderStatus();
 
     const prompt = this.buildPrompt(options);
     let lastError: Error | null = null;
 
-    // Try each available provider in order of priority
-    const maxAttempts = this.providers.size;
+    // Try up to 3 different providers
+    const maxAttempts = Math.min(3, this.providers.size);
+    
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      const providerId = this.getAvailableProvider();
+      const providerId = this.getAvailableProvider(options);
 
       if (!providerId) {
-        console.log("⏳ No providers available, waiting 30 seconds...");
-        await this.sleep(30000);
+        console.log("⏳ No suitable providers available, waiting 10 seconds...");
+        await this.sleep(10000);
         continue;
       }
 
       try {
-        console.log(`🔄 Attempting with provider: ${this.providers.get(providerId)?.name}`);
+        console.log(`🔄 Attempt ${attempt + 1}: Using ${this.providers.get(providerId)?.name}`);
 
         const response = await this.makeProviderRequest(providerId, prompt);
         const parsedResponse = this.parseAIResponse(response);
@@ -233,36 +339,34 @@ class MultiProviderAIService {
         // Cache the successful response
         this.setCachedQuestions(contentHash, processedResponse);
 
-        console.log(`✅ Successfully generated questions with ${this.providers.get(providerId)?.name}`);
+        console.log(`✅ Successfully generated ${processedResponse.questions.length} questions with ${this.providers.get(providerId)?.name}`);
         return processedResponse;
 
       } catch (error) {
         lastError = error as Error;
-        console.log(`❌ Provider ${providerId} failed, trying next...`);
+        console.log(`❌ Provider ${providerId} failed:`, error instanceof Error ? error.message : 'Unknown error');
 
         // Small delay before trying next provider
-        await this.sleep(2000);
+        if (attempt < maxAttempts - 1) {
+          await this.sleep(Math.min(2000 * (attempt + 1), 8000)); // Progressive delay
+        }
       }
     }
 
-    // If all providers failed
-    console.error("❌ All providers failed");
+    // If all attempts failed
+    console.error("❌ All providers failed to generate questions");
     throw new Error(`Question generation failed: ${lastError?.message || "All providers exhausted"}`);
   }
 
   private buildPrompt(options: GenerateQuestionsOptions): string {
     const { content, difficulty, questionCount, questionTypes, focus } = options;
 
-    // Optimize content length
-    const maxContentLength = 2500;
+    const maxContentLength = 3000; // Increased for better context
     const optimizedContent = content.length > maxContentLength
       ? content.substring(0, maxContentLength) + "..."
       : content;
 
-    // Extract source snippets for better source mapping
-    const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 20);
-
-    return `Generate exactly ${questionCount} ${difficulty} test questions from this content:
+    return `Generate exactly ${questionCount} high-quality ${difficulty} test questions from this content:
 
 CONTENT:
 ${optimizedContent}
@@ -270,25 +374,23 @@ ${optimizedContent}
 REQUIREMENTS:
 - Question Types: ${questionTypes.join(", ")}
 - Difficulty: ${difficulty}
-- Each question must reference specific content
-- Include the exact source text for each question
+- Each question must be directly answerable from the provided content
+- Include exact source text that supports each answer
 ${focus ? `- Focus areas: ${focus}` : ""}
 
-IMPORTANT: For each question, include the exact text from the content that supports the answer as "sourceText".
-
-Return valid JSON:
+RESPONSE FORMAT - Return valid JSON only:
 {
   "questions": [
     {
-      "id": "unique_id",
-      "type": "${questionTypes[0]}",
-      "question": "Clear question text",
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Clear, specific question text",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correctAnswer": "Option A",
-      "explanation": "Brief explanation",
+      "explanation": "Brief explanation referencing the source",
       "difficulty": "${difficulty}",
       "points": ${difficulty === "easy" ? 1 : difficulty === "medium" ? 2 : 3},
-      "sourceText": "EXACT text from content that supports this question"
+      "sourceText": "Exact text from content that supports this question and answer"
     }
   ]
 }
@@ -299,22 +401,32 @@ Generate ${questionCount} questions now:`;
   private parseAIResponse(text: string): any {
     try {
       let jsonText = text.trim();
+      
+      // Remove markdown code blocks
       jsonText = jsonText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
-
+      jsonText = jsonText.replace(/^```\s*/, "").replace(/\s*```$/, "");
+      
+      // Find JSON object
       const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        throw new Error("No JSON found in response");
+        throw new Error("No JSON object found in response");
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
+      
       if (!parsed.questions || !Array.isArray(parsed.questions)) {
-        throw new Error("Invalid response format");
+        throw new Error("Invalid response format - questions array missing");
+      }
+
+      if (parsed.questions.length === 0) {
+        throw new Error("No questions generated");
       }
 
       return parsed;
     } catch (error) {
       console.error("Failed to parse AI response:", error);
-      throw new Error("Invalid JSON response from AI");
+      console.error("Response preview:", text.substring(0, 300) + "...");
+      throw new Error(`Invalid JSON response from AI: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -322,83 +434,31 @@ Generate ${questionCount} questions now:`;
     const questions = parsedResponse.questions || [];
 
     const processedQuestions = questions.map((q: any, index: number) => {
-      // Find source text in original content
+      // Enhanced source text matching
       let sourceText = q.sourceText || "Generated from your content";
       let sourceOffset = 0;
       let sourceLength = 0;
 
       if (q.sourceText && options.content && q.sourceText !== "Generated from your content") {
-        const content = options.content;
-        const contentLower = content.toLowerCase();
-        const sourceTextLower = q.sourceText.toLowerCase();
-        
-        // Try exact match first
-        let foundIndex = contentLower.indexOf(sourceTextLower);
-        
-        if (foundIndex !== -1) {
-          sourceText = content.substring(foundIndex, foundIndex + q.sourceText.length);
-          sourceOffset = foundIndex;
-          sourceLength = q.sourceText.length;
-        } else {
-          // Try partial matching with key words
-          const words = q.sourceText.split(/\s+/).filter(w => w.length > 3);
-          let bestMatch = { index: -1, length: 0, text: "" };
-          
-          for (const word of words) {
-            const wordIndex = contentLower.indexOf(word.toLowerCase());
-            if (wordIndex !== -1) {
-              // Find the sentence/paragraph containing this word
-              let start = wordIndex;
-              let end = wordIndex + word.length;
-              
-              // Expand backwards to find sentence start
-              while (start > 0 && !/[.!?\n]/.test(content[start - 1])) {
-                start--;
-              }
-              
-              // Expand forwards to find sentence end
-              while (end < content.length && !/[.!?\n]/.test(content[end])) {
-                end++;
-              }
-              
-              // Include the sentence ending punctuation
-              if (end < content.length && /[.!?]/.test(content[end])) {
-                end++;
-              }
-              
-              const matchText = content.substring(start, end).trim();
-              if (matchText.length > bestMatch.length) {
-                bestMatch = { index: start, length: end - start, text: matchText };
-              }
-            }
-          }
-          
-          if (bestMatch.index !== -1) {
-            sourceText = bestMatch.text;
-            sourceOffset = bestMatch.index;
-            sourceLength = bestMatch.length;
-          } else {
-            // Fallback: use the AI-provided source text as is
-            sourceText = q.sourceText;
-            sourceOffset = 0;
-            sourceLength = 0;
-          }
-        }
+        const { text, offset, length } = this.findBestSourceMatch(q.sourceText, options.content);
+        sourceText = text;
+        sourceOffset = offset;
+        sourceLength = length;
       }
 
       return {
-        id: q.id || nanoid(),
+        id: q.id || `q${index + 1}`,
         type: q.type || "multiple-choice",
         question: q.question || `Generated question ${index + 1}`,
         options: q.options || ["Option A", "Option B", "Option C", "Option D"],
-        correctAnswer: q.correctAnswer,
+        correctAnswer: q.correctAnswer || q.options?.[0] || "Option A",
         explanation: q.explanation || "Explanation based on source content",
         difficulty: q.difficulty || options.difficulty,
         points: q.points || (options.difficulty === "easy" ? 1 : options.difficulty === "medium" ? 2 : 3),
         sourceText,
         sourceOffset,
         sourceLength,
-        confidence: 0.8
+        confidence: 0.85
       } as GeneratedQuestion;
     });
 
@@ -412,6 +472,55 @@ Generate ${questionCount} questions now:`;
         contentHash: this.generateContentHash(options)
       }
     };
+  }
+
+  private findBestSourceMatch(sourceText: string, content: string): { text: string; offset: number; length: number } {
+    const contentLower = content.toLowerCase();
+    const sourceTextLower = sourceText.toLowerCase();
+    
+    // Try exact match first
+    let foundIndex = contentLower.indexOf(sourceTextLower);
+    if (foundIndex !== -1) {
+      return {
+        text: content.substring(foundIndex, foundIndex + sourceText.length),
+        offset: foundIndex,
+        length: sourceText.length
+      };
+    }
+
+    // Try partial matching with key phrases
+    const phrases = sourceText.split(/[.!?;,]/).filter(p => p.trim().length > 10);
+    for (const phrase of phrases) {
+      const phraseIndex = contentLower.indexOf(phrase.toLowerCase().trim());
+      if (phraseIndex !== -1) {
+        // Expand to find sentence boundaries
+        let start = phraseIndex;
+        let end = phraseIndex + phrase.length;
+        
+        // Expand backwards to sentence start
+        while (start > 0 && !/[.!?\n]/.test(content[start - 1])) {
+          start--;
+        }
+        
+        // Expand forwards to sentence end
+        while (end < content.length && !/[.!?\n]/.test(content[end])) {
+          end++;
+        }
+        
+        if (end < content.length && /[.!?]/.test(content[end])) {
+          end++;
+        }
+        
+        return {
+          text: content.substring(start, end).trim(),
+          offset: start,
+          length: end - start
+        };
+      }
+    }
+
+    // Fallback: return original source text
+    return { text: sourceText, offset: 0, length: 0 };
   }
 
   async generateTestInsights(testResult: {
@@ -433,24 +542,27 @@ Generate ${questionCount} questions now:`;
       (q) => testResult.userAnswers[q.id] !== testResult.correctAnswers[q.id]
     );
 
-    const prompt = `Analyze this test performance:
+    const prompt = `Analyze this test performance and provide actionable insights:
 
-SCORE: ${testResult.score}% (${testResult.totalQuestions - wrongQuestions.length}/${testResult.totalQuestions})
+PERFORMANCE SUMMARY:
+- Score: ${testResult.score}% (${testResult.totalQuestions - wrongQuestions.length}/${testResult.totalQuestions} correct)
+- Test: ${testResult.testTitle}
 
-INCORRECT QUESTIONS:
+INCORRECT QUESTIONS (showing up to 3):
 ${wrongQuestions.slice(0, 3).map((q, i) => `
-${i + 1}. ${q.question}
-   Correct: ${testResult.correctAnswers[q.id]}
-   User: ${testResult.userAnswers[q.id]}
+${i + 1}. Question: ${q.question}
+   Correct Answer: ${testResult.correctAnswers[q.id]}
+   User Answer: ${testResult.userAnswers[q.id] || "Not answered"}
+   Topic: ${q.sourceText.substring(0, 100)}...
 `).join("")}
 
-Return JSON:
+Provide insights in JSON format:
 {
-  "overallPerformance": "Brief assessment",
-  "strengths": ["List 2-3 strengths"],
-  "weaknesses": ["List 2-3 areas for improvement"],
-  "studyRecommendations": ["List 3-4 specific study strategies"],
-  "focusAreas": ["List 2-3 topics to review"]
+  "overallPerformance": "Clear assessment of performance level",
+  "strengths": ["2-3 specific strengths observed"],
+  "weaknesses": ["2-3 specific areas needing improvement"],
+  "studyRecommendations": ["3-4 actionable study strategies"],
+  "focusAreas": ["2-3 specific topics to review"]
 }`;
 
     try {
@@ -463,7 +575,9 @@ Return JSON:
       const jsonMatch = response.match(/\{[\s\S]*\}/);
 
       if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
+        const insights = JSON.parse(jsonMatch[0]);
+        console.log(`✅ Generated insights using ${this.providers.get(providerId)?.name}`);
+        return insights;
       }
 
       return this.generateBasicInsights(testResult);
@@ -475,25 +589,39 @@ Return JSON:
 
   private generateBasicInsights(testResult: any) {
     const score = testResult.score;
-    const wrongCount = testResult.questions.length - Math.floor((score / 100) * testResult.totalQuestions);
+    const totalQuestions = testResult.totalQuestions;
+    const wrongCount = totalQuestions - Math.floor((score / 100) * totalQuestions);
 
     return {
-      overallPerformance: score >= 80 ? "Strong performance showing good understanding" :
-                         score >= 60 ? "Satisfactory performance with room for improvement" :
-                         "Needs improvement - consider reviewing the material",
-      strengths: score >= 70 ? ["Good comprehension of key concepts", "Effective study approach"] :
-                              ["Completed all questions", "Shows engagement with material"],
-      weaknesses: wrongCount > 0 ? [`Missed ${wrongCount} questions`, "Some concepts need reinforcement"] : [],
-      studyRecommendations: [
-        "Review explanations for missed questions",
-        "Focus on understanding key concepts",
-        "Practice with similar material",
-        "Create summary notes of important points"
+      overallPerformance: score >= 90 ? "Excellent performance demonstrating strong mastery" :
+                         score >= 80 ? "Good performance with solid understanding" :
+                         score >= 70 ? "Satisfactory performance with room for improvement" :
+                         score >= 60 ? "Below average performance requiring focused study" :
+                         "Poor performance indicating need for comprehensive review",
+      strengths: score >= 70 ? [
+        "Demonstrated good comprehension of key concepts",
+        `Correctly answered ${totalQuestions - wrongCount} questions`,
+        "Showed engagement with the material"
+      ] : [
+        "Completed the full assessment",
+        "Identified areas needing improvement"
       ],
+      weaknesses: wrongCount > 0 ? [
+        `Missed ${wrongCount} out of ${totalQuestions} questions`,
+        "Some key concepts need reinforcement",
+        score < 60 ? "Fundamental understanding needs strengthening" : "Minor knowledge gaps present"
+      ] : ["No significant weaknesses identified"],
+      studyRecommendations: [
+        "Review explanations for all incorrect answers",
+        "Create summary notes of missed concepts",
+        "Practice with similar question types",
+        "Focus on understanding rather than memorization",
+        wrongCount > totalQuestions / 2 ? "Consider re-reading the source material" : "Target specific weak areas"
+      ].slice(0, 4),
       focusAreas: [
-        "Areas where questions were missed",
-        "Key concepts from source material",
-        "Practice similar question types"
+        "Topics from incorrectly answered questions",
+        "Key concepts from the source material",
+        score < 70 ? "Fundamental principles and definitions" : "Advanced applications and details"
       ]
     };
   }
@@ -515,7 +643,7 @@ Return JSON:
   }
 
   private setCachedQuestions(contentHash: string, response: AIResponse): void {
-    const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+    const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
     this.cache.set(contentHash, {
       data: response,
       timestamp: Date.now(),
@@ -543,6 +671,13 @@ Return JSON:
     }
   }
 
+  private logProviderStatus(): void {
+    console.log("📊 Provider Status:");
+    for (const [key, provider] of this.providers) {
+      console.log(`  ${provider.name}: ${provider.available ? '✅' : '❌'} (${provider.requestCount}/${provider.maxRequests})`);
+    }
+  }
+
   public getProviderStatus(): Record<string, any> {
     const status: Record<string, any> = {};
 
@@ -552,11 +687,34 @@ Return JSON:
         available: provider.available,
         requestsUsed: provider.requestCount,
         maxRequests: provider.maxRequests,
-        priority: provider.priority
+        priority: provider.priority,
+        costPerToken: provider.costPerToken,
+        maxTokens: provider.maxTokens
       };
     }
 
     return status;
+  }
+
+  public async healthCheck(): Promise<Record<string, boolean>> {
+    const results: Record<string, boolean> = {};
+    
+    for (const [key, provider] of this.providers) {
+      try {
+        // Simple test request to check if provider is working
+        await this.makeProviderRequest(key, "Test: Generate one simple question about mathematics. Respond with valid JSON containing a questions array with one question.");
+        results[key] = true;
+        console.log(`✅ Health check passed for ${provider.name}`);
+      } catch (error) {
+        results[key] = false;
+        console.log(`❌ Health check failed for ${provider.name}:`, error instanceof Error ? error.message : 'Unknown error');
+      }
+      
+      // Small delay between health checks
+      await this.sleep(1000);
+    }
+    
+    return results;
   }
 }
 
