@@ -304,7 +304,6 @@ export const useLibraryStore = create<LibraryStore>()(
               config: testData.config || {}
             },
             version: 1,
-            estimated_duration: (testData.questions?.length || 0) * 2,
             passing_score: 70
           };
 
