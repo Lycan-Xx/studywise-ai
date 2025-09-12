@@ -182,8 +182,7 @@ export const useNotificationsStore = create<NotificationsStore>((set, get) => ({
   },
 
   subscribeToNotifications: () => {
-    const { data: { user } } = supabase.auth.getUser();
-    user.then(({ user }) => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
 
       supabase
