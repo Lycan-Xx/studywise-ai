@@ -63,16 +63,23 @@ export const useTestWorkflow = () => {
    * Complete a test and save results
    */
   const completeTest = useCallback(async (userAnswers?: Record<number, string>) => {
+    console.log('🚀 Starting completeTest workflow...');
+    
     const session = sessionStore.currentSession;
     if (!session) {
+      console.error('🚀 No active test session found');
       throw new Error('No active test session');
     }
+
+    console.log('🚀 Active session found:', session.testTitle);
+    console.log('🚀 Session questions count:', session.questions.length);
 
     // Use provided answers or session answers
     const answers = userAnswers || session.userAnswers;
 
-    console.log('completeTest called with answers:', Object.keys(answers).length);
-    console.log('Session questions:', session.questions.length);
+    console.log('🚀 completeTest called with answers:', Object.keys(answers).length);
+    console.log('🚀 Answer details:', Object.entries(answers).map(([qId, answer]) => ({ questionId: qId, answer })));
+    console.log('🚀 Session questions:', session.questions.length);
 
     // Calculate score
     const totalQuestions = session.questions.length;
@@ -85,13 +92,18 @@ export const useTestWorkflow = () => {
       }
     });
 
+    console.log('🚀 Correct answers:', Object.entries(correctAnswers).map(([qId, answer]) => ({ questionId: qId, correctAnswer: answer })));
+
     const correctCount = session.questions.filter(
       q => answers[q.id] === q.correctAnswer
     ).length;
 
     const score = Math.round((correctCount / totalQuestions) * 100);
 
-    console.log('Calculated score:', score, 'correct:', correctCount, 'total:', totalQuestions);
+    console.log('🚀 Score calculation:');
+    console.log('🚀 - Correct answers:', correctCount);
+    console.log('🚀 - Total questions:', totalQuestions);
+    console.log('🚀 - Final score:', score, '%');
 
     // Create result object
     const result: Omit<TestResult, 'id' | 'completedAt'> = {
@@ -107,13 +119,22 @@ export const useTestWorkflow = () => {
       questions: session.questions
     };
 
-    console.log('Saving result to store...');
+    console.log('🚀 Complete result object created:', {
+      testId: result.testId,
+      testTitle: result.testTitle,
+      score: result.score,
+      totalQuestions: result.totalQuestions,
+      answerCount: Object.keys(result.userAnswers).length
+    });
+
+    console.log('🚀 Saving result to store...');
     // Save result
     await resultsStore.saveResult(result);
-    console.log('Result saved successfully');
+    console.log('🚀 Result saved successfully');
 
     // Submit test in session store
     sessionStore.submitTest();
+    console.log('🚀 Test session submitted');
 
     return result;
   }, [sessionStore, resultsStore]);
