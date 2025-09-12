@@ -50,18 +50,41 @@ export const useResultsStore = create<ResultsStore>()(
               completedAt: new Date().toISOString()
             };
 
-            console.log('Saving result to results store:', newResult.testTitle, newResult.score);
+            console.log('🎯 Saving result to results store:', newResult.testTitle, newResult.score);
+            console.log('🎯 Result data:', JSON.stringify(newResult, null, 2));
 
             set(state => {
               const newResults = [...state.testResults, newResult];
-              console.log('Updated results count:', newResults.length);
+              console.log('🎯 Updated results count:', newResults.length);
+              console.log('🎯 All results:', newResults.map(r => ({ id: r.id, title: r.testTitle, score: r.score })));
+              
+              // Verify localStorage persistence
+              try {
+                const stored = localStorage.getItem('studywise-results');
+                console.log('🎯 Current localStorage before update:', stored);
+              } catch (e) {
+                console.error('🎯 Error reading localStorage:', e);
+              }
+
               return {
                 testResults: newResults,
                 currentResult: newResult,
                 isLoading: false
               };
             }, false, 'saveResult/success');
+
+            // Verify localStorage after update
+            setTimeout(() => {
+              try {
+                const stored = localStorage.getItem('studywise-results');
+                console.log('🎯 localStorage after update:', stored);
+              } catch (e) {
+                console.error('🎯 Error reading localStorage after update:', e);
+              }
+            }, 100);
+
           } catch (error) {
+            console.error('🎯 Error saving result:', error);
             set({
               error: error instanceof Error ? error.message : 'Failed to save result',
               isLoading: false
@@ -73,11 +96,28 @@ export const useResultsStore = create<ResultsStore>()(
           set({ isLoading: true, error: null }, false, 'loadResults/start');
           
           try {
+            // Check localStorage directly
+            const stored = localStorage.getItem('studywise-results');
+            console.log('🎯 Loading results from localStorage:', stored);
+            
+            if (stored) {
+              try {
+                const parsed = JSON.parse(stored);
+                console.log('🎯 Parsed localStorage data:', parsed);
+                if (parsed.state && parsed.state.testResults) {
+                  console.log('🎯 Found testResults in localStorage:', parsed.state.testResults.length, 'results');
+                }
+              } catch (e) {
+                console.error('🎯 Error parsing localStorage:', e);
+              }
+            }
+            
             // Simulate API delay
             await new Promise(resolve => setTimeout(resolve, 300));
             
             set({ isLoading: false }, false, 'loadResults/success');
           } catch (error) {
+            console.error('🎯 Error loading results:', error);
             set({ 
               error: error instanceof Error ? error.message : 'Failed to load results',
               isLoading: false 
