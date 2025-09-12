@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -41,31 +42,31 @@ export default function Library() {
     notes: string;
   } | null>(null);
 
-  // Zustand stores
+  // Zustand stores - updated to use correct interface
   const { 
-    savedTests, 
-    isLoading, 
+    tests, 
+    loading: isLoading, 
     error, 
     loadTests, 
-    deleteTest, 
-    getTestById 
+    deleteTest 
   } = useLibraryStore();
   
   const { 
     startTest,
-    // resumeTest,
     submitTest,
     resetSession,
     currentSession,
     getCurrentQuestion,
     getProgress,
-    // hasSavedSession,
-    // getSavedSessionByTestId,
-    // savedSessions
   } = useTestSessionStore();
   
   const { currentResult } = useResultsStore();
   const { completeTest } = useTestWorkflow();
+
+  // Helper function to get test by ID
+  const getTestById = (testId: string) => {
+    return tests.find(test => test.id === testId) || null;
+  };
 
   // Load tests on component mount and handle query parameters
   useEffect(() => {
@@ -84,12 +85,6 @@ export default function Library() {
     }
   }, [loadTests, location]);
 
-  // Force re-render when returning to library (to update badges)
-  /* useEffect(() => {
-    // This effect will run when saved sessions change
-    console.log('Saved sessions updated:', savedSessions.length);
-  }, [savedSessions]); */
-
   const handleTestClick = (testId: string) => {
     setSelectedTest(testId);
   };
@@ -107,7 +102,10 @@ export default function Library() {
         console.error("Test data not found for testId:", startingTest);
         return;
       }
-      startTest(test.id, test.title, test.questions, timeLimit);
+      
+      // Convert Supabase test format to expected format
+      const questions = test.metadata?.questions || [];
+      startTest(test.id, test.title, questions, timeLimit);
       setTestTimeLimit(timeLimit);
       setShowTestPreview(false);
       console.log("Starting test with time limit:", timeLimit);
@@ -135,7 +133,7 @@ export default function Library() {
           score: result.score,
           totalQuestions: currentSession.questions.length,
           timeSpent: result.timeSpent,
-          notes: startingTestData?.notes || ''
+          notes: startingTestData?.metadata?.notes || ''
         };
 
         setCompletedTestData(testData);
@@ -190,7 +188,8 @@ export default function Library() {
       const test = getTestById(startingTest);
       if (test) {
         resetSession();
-        startTest(test.id, test.title, test.questions, testTimeLimit);
+        const questions = test.metadata?.questions || [];
+        startTest(test.id, test.title, questions, testTimeLimit);
         setShowTestResults(false);
         setCompletedTestData(null);
       }
@@ -221,6 +220,7 @@ export default function Library() {
 
   // Helper function to get first few words from notes
   const getNotesPreview = (notes: string) => {
+    if (!notes) return "";
     const words = notes.split(' ').slice(0, 8).join(' ');
     return words.length < notes.length ? `${words}...` : words;
   };
@@ -293,17 +293,19 @@ export default function Library() {
     // Create a TestConfig object from the test data
     const testConfig: TestConfig = {
       title: startingTestData.title,
-      topics: startingTestData.config?.topics || "General",
-      questionType: startingTestData.config?.questionType || 'mcq',
-      numberOfQuestions: startingTestData.questionCount,
-      difficulty: startingTestData.config?.difficulty || 'medium'
+      topics: startingTestData.subject || "General",
+      questionType: startingTestData.question_types?.[0] === 'multiple-choice' ? 'mcq' : 'tf',
+      numberOfQuestions: startingTestData.question_count,
+      difficulty: startingTestData.difficulty || 'medium'
     };
+
+    const questions = startingTestData.metadata?.questions || [];
 
     return (
       <TestPreviewOverlay
         config={testConfig}
-        questions={startingTestData.questions}
-        notes={startingTestData.notes}
+        questions={questions}
+        notes={startingTestData.metadata?.notes || ""}
         onStartTest={handleStartTestFromPreview}
         onRegenerateAll={handleRegenerateTest}
         onSaveToLibrary={handleSaveToLibrary}
@@ -318,8 +320,8 @@ export default function Library() {
       <NotePreview
         testId={selectedTestData.id}
         title={selectedTestData.title}
-        subject={selectedTestData.config?.topics || "General"}
-        initialNotes={selectedTestData.notes}
+        subject={selectedTestData.subject || "General"}
+        initialNotes={selectedTestData.metadata?.notes || ""}
         highlightText={highlightText}
         onClose={() => {
           setSelectedTest(null);
@@ -327,9 +329,9 @@ export default function Library() {
         }}
         onSave={handleSaveNotes}
         onStartTest={handleStartTest}
-        questionCount={selectedTestData.questionCount}
-        questionType={selectedTestData.config?.questionType === 'mcq' ? 'Multiple Choice' : 'True/False'}
-        difficulty={selectedTestData.config?.difficulty || 'medium'}
+        questionCount={selectedTestData.question_count}
+        questionType={selectedTestData.question_types?.[0] === 'multiple-choice' ? 'Multiple Choice' : 'True/False'}
+        difficulty={selectedTestData.difficulty || 'medium'}
       />
     );
   }
@@ -369,7 +371,7 @@ export default function Library() {
       </div>
 
       {/* Empty state */}
-      {savedTests.length === 0 && (
+      {tests.length === 0 && (
         <div className="text-center py-12">
           <p className="text-studywise-gray-600 mb-4">No study materials saved yet. Start by creating your first test!</p>
           <Button 
@@ -384,7 +386,7 @@ export default function Library() {
 
       {/* Test Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" data-testid="grid-tests">
-        {savedTests.map((test) => (
+        {tests.map((test) => (
           <Card
             key={test.id}
             className="shadow-sm border-studywise-gray-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
@@ -397,20 +399,15 @@ export default function Library() {
                   <h3 className="font-semibold text-studywise-gray-900 text-lg" data-testid={`text-test-title-${test.id}`}>
                     {test.title}
                   </h3>
-                  {/* {hasSavedSession(test.id) && (
-                    <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
-                      In Progress
-                    </span>
-                  )} */}
                 </div>
                 <p className="text-sm text-studywise-gray-600 mb-2 line-clamp-2" data-testid={`text-test-notes-${test.id}`}>
-                  {getNotesPreview(test.notes)}
+                  {getNotesPreview(test.description || "")}
                 </p>
                 <p className="text-xs text-studywise-gray-500 mb-1" data-testid={`text-test-date-${test.id}`}>
-                  Created on {test.createdDate}
+                  Created on {new Date(test.created_at).toLocaleDateString()}
                 </p>
                 <p className="text-xs text-studywise-gray-500" data-testid={`text-question-count-${test.id}`}>
-                  {test.questionCount} questions
+                  {test.question_count} questions
                 </p>
               </div>
 
@@ -450,9 +447,9 @@ export default function Library() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Note</AlertDialogTitle>
+            <AlertDialogTitle>Delete Test</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete the note and it's generated questions? This action cannot be undone.
+              Are you sure you want to delete this test and its generated questions? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
