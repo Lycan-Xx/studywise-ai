@@ -1,0 +1,71 @@
+[vite] connecting... client:495:9
+[vite] connected. client:618:15
+🎯 Store rehydrated with 6 results useResultsStore.ts:75:19
+PDF.js worker configured for development (local): /pdf.worker.min.mjs documentProcessor.ts:8:11
+XHRGET
+https://fjmtxacdjahkbtrmcvfk.supabase.co/auth/v1/user
+[HTTP/2 200  440ms]
+
+Cookie “__cf_bm” has been rejected for invalid domain. websocket
+Uncaught TypeError: can't access property "length", savedTests is undefined
+    Library library.tsx:372
+    React 17
+    type use-browser-location.js:73
+    navigate use-browser-location.js:49
+    useLocationFromRouter index.js:93
+    ref react-deps.js:38
+    onClick index.js:284
+    ref react-deps.js:38
+    React 23
+    <anonymous> main.tsx:5
+library.tsx:381:5
+Uncaught TypeError: can't access property "length", savedTests is undefined
+    Library library.tsx:372
+    React 18
+    type use-browser-location.js:73
+    navigate use-browser-location.js:49
+    useLocationFromRouter index.js:93
+    ref react-deps.js:38
+    onClick index.js:284
+    ref react-deps.js:38
+    React 23
+    <anonymous> main.tsx:5
+library.tsx:381:5
+The above error occurred in the <Library> component:
+
+Library@https://6844a182-fd51-4b7c-9740-8690830e1d7d-00-1e0r0uvp0d3y9.worf.replit.dev:8080/src/pages/library.tsx:40:35
+main
+div
+Layout@https://6844a182-fd51-4b7c-9740-8690830e1d7d-00-1e0r0uvp0d3y9.worf.replit.dev:8080/src/components/layout/layout.tsx:18:23
+ProtectedRoute@https://6844a182-fd51-4b7c-9740-8690830e1d7d-00-1e0r0uvp0d3y9.worf.replit.dev:8080/src/components/auth/ProtectedRoute.tsx:21:31
+Route@https://6844a182-fd51-4b7c-9740-8690830e1d7d-00-1e0r0uvp0d3y9.worf.replit.dev:8080/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=63dfc0e8:323:13
+Switch@https://6844a182-fd51-4b7c-9740-8690830e1d7d-00-1e0r0uvp0d3y9.worf.replit.dev:8080/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=63dfc0e8:379:14
+Router
+Provider@https://6844a182-fd51-4b7c-9740-8690830e1d7d-00-1e0r0uvp0d3y9.worf.replit.dev:8080/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-3RXG37ZK.js?v=63dfc0e8:38:47
+TooltipProvider@https://6844a182-fd51-4b7c-9740-8690830e1d7d-00-1e0r0uvp0d3y9.worf.replit.dev:8080/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=63dfc0e8:2221:7
+AuthProvider@https://6844a182-fd51-4b7c-9740-8690830e1d7d-00-1e0r0uvp0d3y9.worf.replit.dev:8080/src/contexts/AuthContext.tsx:30:29
+QueryClientProvider@https://6844a182-fd51-4b7c-9740-8690830e1d7d-00-1e0r0uvp0d3y9.worf.replit.dev:8080/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=63dfc0e8:2804:27
+App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries. <anonymous code>:1:147461
+Uncaught TypeError: can't access property "length", savedTests is undefined
+    Library library.tsx:372
+    React 15
+    type use-browser-location.js:73
+    navigate use-browser-location.js:49
+    useLocationFromRouter index.js:93
+    ref react-deps.js:38
+    onClick index.js:284
+    ref react-deps.js:38
+    React 23
+    <anonymous> main.tsx:5
+library.tsx:381:5
+Source map error: Error: JSON.parse: unexpected character at line 1 column 1 of the JSON data
+Stack in the worker:parseSourceMapInput@resource://devtools/client/shared/vendor/source-map/lib/util.js:163:15
+_factory@resource://devtools/client/shared/vendor/source-map/lib/source-map-consumer.js:1066:22
+SourceMapConsumer@resource://devtools/client/shared/vendor/source-map/lib/source-map-consumer.js:26:12
+_fetch@resource://devtools/client/shared/source-map-loader/utils/fetchSourceMap.js:83:19
+
+Resource URL: https://6844a182-fd51-4b7c-9740-8690830e1d7d-00-1e0r0uvp0d3y9.worf.replit.dev:8080/%3Canonymous%20code%3E
+Source Map URL: installHook.js.map
