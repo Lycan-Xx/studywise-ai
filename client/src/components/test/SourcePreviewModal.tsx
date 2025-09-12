@@ -1,5 +1,11 @@
 import { useEffect, useRef, useMemo } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
@@ -158,7 +164,7 @@ export function SourcePreviewModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl w-full h-[80vh] flex flex-col">
+      <DialogContent className="max-w-5xl w-full h-[80vh] flex flex-col" aria-describedby="source-preview-description">
         <DialogHeader className="flex-shrink-0">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl font-semibold text-studywise-gray-900">
@@ -166,6 +172,9 @@ export function SourcePreviewModal({
             </DialogTitle>
 
           </div>
+          <DialogDescription id="source-preview-description" className="text-sm text-slate-600">
+            {questionText ? 'View the source text from your notes that this question is based on.' : 'View and edit your course notes.'}
+          </DialogDescription>
           <div className="text-sm text-studywise-gray-600 mt-2">
             <span className="font-medium">Question:</span> {questionText}
           </div>

@@ -327,28 +327,61 @@ Generate ${questionCount} questions now:`;
       let sourceOffset = 0;
       let sourceLength = 0;
 
-      if (q.sourceText && options.content) {
-        const contentLower = options.content.toLowerCase();
+      if (q.sourceText && options.content && q.sourceText !== "Generated from your content") {
+        const content = options.content;
+        const contentLower = content.toLowerCase();
         const sourceTextLower = q.sourceText.toLowerCase();
-        const foundIndex = contentLower.indexOf(sourceTextLower);
-
+        
+        // Try exact match first
+        let foundIndex = contentLower.indexOf(sourceTextLower);
+        
         if (foundIndex !== -1) {
+          sourceText = content.substring(foundIndex, foundIndex + q.sourceText.length);
           sourceOffset = foundIndex;
           sourceLength = q.sourceText.length;
         } else {
-          // Find similar content using partial matching
+          // Try partial matching with key words
           const words = q.sourceText.split(/\s+/).filter(w => w.length > 3);
+          let bestMatch = { index: -1, length: 0, text: "" };
+          
           for (const word of words) {
             const wordIndex = contentLower.indexOf(word.toLowerCase());
             if (wordIndex !== -1) {
-              // Find sentence containing this word
-              const start = Math.max(0, wordIndex - 50);
-              const end = Math.min(options.content.length, wordIndex + 100);
-              sourceText = options.content.substring(start, end).trim();
-              sourceOffset = start;
-              sourceLength = sourceText.length;
-              break;
+              // Find the sentence/paragraph containing this word
+              let start = wordIndex;
+              let end = wordIndex + word.length;
+              
+              // Expand backwards to find sentence start
+              while (start > 0 && !/[.!?\n]/.test(content[start - 1])) {
+                start--;
+              }
+              
+              // Expand forwards to find sentence end
+              while (end < content.length && !/[.!?\n]/.test(content[end])) {
+                end++;
+              }
+              
+              // Include the sentence ending punctuation
+              if (end < content.length && /[.!?]/.test(content[end])) {
+                end++;
+              }
+              
+              const matchText = content.substring(start, end).trim();
+              if (matchText.length > bestMatch.length) {
+                bestMatch = { index: start, length: end - start, text: matchText };
+              }
             }
+          }
+          
+          if (bestMatch.index !== -1) {
+            sourceText = bestMatch.text;
+            sourceOffset = bestMatch.index;
+            sourceLength = bestMatch.length;
+          } else {
+            // Fallback: use the AI-provided source text as is
+            sourceText = q.sourceText;
+            sourceOffset = 0;
+            sourceLength = 0;
           }
         }
       }
