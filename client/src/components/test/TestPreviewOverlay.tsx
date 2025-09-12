@@ -47,7 +47,7 @@ export function TestPreviewOverlay({
   const { generatedQuestions, isGenerating, generateQuestions } = useTestStore();
   const { currentResult } = useResultsStore();
   const { startTest, resetSession } = useTestSessionStore();
-  const { saveTest } = useLibraryStore();
+  const libraryStore = useLibraryStore();
 
   const timeLimits = [
     { value: null, label: "No time limit" },
@@ -86,7 +86,7 @@ export function TestPreviewOverlay({
         gradient: getRandomGradient()
       };
 
-      await saveTest(savedTest);
+      await libraryStore.saveTest(savedTest);
 
       toast({
         title: "Test saved to library",
