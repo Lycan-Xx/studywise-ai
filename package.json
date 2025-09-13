@@ -5,12 +5,17 @@
   "license": "MIT",
   "scripts": {
     "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
-    "server:dev": "npx tsx server/index.ts",
-    "client:dev": "vite dev",
-    "build": "npm run build:client",
-    "build:client": "vite build",
-    "build:dev": "vite build --mode development",
-    "preview": "vite preview"
+    "dev:client": "vite dev --config config/vite.config.ts",
+    "dev:server": "npx tsx server/index.ts",
+    "client:dev": "npm run dev:client",
+    "server:dev": "npm run dev:server",
+    "build": "npm run build:server && npm run build:client",
+    "build:server": "npx tsc server/index.ts --outDir dist/server --target es2020 --module esnext --moduleResolution node --allowSyntheticDefaultImports --esModuleInterop --skipLibCheck",
+    "build:client": "vite build --config config/vite.config.ts",
+    "build:dev": "vite build --mode development --config config/vite.config.ts",
+    "start:prod": "node dist/server/index.js",
+    "preview": "vite preview --config config/vite.config.ts",
+    "test:deployment": "node scripts/test-deployment.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

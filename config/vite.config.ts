@@ -15,17 +15,17 @@ export default defineConfig(async () => ({
       ? [(await import("@replit/vite-plugin-cartographer")).cartographer()]
       : []),
   ],
-  envDir: path.resolve(__dirname), // Look for .env files in the project root
+  envDir: path.resolve(__dirname, ".."), // Look for .env files in the project root
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "client", "src"),
-      "@shared": path.resolve(__dirname, "shared"),
-      "@assets": path.resolve(__dirname, "attached_assets"),
+      "@": path.resolve(__dirname, "../client/src"),
+      "@shared": path.resolve(__dirname, "../shared"),
+      "@assets": path.resolve(__dirname, "../attached_assets"),
     },
   },
-  root: path.resolve(__dirname, "client"),
+  root: path.resolve(__dirname, "../client"),
   build: {
-    outDir: path.resolve(__dirname, "dist/public"),
+    outDir: path.resolve(__dirname, "../dist/public"),
     emptyOutDir: true,
   },
   server: {
@@ -33,7 +33,7 @@ export default defineConfig(async () => ({
     host: true, // Allow all hosts
     proxy: {
       "/api": {
-        target: "http://localhost:5000",
+        target: process.env.VITE_API_URL || "http://localhost:5000",
         changeOrigin: true,
         secure: false,
       },

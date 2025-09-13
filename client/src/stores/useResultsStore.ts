@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { devtools, persist, createJSONStorage } from 'zustand/middleware';
 import { TestResult, Question } from '@/types';
+import { supabase } from '@/lib/supabase';
 
 interface ResultsStore {
   testResults: TestResult[];
@@ -22,49 +23,132 @@ interface ResultsStore {
 }
 
 export const useResultsStore = create<ResultsStore>()(
-  persist(
+  devtools(
     (set, get) => ({
       testResults: [],
       currentResult: null,
-      isLoading: true,
+      isLoading: false,
       error: null,
       totalTestsTaken: 0,
       averageScore: 0,
       bestScore: 0,
       recentResults: [],
 
-      saveResult: (result: TestResult) => {
-        console.log("🎯 Saving result to results store:", result.testTitle, result.score);
-        console.log("🎯 Result data:", JSON.stringify(result, null, 2));
+      saveResult: async (result: TestResult) => {
+        console.log("🎯 Saving result to database:", result.testTitle, result.score);
 
-        set((state) => {
-          const newResults = [...state.testResults, result];
-          const stats = calculateStats(newResults);
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error('User not authenticated');
 
-          const newState = {
-            ...state,
-            testResults: newResults,
-            currentResult: result,
-            isLoading: false,
-            error: null,
-            ...stats,
-          };
+          // First, ensure the test exists in the database
+          let testId = result.testId;
 
-          console.log("🎯 Updated results count:", newResults.length);
-          console.log("🎯 All results:", newResults);
+          // Check if test exists, if not create it
+          const { data: existingTest } = await supabase
+            .from('tests')
+            .select('id')
+            .eq('id', testId)
+            .single();
 
-          return newState;
-        });
+          if (!existingTest) {
+            // Create a minimal test entry
+            const { data: newTest, error: testError } = await supabase
+              .from('tests')
+              .insert({
+                id: testId,
+                user_id: user.id,
+                title: result.testTitle,
+                description: 'Generated test',
+                question_count: result.totalQuestions,
+                question_types: ['mcq'], // Default
+                metadata: {
+                  questions: result.questions,
+                  generated: true
+                }
+              })
+              .select()
+              .single();
 
-        // Log localStorage state before and after
-        const before = localStorage.getItem('results-store');
-        console.log("🎯 Current localStorage before update:", before);
+            if (testError) {
+              console.error('Error creating test:', testError);
+              // Continue with saving result even if test creation fails
+            } else {
+              console.log('Created test in database:', newTest.id);
+            }
+          }
 
-        // Force a re-render by accessing the state
-        setTimeout(() => {
-          const after = localStorage.getItem('results-store');
-          console.log("🎯 localStorage after update:", after);
-        }, 100);
+          // Save result to database
+          const { data: savedResult, error: resultError } = await supabase
+            .from('test_results')
+            .insert({
+              user_id: user.id,
+              test_id: testId,
+              score: result.score,
+              total_questions: result.totalQuestions,
+              correct_answers: Object.keys(result.correctAnswers).length,
+              time_spent: result.timeSpent,
+              user_answers: result.userAnswers,
+              correct_answers_data: result.correctAnswers,
+              insights: result.aiInsight ? { ai_insight: result.aiInsight } : {},
+              completed_at: result.completedAt
+            })
+            .select()
+            .single();
+
+          if (resultError) {
+            console.error('Error saving result to database:', resultError);
+            // If database save fails, still update local state for immediate feedback
+            set((state) => {
+              const newResults = [...state.testResults, result];
+              const stats = calculateStats(newResults);
+
+              return {
+                ...state,
+                testResults: newResults,
+                currentResult: result,
+                isLoading: false,
+                error: `Database save failed: ${resultError.message}. Results saved locally.`,
+                ...stats,
+              };
+            });
+            return;
+          }
+
+          console.log('Result saved to database:', savedResult.id);
+
+          // Update local state
+          set((state) => {
+            const newResults = [...state.testResults, { ...result, id: savedResult.id }];
+            const stats = calculateStats(newResults);
+
+            return {
+              ...state,
+              testResults: newResults,
+              currentResult: { ...result, id: savedResult.id },
+              isLoading: false,
+              error: null,
+              ...stats,
+            };
+          });
+
+        } catch (error) {
+          console.error('Failed to save result:', error);
+          // Even if database fails, update local state
+          set((state) => {
+            const newResults = [...state.testResults, result];
+            const stats = calculateStats(newResults);
+
+            return {
+              ...state,
+              testResults: newResults,
+              currentResult: result,
+              isLoading: false,
+              error: error instanceof Error ? `Database error: ${error.message}. Results saved locally.` : 'Failed to save result',
+              ...stats,
+            };
+          });
+        }
       },
 
       setCurrentResult: (result: TestResult | null) => {
@@ -83,13 +167,89 @@ export const useResultsStore = create<ResultsStore>()(
         });
       },
 
-      loadResults: () => {
-        const state = get();
-        const stats = calculateStats(state.testResults);
-        set({
-          isLoading: false,
-          ...stats
-        });
+      loadResults: async () => {
+        set({ isLoading: true, error: null });
+
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) {
+            set({ isLoading: false });
+            return;
+          }
+
+          // Load results from database - try with basic columns first
+          const { data: resultsData, error } = await supabase
+            .from('test_results')
+            .select(`
+              id,
+              test_id,
+              score,
+              total_questions,
+              time_spent,
+              user_answers,
+              correct_answers_data,
+              insights,
+              completed_at,
+              tests!inner (
+                title
+              )
+            `)
+            .eq('user_id', user.id)
+            .order('completed_at', { ascending: false });
+
+          if (error) {
+            console.error('Database query error:', error);
+            // If table doesn't exist or has wrong schema, fall back to empty results
+            set({
+              testResults: [],
+              isLoading: false,
+              error: 'Database schema not properly set up. Please run the database migrations.',
+              totalTestsTaken: 0,
+              averageScore: 0,
+              bestScore: 0,
+              recentResults: []
+            });
+            return;
+          }
+
+          // Transform database results to client format
+          const testResults: TestResult[] = resultsData.map(row => ({
+            id: row.id,
+            testId: row.test_id,
+            testTitle: (row.tests as any)?.title || 'Unknown Test',
+            userAnswers: row.user_answers || {},
+            correctAnswers: row.correct_answers_data || {},
+            score: row.score,
+            totalQuestions: row.total_questions,
+            timeSpent: row.time_spent,
+            completedAt: row.completed_at,
+            questions: [], // We don't store questions in results, could load separately if needed
+            aiInsight: row.insights?.ai_insight
+          }));
+
+          const stats = calculateStats(testResults);
+
+          set({
+            testResults,
+            isLoading: false,
+            error: null,
+            ...stats
+          });
+
+          console.log("🎯 Loaded", testResults.length, "results from database");
+
+        } catch (error) {
+          console.error('Error loading results:', error);
+          set({
+            error: error instanceof Error ? error.message : 'Failed to load results',
+            isLoading: false,
+            testResults: [],
+            totalTestsTaken: 0,
+            averageScore: 0,
+            bestScore: 0,
+            recentResults: []
+          });
+        }
       },
 
       updateStats: () => {
@@ -103,15 +263,7 @@ export const useResultsStore = create<ResultsStore>()(
         return state.testResults.find(result => result.id === id || result.testId === id);
       },
     }),
-    {
-      name: 'results-store',
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          console.log("🎯 Store rehydrated with", state.testResults.length, "results");
-          state.loadResults();
-        }
-      },
-    }
+    { name: 'results-store' }
   )
 );
 

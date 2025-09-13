@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: studywise-ai-backend
+    runtime: node
+    buildCommand: npm install
+    startCommand: npx tsx server/index.ts
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        fromSecret: PORT
+      - key: GEMINI_API_KEY
+        fromSecret: GEMINI_API_KEY
+      - key: VITE_GEMINI_API_KEY
+        fromSecret: VITE_GEMINI_API_KEY
+      - key: OPENROUTER_API_KEY
+        fromSecret: OPENROUTER_API_KEY
+      - key: VITE_OPENROUTER_API_KEY
+        fromSecret: VITE_OPENROUTER_API_KEY
+      - key: OPENAI_API_KEY
+        fromSecret: OPENAI_API_KEY
+      - key: VITE_OPENAI_API_KEY
+        fromSecret: VITE_OPENAI_API_KEY
+      - key: ANTHROPIC_API_KEY
+        fromSecret: ANTHROPIC_API_KEY
+      - key: VITE_ANTHROPIC_API_KEY
+        fromSecret: VITE_ANTHROPIC_API_KEY
+      - key: VITE_SUPABASE_URL
+        fromSecret: VITE_SUPABASE_URL
+      - key: VITE_SUPABASE_ANON_KEY
+        fromSecret: VITE_SUPABASE_ANON_KEY
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        fromSecret: GOOGLE_OAUTH_CLIENT_ID
+      - key: GOOGLE_OAUTH_CLIENT_SECRET
+        fromSecret: GOOGLE_OAUTH_CLIENT_SECRET
