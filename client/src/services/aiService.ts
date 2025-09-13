@@ -9,12 +9,12 @@ class AIService {
     this.baseUrl = apiConfig.baseURL;
   } 
 
-  async generateQuestions(options: GenerateQuestionsOptions): Promise<AIResponse> {
-    try {
-      console.log('Making request to:', `${this.baseUrl}/tests/generate`);
-      console.log('Request options:', options); 
+async generateQuestions(options: GenerateQuestionsOptions): Promise<AIResponse> {
+  try {
+    console.log('Making request to:', `${this.baseUrl}${apiConfig.endpoints.generateQuestions}`);
+    console.log('Request options:', options);
 
-      const response = await fetch(`${this.baseUrl}/tests/generate`, {
+    const response = await fetch(`${this.baseUrl}${apiConfig.endpoints.generateQuestions}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -40,9 +40,9 @@ class AIService {
     }
   } 
 
-  async generateFlashcards(content: string, count: number = 10) {
-    try {
-      const response = await fetch(`${this.baseUrl}/tests/flashcards`, {
+async generateFlashcards(content: string, count: number = 10) {
+  try {
+    const response = await fetch(`${this.baseUrl}${apiConfig.endpoints.generateFlashcards}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -62,9 +62,9 @@ class AIService {
     }
   } 
 
-  async createTest(formData: FormData): Promise<any> {
-    try {
-      const response = await fetch(`${this.baseUrl}/tests`, {
+async createTest(formData: FormData): Promise<any> {
+  try {
+    const response = await fetch(`${this.baseUrl}${apiConfig.endpoints.createTest}`, {
         method: 'POST',
         credentials: 'include',
         body: formData
@@ -81,9 +81,9 @@ class AIService {
     }
   } 
 
-  async getUserTests(): Promise<any[]> {
-    try {
-      const response = await fetch(`${this.baseUrl}/library`, {
+async getUserTests(): Promise<any[]> {
+  try {
+    const response = await fetch(`${this.baseUrl}${apiConfig.endpoints.getLibrary}`, {
         method: 'GET',
         credentials: 'include'
       }); 
@@ -99,9 +99,9 @@ class AIService {
     }
   } 
 
-  async submitTestResults(testId: string, results: any): Promise<any> {
-    try {
-      const response = await fetch(`${this.baseUrl}/tests/${testId}/results`, {
+async submitTestResults(testId: string, results: any): Promise<any> {
+  try {
+    const response = await fetch(`${this.baseUrl}${apiConfig.endpoints.submitTestResults}/${testId}/results`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
