@@ -1,7 +1,8 @@
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react'
 import { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { useResultsStore } from '@/stores/useResultsStore'
 
 interface AuthContextType {
   user: User | null
@@ -34,6 +35,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const previousUserId = useRef<string | null>(null)
 
   useEffect(() => {
     // Get initial session
@@ -47,8 +49,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event: any, session: Session | null) => {
+      const newUser = session?.user ?? null
+      const newUserId = newUser?.id ?? null
+
+      // Clear caches when user logs out or switches accounts
+      if (previousUserId.current !== newUserId) {
+        if (previousUserId.current !== null || newUserId !== null) {
+          // Clear localStorage for persisted stores
+          localStorage.removeItem('results-store')
+          localStorage.removeItem('studywise-test')
+          console.log('Cleared user-specific caches on auth change')
+        }
+        previousUserId.current = newUserId
+      }
+
       setSession(session)
-      setUser(session?.user ?? null)
+      setUser(newUser)
       setLoading(false)
     })
 

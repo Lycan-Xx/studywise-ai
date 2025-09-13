@@ -3,15 +3,24 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useResultsStore } from "@/stores";
 import { useLocation } from "wouter";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Results() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const { testResults, loadResults, recentResults, totalTestsTaken, averageScore, bestScore } = useResultsStore();
 
   useEffect(() => {
     console.log('Results page mounted, loading results...');
     loadResults();
   }, [loadResults]);
+
+  // Reload results when user changes
+  useEffect(() => {
+    if (user) {
+      loadResults();
+    }
+  }, [user, loadResults]);
 
   // Force re-render when testResults change
   useEffect(() => {

@@ -33,7 +33,7 @@ export default function Dashboard() {
     difficulty: 'medium'
   });
 
-  const { notes, setNotes, updateConfig, generateQuestions, isGenerating, generatedQuestions } = useTestStore();
+  const { notes, setNotes, updateConfig, generateQuestions, isGenerating, generatedQuestions, setQuestions } = useTestStore();
   const [isUsingCache, setIsUsingCache] = useState(false);
   const { saveTest } = useLibraryStore();
   const { startTest, submitTest, currentSession } = useTestSessionStore();
@@ -136,6 +136,12 @@ export default function Dashboard() {
         title: "Test saved to library",
         description: "Your test has been successfully saved and is now available in your library.",
       });
+
+      // Clear the dashboard state for a cleaner feel
+      setNotes("");
+      updateConfig({});
+      setQuestions([]);
+      setCurrentView('dashboard');
     } catch (error) {
       console.error("Failed to save test:", error);
       toast({

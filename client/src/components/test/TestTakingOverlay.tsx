@@ -44,10 +44,10 @@ export function TestTakingOverlay({
   onBack
 }: TestTakingOverlayProps) {
   // ALL HOOKS MUST BE CALLED FIRST - NEVER CONDITIONALLY
-  const { answerQuestion, currentSession } = useTestSessionStore();
+  const { answerQuestion, currentSession, updateTimer } = useTestSessionStore();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [userAnswers, setUserAnswers] = useState<Record<number, string>>({});
-  const [flaggedQuestions, setFlaggedQuestions] = useState<Set<number>>(new Set());
+  const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
+  const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
   const [timeRemaining, setTimeRemaining] = useState<number | null>(
     timeLimit ? timeLimit * 60 : null
   );
@@ -67,17 +67,22 @@ export function TestTakingOverlay({
 
     const timer = setInterval(() => {
       setTimeRemaining(prev => {
+        const newTime = prev ? prev - 1 : null;
         if (prev && prev <= 1) {
           // Auto-submit when time runs out
           onSubmit(userAnswers);
           return 0;
         }
-        return prev ? prev - 1 : null;
+        // Sync with session store
+        if (newTime !== null) {
+          updateTimer(newTime);
+        }
+        return newTime;
       });
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeRemaining, onSubmit, userAnswers]);
+  }, [timeRemaining, onSubmit, userAnswers, updateTimer]);
 
   // Reset question index when questions change - ALWAYS CALL THIS HOOK
   useEffect(() => {
@@ -112,7 +117,7 @@ export function TestTakingOverlay({
             onClick={onBack}
             className="mt-4 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
           >
-            Back to Dashboard
+            Return to Dashboard
           </button>
         </div>
       </div>
@@ -128,7 +133,7 @@ export function TestTakingOverlay({
       [currentQuestion.id]: answer
     }));
     // Also update the session store
-    answerQuestion(currentQuestion.id, answer);
+    answerQuestion(parseInt(currentQuestion.id), answer);
   };
 
   const handlePrevious = () => {
