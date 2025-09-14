@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import TestController from './controllers/TestController.js';
 import { aiService } from './services/AIService.js';
+import { DatabaseService } from './lib/supabase.js';
 
 const router = Router();
 
@@ -12,20 +13,49 @@ router.post('/tests/flashcards', TestController.generateFlashcards);
 router.post('/tests/:testId/results', async (req, res) => {
   try {
     const { testId } = req.params;
-    const results = req.body;
+    const {
+      userId,
+      score,
+      totalQuestions,
+      timeSpent,
+      userAnswers,
+      correctAnswers,
+      testTitle
+    } = req.body;
 
-    console.log(`📊 Received test results for test ${testId}`);
+    console.log(`📊 Received test results for test ${testId}, user ${userId}`);
 
-    // Here you would typically save to database
-    // For now, just return success
+    // Validate required fields
+    if (!userId || !score || !totalQuestions || !userAnswers || !correctAnswers) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        required: ['userId', 'score', 'totalQuestions', 'userAnswers', 'correctAnswers']
+      });
+    }
+
+    // Save to database using DatabaseService
+    const savedResult = await DatabaseService.saveTestResult({
+      userId,
+      testId,
+      score,
+      totalQuestions,
+      timeSpent,
+      userAnswers,
+      correctAnswers,
+      testTitle: testTitle || 'Generated Test'
+    });
+
+    console.log('✅ Test result saved successfully:', savedResult.id);
+
     res.json({
       success: true,
       message: 'Results saved successfully',
+      resultId: savedResult.id,
       testId,
-      score: results.score
+      score
     });
   } catch (error) {
-    console.error('Error saving test results:', error);
+    console.error('❌ Error saving test results:', error);
     res.status(500).json({
       error: 'Failed to save test results',
       details: error instanceof Error ? error.message : 'Unknown error'

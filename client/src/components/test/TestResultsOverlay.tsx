@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Question } from "@/types";
 import { SourcePreviewModal } from "./SourcePreviewModal";
+import { LoadingModal } from "./LoadingModal";
 import { useLocation } from "wouter";
 
 interface TestResultsOverlayProps {
@@ -32,6 +33,7 @@ interface TestResultsOverlayProps {
   totalQuestions: number;
   timeSpent?: number; // in seconds
   notes: string;
+  insights?: any; // Pre-generated insights from dashboard
   onRetake: () => void;
   onRetakeWrong: () => void;
   onViewNotes: () => void;
@@ -49,6 +51,7 @@ export function TestResultsOverlay({
   totalQuestions,
   timeSpent,
   notes,
+  insights: initialInsights,
   onRetake,
   onRetakeWrong,
   onViewNotes,
@@ -60,55 +63,50 @@ export function TestResultsOverlay({
   const [notesModalOpen, setNotesModalOpen] = useState(false);
   const [sourceModalOpen, setSourceModalOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
-  const [, navigate] = useLocation();
-  const [insights, setInsights] = useState<any>(null);
+  const [insights, setInsights] = useState<any>(initialInsights);
   const [insightsLoading, setInsightsLoading] = useState(false);
-  const [insightsError, setInsightsError] = useState<string | null>(null); // State for insights error
-
-  // Dummy `result` object and `setIsLoadingInsights` to make the provided changes runnable.
-  // In a real scenario, `result` would be passed as a prop or fetched.
-  const result = { testId, questions, userAnswers, correctAnswers, score, totalQuestions, testTitle };
-  const setIsLoadingInsights = setInsightsLoading; // Alias for clarity with the provided snippet
 
   // Use the passed score prop instead of calculating it
   const percentage = score;
   const correctCount = questions.filter(q => userAnswers[q.id] === q.correctAnswer).length;
   const wrongCount = totalQuestions - correctCount;
 
-  // Generate AI insights when component mounts
+  // Generate AI insights if not provided as props
   useEffect(() => {
-    if (result && !insights) {
-      console.log('🔍 Starting insights generation...');
+    if (!initialInsights && !insights) {
+      console.log('🔍 Generating insights in TestResultsOverlay...');
       generateInsights();
+    } else if (initialInsights && !insights) {
+      // Use insights provided from dashboard
+      setInsights(initialInsights);
     }
-  }, [result, insights]);
+  }, [initialInsights, insights]);
 
   const generateInsights = async () => {
-    if (!result) return;
+    if (!questions.length) return;
 
-    setIsLoadingInsights(true);
-    setInsightsError(null);
+    setInsightsLoading(true);
 
     try {
-      console.log('📊 Generating insights for result:', result.testId);
+      console.log('📊 Generating insights for result:', testId);
 
       // Reconstruct source content from questions
-      const sourceContent = result.questions?.map(q => q.sourceText).join(' ') || '';
+      const sourceContent = questions?.map(q => q.sourceText).join(' ') || '';
 
       // Create the test result payload for insights
       const testResultPayload = {
-        score: result.score,
-        totalQuestions: result.totalQuestions,
-        questions: result.questions || [],
-        userAnswers: result.userAnswers || {},
-        correctAnswers: result.correctAnswers || {},
-        testTitle: result.testTitle,
+        score: percentage,
+        totalQuestions,
+        questions: questions || [],
+        userAnswers: userAnswers || {},
+        correctAnswers: correctAnswers || {},
+        testTitle,
         sourceContent
       };
 
       console.log('📤 Sending insights request payload:', testResultPayload);
 
-      const response = await fetch(`/api/tests/${result.testId}/insights`, {
+      const response = await fetch(`/api/tests/${testId}/insights`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -128,20 +126,18 @@ export function TestResultsOverlay({
 
     } catch (error) {
       console.error('❌ Error generating insights:', error);
-      setInsightsError(error instanceof Error ? error.message : 'Failed to generate insights');
-
       // Provide fallback insights if API fails
       const fallbackInsights = {
-        overallPerformance: result.score >= 70 ? "Good performance!" : "Room for improvement",
-        strengths: result.score >= 70 ? ["Good understanding of concepts"] : ["Completed the test"],
-        weaknesses: result.score < 70 ? ["Review missed questions"] : [],
+        overallPerformance: percentage >= 70 ? "Good performance!" : "Room for improvement",
+        strengths: percentage >= 70 ? ["Good understanding of concepts"] : ["Completed the test"],
+        weaknesses: percentage < 70 ? ["Review missed questions"] : [],
         studyRecommendations: ["Review explanations", "Focus on weak areas"],
         focusAreas: ["Key concepts from the material"]
       };
 
       setInsights(fallbackInsights);
     } finally {
-      setIsLoadingInsights(false);
+      setInsightsLoading(false);
     }
   };
 
@@ -352,8 +348,10 @@ export function TestResultsOverlay({
 
                 {insightsLoading ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                    <span className="ml-2 text-slate-600">Analyzing your performance...</span>
+                    <LoadingModal
+                      message="Analyzing Your Test"
+                      subMessage="AI is generating personalized insights and performance analysis..."
+                    />
                   </div>
                 ) : insights ? (
                   <div className="space-y-4">
@@ -451,12 +449,7 @@ export function TestResultsOverlay({
                   </div>
                 )}
 
-                {insightsError && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 mt-4">
-                    <h4 className="font-medium text-red-800 mb-2">Error Generating Insights</h4>
-                    <p className="text-red-700">{insightsError}</p>
-                  </div>
-                )}
+
               </CardContent>
             </Card>
           </TabsContent>

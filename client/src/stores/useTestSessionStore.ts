@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { devtools, persist, createJSONStorage } from 'zustand/middleware';
 import { TestSession, Question, SavedTestSession } from '@/types';
+import { v4 as uuidv4 } from 'uuid';
 
 interface TestSessionStore {
   // State
@@ -44,7 +45,7 @@ export const useTestSessionStore = create<TestSessionStore>()(
         // Actions
         startTest: (testId, testTitle, questions, timeLimit) => {
           const session: TestSession = {
-            id: Date.now().toString(),
+            id: uuidv4(),
             testId,
             testTitle,
             questions,

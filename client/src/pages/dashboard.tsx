@@ -3,7 +3,7 @@ import { Paperclip, Plus, X, BookOpen, Wand2, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { TestPreviewOverlay, TestTakingOverlay, TestResultsOverlay } from "@/components/test";
+import { TestPreviewOverlay, TestTakingOverlay, TestResultsOverlay, LoadingModal } from "@/components/test";
 import { DocumentProcessor } from "@/utils/documentProcessor";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTestStore, useLibraryStore, useTestSessionStore, useTestWorkflow } from "@/stores";
@@ -11,6 +11,7 @@ import { TestConfig } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import TestCustomizationPanel from './mobileDashboard/TestCustomizationPanel';
 import { MobileBottomSheet } from './mobileDashboard/MobileBottomSheet';
+import { v4 as uuidv4 } from 'uuid';
 
 export default function Dashboard() {
   const [showMobileCustomization, setShowMobileCustomization] = useState(false);
@@ -23,6 +24,8 @@ export default function Dashboard() {
   // Navigation state - replaces modal open/close states
   const [currentView, setCurrentView] = useState<'dashboard' | 'preview' | 'test' | 'results'>('dashboard');
   const [testTimeLimit, setTestTimeLimit] = useState<number | null>(null);
+  const [showInsightsLoading, setShowInsightsLoading] = useState(false);
+  const [generatedInsights, setGeneratedInsights] = useState<any>(null);
   
   // Test configuration state
   const [testConfig, setTestConfig] = useState<TestConfig>({
@@ -98,11 +101,11 @@ export default function Dashboard() {
 
   const handleStartTest = async (timeLimit: number | null) => {
     if (!generatedQuestions.length) return;
-    
+
     // Start the test session
-    const testId = Date.now().toString();
+    const testId = uuidv4();
     const testTitle = testConfig.title || "Generated Test";
-    
+
     startTest(testId, testTitle, generatedQuestions, timeLimit);
     setTestTimeLimit(timeLimit);
     showTest();
@@ -158,9 +161,72 @@ export default function Dashboard() {
       console.log('Submitting test with answers:', Object.keys(answers).length);
       const result = await completeTest(answers);
       console.log('Test result saved:', result);
+
+      // Show insights loading overlay immediately
+      setShowInsightsLoading(true);
       showResults();
+
+      // Generate insights asynchronously in the background
+      generateInsightsForResults(result.testId, answers);
     } catch (error) {
       console.error("Failed to submit test:", error);
+      // If test completion fails, still show results
+      showResults();
+    }
+  };
+
+  const generateInsightsForResults = async (testId: string, userAnswers: Record<number, string>) => {
+    try {
+      console.log('🔍 Generating insights for test submission...');
+
+      // Reconstruct source content from questions
+      const sourceContent = generatedQuestions?.map(q => q.sourceText).join(' ') || '';
+
+      // Create the test result payload for insights
+      const testResultPayload = {
+        score: Math.round((Object.keys(userAnswers).filter(id => userAnswers[id] === generatedQuestions.find(q => q.id === id)?.correctAnswer).length / generatedQuestions.length) * 100),
+        totalQuestions: generatedQuestions.length,
+        questions: generatedQuestions || [],
+        userAnswers: userAnswers || {},
+        correctAnswers: generatedQuestions.reduce((acc, q) => ({ ...acc, [q.id]: q.correctAnswer }), {}),
+        testTitle: testConfig.title || "Generated Test",
+        sourceContent
+      };
+
+      console.log('📤 Sending insights request payload:', testResultPayload);
+
+      const response = await fetch(`/api/tests/${testId}/insights`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(testResultPayload)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Insights API error:', response.status, errorText);
+        throw new Error(`Failed to generate insights: ${response.statusText}`);
+      }
+
+      const insightsData = await response.json();
+      console.log('✅ Insights generated:', insightsData);
+      setGeneratedInsights(insightsData);
+
+    } catch (error) {
+      console.error('❌ Error generating insights:', error);
+      // Provide fallback insights if API fails
+      const fallbackInsights = {
+        overallPerformance: "Test completed successfully",
+        strengths: ["Completed the test"],
+        weaknesses: [],
+        studyRecommendations: ["Review your answers"],
+        focusAreas: ["Key concepts from the material"]
+      };
+      setGeneratedInsights(fallbackInsights);
+    } finally {
+      setShowInsightsLoading(false);
+      showResults();
     }
   };
 
@@ -403,6 +469,7 @@ export default function Dashboard() {
         totalQuestions={generatedQuestions.length}
         timeSpent={timeSpent}
         notes={notes}
+        insights={generatedInsights}
         onRetake={() => handleStartTest(testTimeLimit)}
         onRetakeWrong={() => {
           const wrongQuestions = generatedQuestions.filter(q =>
@@ -422,6 +489,27 @@ export default function Dashboard() {
     );
   }
 
+  // Show loading overlay during test generation
+  if (isGenerating) {
+    return (
+      <div className="fixed inset-0 z-50 bg-white flex items-center justify-center">
+        <LoadingModal />
+      </div>
+    );
+  }
+
+  // Show loading overlay during insights generation after test submission
+  if (showInsightsLoading) {
+    return (
+      <div className="fixed inset-0 z-50 bg-white flex items-center justify-center">
+        <LoadingModal
+          message="Analyzing Your Test"
+          subMessage="AI is generating personalized insights and performance analysis..."
+        />
+      </div>
+    );
+  }
+
   // Dashboard view (same as before)
   return (
     <div className="h-full md:h-auto flex flex-col">
@@ -429,76 +517,96 @@ export default function Dashboard() {
 
 {/* MOBILE */}
 <div className="md:hidden flex flex-col min-h-[calc(100vh-8rem)] overflow-hidden">
-  {/* Welcome text in center */}
-  <div className="flex-1 flex items-center justify-center px-6">
-    <h1 className="text-[3.6rem] leading-tight font-light text-center">
-      Welcome back, {profileInfo.fullName || 'there'}!
-    </h1>
-    <p className="text-xl text-gray-600 mt-4 text-center max-w-md">
-      Ready to transform your notes into intelligent practice tests?
-    </p>
+  {/* Welcome text positioned towards top */}
+  <div className="flex-1 flex items-start justify-center px-6 pt-12">
+    <div className="text-center">
+      <h1 className="text-3xl font-light text-gray-900 mb-8">
+        Welcome back, {profileInfo.fullName || 'there'}!
+      </h1>
+      <p className="text-xl text-gray-600">
+        Let's create your next test
+      </p>
+    </div>
   </div>
 
   {/* Fixed bottom textarea */}
   <div className="fixed left-4 right-4 bottom-6 z-50">
-    <div className={`bg-white rounded-xl border flex items-center h-40 gap-3 px-2 py-3 ${isDragOver ? 'border-blue-400 bg-blue-50' : 'border-black'}`}>
-      <button onClick={handleFileUpload} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center border border-gray-400">
-        <Paperclip className="w-6 h-6 text-gray-700" />
-      </button>
+    <div className={`bg-white rounded-xl border flex flex-col min-h-[10vh] ${isDragOver ? 'border-blue-400 bg-blue-50' : 'border-black'}`}>
+      {/* Textarea section - takes most of the height */}
+      <div className="flex-1 flex items-start px-4 py-4">
+        <div className="flex-1 relative w-full">
+          <textarea
+            ref={textareaRef}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            onInput={adjustTextareaHeight}
+            onFocus={handleFocus}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            placeholder={isDragOver ? "Drop your file here..." : "Paste or upload your notes here to get started..."}
+            maxLength={maxLength}
+            className={`w-full resize-none bg-transparent
+              placeholder:text-gray-400 text-base text-gray-900
+              border-none
+              focus:outline-none
+              focus:ring-0
+              focus:border-transparent
+              outline-0
+              ring-0
+              text-left
+              ${isDragOver ? 'bg-blue-50' : ''}`}
+          />
 
-      <div className="flex-1 relative">
-        <textarea
-          ref={textareaRef}
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          onInput={adjustTextareaHeight}
-          onFocus={handleFocus}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          placeholder={isDragOver ? "Drop your file here..." : "Paste or upload your notes here to get started..."}
-          maxLength={maxLength}
-          className={ `resize-none bg-white
-            placeholder:text-gray-400 text-base text-gray-900
-            border-none
-            focus:outline-none
-            focus:ring-0
-            focus:border-transparent
-            outline-0
-            ring-0
-            text-center
-            ${isDragOver ? 'bg-blue-50' : ''}`}
-          style={{ textAlign: "left", alignItems: "center", justifyContent: "center" }}
-        />
-
-        {isDragOver && (
-          <div className="absolute inset-0 flex items-center justify-center bg-blue-100 bg-opacity-50 pointer-events-none rounded-full text-blue-600 text-center">
-            Drop your file
-          </div>
-        )}
+          {isDragOver && (
+            <div className="absolute inset-0 flex items-center justify-center bg-blue-100 bg-opacity-50 pointer-events-none rounded-lg text-blue-600 text-center">
+              Drop your file
+            </div>
+          )}
+        </div>
       </div>
 
-      <button
-        onClick={handleGenerateWithDefaults}
-        disabled={!notes.trim() || isGenerating}
-        className={`w-10 h-10 rounded-full border flex items-center justify-center ${notes.trim() && !isGenerating ? "bg-primary text-white border-transparent" : "bg-white text-gray-400 border-gray-200 cursor-not-allowed"}`}
-      >
-        {isGenerating ? (
-          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-        ) : (
-          <Wand2 className="w-6 h-6" />
-        )}
-      </button>
+      {/* Buttons section - fixed at bottom */}
+      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
+        <button
+          onClick={handleFileUpload}
+          className="w-12 h-12 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center border border-gray-300 transition-colors"
+        >
+          <Paperclip className="w-6 h-6 text-gray-700" />
+        </button>
+
+        <button
+          onClick={handleGenerateWithDefaults}
+          disabled={!notes.trim() || isGenerating}
+          className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+            notes.trim() && !isGenerating
+              ? "bg-primary hover:bg-blue-600 text-white"
+              : "bg-gray-200 text-gray-400 cursor-not-allowed"
+          }`}
+        >
+          {isGenerating ? (
+            <>
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span>Generating...</span>
+            </>
+          ) : (
+            <>
+              <Wand2 className="w-5 h-5" />
+              <span>Generate Test</span>
+            </>
+          )}
+        </button>
+      </div>
     </div>
 
     {/* Mobile Action Buttons */}
     {notes.trim() && (
-      <div className="flex justify-end mt-4">
+      <div className="flex justify-end mt-4 animate-in fade-in-0 slide-in-from-bottom-2 duration-500">
         <Button
           onClick={() => setShowMobileCustomization(true)}
           variant="outline"
           size="sm"
-          className="px-4 py-2 border border-gray-500 text-gray-700 hover:bg-gray-50 flex items-center gap-2 text-sm"
+          className="px-4 py-2 border border-gray-500 text-gray-700 hover:bg-gray-50 flex items-center gap-2 text-sm transition-all duration-300"
         >
           <Settings className="w-3 h-3" />
           Customize
@@ -607,7 +715,7 @@ export default function Dashboard() {
 
             {/* Action Buttons */}
             {notes.trim() && (
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <div className="flex flex-col sm:flex-row gap-4 justify-center animate-in fade-in-0 slide-in-from-bottom-2 duration-500">
                 <Button
                   onClick={() => {
                     setShowCustomization(!showCustomization);
@@ -621,7 +729,7 @@ export default function Dashboard() {
                   }}
                   variant="outline"
                   size="lg"
-                  className="px-8 py-3 border-2 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center gap-2"
+                  className="px-8 py-3 border-2 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center gap-2 transition-all duration-300"
                 >
                   <Settings className="w-4 h-4" />
                   Customize
@@ -631,7 +739,7 @@ export default function Dashboard() {
                   onClick={handleGenerateWithDefaults}
                   disabled={isGenerating}
                   size="lg"
-                  className="px-8 py-3 bg-primary hover:bg-blue-600 text-white flex items-center gap-2"
+                  className="px-8 py-3 bg-primary hover:bg-blue-600 text-white flex items-center gap-2 transition-all duration-300"
                 >
                   {isGenerating ? (
                     <>

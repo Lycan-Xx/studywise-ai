@@ -1,6 +1,11 @@
 import { Sparkles } from "lucide-react";
 
-export function LoadingModal() {
+interface LoadingModalProps {
+  message?: string;
+  subMessage?: string;
+}
+
+export function LoadingModal({ message = "Generating Your Test", subMessage = "AI is analyzing your notes and creating personalized questions..." }: LoadingModalProps) {
   return (
     <div className="w-full text-center py-12">
       <div className="mb-6">
@@ -8,13 +13,13 @@ export function LoadingModal() {
           <Sparkles className="w-8 h-8 text-primary animate-pulse" />
         </div>
         <h3 className="text-xl font-semibold text-studywise-gray-900 mb-2">
-          Generating Your Test
+          {message}
         </h3>
         <p className="text-studywise-gray-600">
-          AI is analyzing your notes and creating personalized questions...
+          {subMessage}
         </p>
       </div>
-      
+
       <div className="max-w-md mx-auto space-y-3">
         <div className="w-full bg-studywise-gray-200 rounded-full h-2">
           <div className="bg-primary h-2 rounded-full animate-pulse" style={{ width: '70%' }} />
