@@ -53,25 +53,27 @@ studywise-ai/
    # Edit .env with your API keys
    ```
 
-4. **Start development servers**
+4. **Start development servers individually**
    ```bash
-   # Start both client and server concurrently
-   npm run dev
+   # Terminal 1: Start the backend server
+   npm run dev:server
 
-   # Or start individually:
-   npm run dev:server  # Terminal 1
-   npm run dev:client  # Terminal 2
+   # Terminal 2: Start the frontend client
+   npm run dev:client
    ```
 
 5. **Open your browser**
-   - Frontend: http://localhost:8080
+   - Frontend: http://localhost:8080 (or next available port)
    - Backend API: http://localhost:5000
+
+6. **Configure API endpoint**
+   - For local development: `VITE_API_URL=http://localhost:5000` in `.env`
+   - For production: `VITE_API_URL=https://yourb-backend-API.com` in `.env`
 
 ## 📋 Available Scripts
 
 ### Development
 ```bash
-npm run dev              # Start both client and server
 npm run dev:client       # Start only frontend (Vite dev server)
 npm run dev:server       # Start only backend (Express server)
 ```
