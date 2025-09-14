@@ -26,6 +26,7 @@ export default function Dashboard() {
   const [testTimeLimit, setTestTimeLimit] = useState<number | null>(null);
   const [showInsightsLoading, setShowInsightsLoading] = useState(false);
   const [generatedInsights, setGeneratedInsights] = useState<any>(null);
+  const [currentTestResult, setCurrentTestResult] = useState<any>(null);
   
   // Test configuration state
   const [testConfig, setTestConfig] = useState<TestConfig>({
@@ -162,16 +163,12 @@ export default function Dashboard() {
       const result = await completeTest(answers);
       console.log('Test result saved:', result);
 
-      // Show insights loading overlay immediately
-      setShowInsightsLoading(true);
-      showResults();
-
-      // Generate insights asynchronously in the background
-      generateInsightsForResults(result.testId, answers);
+      // Store the test result for later use
+      setCurrentTestResult(result);
     } catch (error) {
       console.error("Failed to submit test:", error);
-      // If test completion fails, still show results
-      showResults();
+      // If test completion fails, still proceed with insights generation
+      setCurrentTestResult(null);
     }
   };
 
@@ -452,6 +449,12 @@ export default function Dashboard() {
         timeLimit={testTimeLimit}
         onSubmit={handleTestSubmit}
         onBack={handleTestExit}
+        onInsightsReady={(insights) => {
+          setGeneratedInsights(insights);
+          setShowInsightsLoading(false);
+          // Navigate to results view
+          setCurrentView('results');
+        }}
       />
     );
   }
@@ -502,7 +505,7 @@ export default function Dashboard() {
   if (showInsightsLoading) {
     return (
       <div className="fixed inset-0 z-50 bg-white flex items-center justify-center">
-        <LoadingModal
+        <LoadingModal type="testGeneration"
           message="Analyzing Your Test"
           subMessage="AI is generating personalized insights and performance analysis..."
         />

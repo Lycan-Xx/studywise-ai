@@ -66,10 +66,10 @@ export function Header(): JSX.Element {
             </div>
 
             {/* CENTER LOGO */}
-            <div className="justify-center nav-logo text-2xl font-bold tracking-tight flex items-center gap-2">
+            <Link href="/" className="justify-center nav-logo text-2xl font-bold tracking-tight flex items-center gap-2 hover:text-primary transition-colors">
                 <Brain className="w-6 h-6 text-primary" />
                 <span>StudyWise AI</span>
-            </div>
+            </Link>
 
 
             {/* RIGHT */}
@@ -136,10 +136,10 @@ export function Header(): JSX.Element {
         <div className="relative">
           <div className="rounded-xl border border-black bg-white h-14 flex items-center justify-center">
             {/* Centered Logo */}
-            <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2">
+            <Link href="/" className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2 hover:text-primary transition-colors">
                 <Brain className="w-5 h-5 text-primary" />
                 <span>StudyWise AI</span>
-            </div>
+            </Link>
 
             {/* Top-right left-facing arrow (opens menu from the right) */}
             <button

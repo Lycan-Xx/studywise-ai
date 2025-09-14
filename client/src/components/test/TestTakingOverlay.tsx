@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { Question } from "@/types";
 import { useTestSessionStore } from "@/stores";
+import { LoadingModal } from "./LoadingModal";
 
 interface TestTakingOverlayProps {
   testTitle: string;
@@ -34,6 +35,7 @@ interface TestTakingOverlayProps {
   timeLimit: number | null; // in minutes
   onSubmit: (answers: Record<number, string>) => void;
   onBack: () => void;
+  onInsightsReady?: (insights: any) => void; // Callback when insights are generated
 }
 
 export function TestTakingOverlay({
@@ -41,7 +43,8 @@ export function TestTakingOverlay({
   questions,
   timeLimit,
   onSubmit,
-  onBack
+  onBack,
+  onInsightsReady
 }: TestTakingOverlayProps) {
   // ALL HOOKS MUST BE CALLED FIRST - NEVER CONDITIONALLY
   const { answerQuestion, currentSession, updateTimer } = useTestSessionStore();
@@ -54,6 +57,7 @@ export function TestTakingOverlay({
   const [showQuestionList, setShowQuestionList] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showInsightsLoading, setShowInsightsLoading] = useState(false);
 
   // Initialize userAnswers from session if available
   useEffect(() => {
@@ -164,10 +168,78 @@ export function TestTakingOverlay({
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
+      // Submit the test first
       await onSubmit(userAnswers);
+
+      // Show insights loading modal
+      setShowInsightsLoading(true);
+
+      // Generate insights in background
+      generateInsightsForSubmission();
     } catch (error) {
       console.error('Submit failed:', error);
       setIsSubmitting(false);
+    }
+  };
+
+  const generateInsightsForSubmission = async () => {
+    try {
+      console.log('🔍 Generating insights for test submission...');
+
+      // Reconstruct source content from questions
+      const sourceContent = questions?.map(q => q.sourceText).join(' ') || '';
+
+      // Create the test result payload for insights
+      const testResultPayload = {
+        score: Math.round((Object.keys(userAnswers).filter(id => userAnswers[id] === questions.find(q => q.id === id)?.correctAnswer).length / questions.length) * 100),
+        totalQuestions: questions.length,
+        questions: questions || [],
+        userAnswers: userAnswers || {},
+        correctAnswers: questions.reduce((acc, q) => ({ ...acc, [q.id]: q.correctAnswer }), {}),
+        testTitle: testTitle,
+        sourceContent
+      };
+
+      console.log('📤 Sending insights request payload:', testResultPayload);
+
+      const response = await fetch(`/api/tests/temp-test-id/insights`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(testResultPayload)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Insights API error:', response.status, errorText);
+        throw new Error(`Failed to generate insights: ${response.statusText}`);
+      }
+
+      const insightsData = await response.json();
+      console.log('✅ Insights generated:', insightsData);
+
+      // Call the callback to notify parent component
+      if (onInsightsReady) {
+        onInsightsReady(insightsData);
+      }
+
+    } catch (error) {
+      console.error('❌ Error generating insights:', error);
+      // Provide fallback insights if API fails
+      const fallbackInsights = {
+        overallPerformance: "Test completed successfully",
+        strengths: ["Completed the test"],
+        weaknesses: [],
+        studyRecommendations: ["Review your answers"],
+        focusAreas: ["Key concepts from the material"]
+      };
+
+      if (onInsightsReady) {
+        onInsightsReady(fallbackInsights);
+      }
+    } finally {
+      setShowInsightsLoading(false);
     }
   };
 
@@ -189,23 +261,14 @@ export function TestTakingOverlay({
 
   const answeredCount = questions.filter(q => userAnswers[q.id]).length;
 
-  // Show loading overlay immediately when submitting
-  if (isSubmitting) {
+  // Show insights loading modal when generating insights
+  if (showInsightsLoading) {
     return (
       <div className="fixed inset-0 z-50 bg-white flex items-center justify-center">
-        <div className="w-full text-center py-12">
-          <div className="mb-6">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-              <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Submitting Test
-            </h3>
-            <p className="text-gray-600">
-              Processing your answers...
-            </p>
-          </div>
-        </div>
+        <LoadingModal
+          message="Analyzing Your Test"
+          subMessage="AI is generating personalized insights and performance analysis..."
+        />
       </div>
     );
   }

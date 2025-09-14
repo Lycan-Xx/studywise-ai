@@ -1,341 +1,187 @@
-# StudyWise AI - Project Context Document
+# StudyWise AI: The Intelligent Study Companion
 
-## 1. PROJECT OVERVIEW
-### Project Name and Tagline
-**StudyWise AI** - An intelligent study assistant that transforms documents into interactive practice tests.
+## A Deep Dive into AI-Powered Learning Transformation
 
-### High-Level Purpose and Vision
-To revolutionize the studying process by providing an AI-powered platform that automatically generates personalized practice tests from any study material, making learning more effective and engaging.
+### The Vision
+StudyWise AI represents a fundamental rethinking of how students interact with their study materials. Rather than the traditional cycle of passive reading, highlighting, and memorization, we've created an intelligent system that actively transforms any document into a personalized learning experience.
 
-### Core Problem Being Solved
-- Inefficient traditional study methods (highlighting, re-reading)
-- Difficulty in retaining information from dense academic materials
-- Lack of interactive practice tools for personalized learning
+### The Core Innovation
+At its heart, StudyWise AI is an AI-powered document analysis and question generation engine that understands context, identifies key concepts, and creates meaningful practice questions directly from your source material. This isn't just another quiz app—it's a learning accelerator that makes studying more effective and engaging.
 
-### Target User Persona(s)
-- Students at all educational levels
-- Self-learners and professionals
-- Educators creating assessment materials
+## How It Works: The Intelligence Behind the Scenes
 
-### Unique Value Proposition
-Automatic transformation of any document into interactive, personalized practice tests with intelligent question generation and comprehensive progress tracking.
+### Multi-Modal Document Processing
+The system begins with sophisticated document parsing that handles multiple formats:
+- **PDF Processing**: Advanced text extraction with layout preservation
+- **Word Documents**: Structure-aware content analysis
+- **Markdown/Text**: Semantic understanding of content hierarchy
+- **Source Linking**: Every question traces back to its exact origin in your notes
 
-## 2. SYSTEM ARCHITECTURE
-### 2.1 High-Level Architecture
-#### System Components
-- Frontend Web Application
-- Document Processing Engine
-- Test Generation Service
-- State Management Layer
-- Analytics Engine
+### AI-Powered Question Generation
+We employ a multi-provider AI architecture that ensures reliability and quality:
 
-#### Architectural Pattern
-- Single Page Application (SPA) with client-side routing
-- Component-based architecture using React
-- State management using Zustand
-- Serverless deployment architecture
+**Primary AI Models:**
+- Google Gemini Flash/Pro for fast, accurate question generation
+- GPT-4o Mini for complex reasoning tasks
+- Claude 3 Haiku for nuanced content analysis
+- OpenRouter integration for 200+ model access
 
-#### Key Technical Constraints
-- Browser PDF processing limitations
-- Document parsing complexity
-- State persistence requirements
-- Mobile device compatibility
+**Intelligent Question Types:**
+- Multiple Choice (context-aware distractors)
+- True/False (logical reasoning based)
+- Short Answer (concept extraction)
+- Essay prompts (deep understanding assessment)
 
-#### Scalability Considerations
-- CDN integration for static assets
-- Worker-based document processing
-- Local storage optimization
-- Efficient state management
+### Smart Content Analysis
+The AI doesn't just read your documents—it understands them:
+- **Topic Extraction**: Identifies main themes and subtopics
+- **Difficulty Assessment**: Automatically calibrates question complexity
+- **Source Attribution**: Links every answer to specific text passages
+- **Context Preservation**: Maintains the relationship between concepts
 
-### 2.2 Technology Stack
-#### Frontend Technologies
-- React 18.3.1
-- TypeScript 5.6.3
-- Vite 5.4.19
-- TailwindCSS 3.4.17
-- Radix UI Components
+## The Learning Experience
 
-#### Backend Technologies
-- Express.js (API Server)
-- WebSocket Support (ws)
-- Serverless Functions (Netlify)
+### Personalized Test Creation
+Users upload their study materials, and the system:
+1. Analyzes document structure and content
+2. Extracts key concepts and relationships
+3. Generates questions at appropriate difficulty levels
+4. Creates comprehensive answer explanations
+5. Links everything back to source material
 
-#### Database Technologies
-- PostgreSQL with Drizzle ORM
-- Local Storage for client-side persistence
+### Real-Time Test Taking
+The testing interface provides:
+- **Progress Tracking**: Visual progress indicators
+- **Time Management**: Optional timers with warnings
+- **Question Navigation**: Flexible movement through test
+- **Answer Validation**: Immediate feedback on selections
+- **Source References**: Direct links to supporting text
 
-#### Deployment Infrastructure
-- Netlify for hosting and serverless functions
-- CDN for static assets and workers
+### AI-Driven Insights
+After test completion, the system generates:
+- **Performance Analysis**: Detailed breakdown of strengths/weaknesses
+- **Study Recommendations**: Personalized learning strategies
+- **Topic Mastery**: Identification of areas needing focus
+- **Progress Tracking**: Longitudinal learning analytics
 
-#### Key Frameworks and Libraries
-- Zustand for state management
-- React Query for data fetching
-- PDF.js for document processing
-- Mammoth.js for DOCX processing
-- Framer Motion for animations
+## Technical Architecture: Building for Scale
 
-## 3. FUNCTIONAL REQUIREMENTS
-### 3.1 Core Features
-#### Document Processing
-- Multi-format support (PDF, DOCX, TXT, MD)
-- Text extraction and analysis
-- Source text preservation
+### Frontend: Modern React Ecosystem
+- **React 18** with concurrent features for smooth interactions
+- **TypeScript** for type safety and developer experience
+- **Vite** for lightning-fast development and optimized builds
+- **TailwindCSS + shadcn/ui** for consistent, accessible design
+- **Zustand** for efficient state management
+- **Wouter** for lightweight routing
 
-#### Test Generation
-- Multiple question types (MCQ, True/False, Fill-in-blank)
-- Customizable test parameters
-- Source text linking
+### Backend: AI-First API Design
+- **Express.js** with TypeScript for robust API endpoints
+- **Multi-Provider AI Service** with intelligent failover
+- **Rate Limiting** and cost optimization across providers
+- **Caching Layer** for improved performance
+- **WebSocket Support** for real-time features
 
-#### Test Taking
-- Interactive test interface
-- Real-time progress tracking
-- Timer functionality
-- Auto-save capability
+### Database: Comprehensive Learning Analytics
+- **Supabase (PostgreSQL)** for scalable data storage
+- **Row-Level Security** ensuring user data privacy
+- **Advanced Indexing** for fast content search
+- **Analytics Views** for learning insights
+- **Full-Text Search** across all user content
 
-#### Results Analysis
-- Detailed performance metrics
-- Question-by-question review
-- Progress tracking over time
+### AI Infrastructure: Reliability Through Redundancy
+- **Provider Rotation**: Automatic switching between AI models
+- **Rate Limit Management**: Smart throttling across providers
+- **Cost Optimization**: Intelligent model selection based on task complexity
+- **Fallback Systems**: Graceful degradation when services are unavailable
+- **Quality Assurance**: Multi-step validation of generated content
 
-### 3.2 Non-Functional Requirements
-#### Performance Expectations
-- Document processing under 30 seconds
-- Smooth UI interactions (60fps)
-- Offline capability for test taking
+## The Learning Science Foundation
 
-#### Security Requirements
-- Secure document handling
-- User data privacy
-- Session management
+### Active Recall Principles
+StudyWise AI is built on proven learning science:
+- **Spaced Repetition**: Intelligent review scheduling for long-term retention
+- **Active Recall**: Question-based learning that strengthens memory
+- **Interleaved Practice**: Mixed-topic questions that build conceptual connections
+- **Immediate Feedback**: Instant validation with detailed explanations
 
-#### Scalability Targets
-- Support for large documents (100+ pages)
-- Concurrent test sessions
-- Quick test generation
+### Adaptive Learning Algorithms
+The system adapts to individual learning patterns:
+- **Difficulty Calibration**: Questions adjust based on performance
+- **Topic Sequencing**: Logical progression through subject matter
+- **Weakness Identification**: Automated detection of knowledge gaps
+- **Personalized Recommendations**: Study strategies tailored to user needs
 
-#### Reliability Goals
-- 99.9% uptime
-- Auto-save functionality
-- Error recovery mechanisms
+## Security and Privacy: Learning Without Compromise
 
-## 4. USER EXPERIENCE DESIGN
-### User Interface Principles
-- Clean, distraction-free design
-- Mobile-first responsive layout
-- Intuitive navigation flow
-- Visual feedback for actions
+### Data Protection
+- **End-to-End Encryption**: All user data encrypted in transit and at rest
+- **User Isolation**: Complete data separation between users
+- **Secure Processing**: AI operations performed on isolated infrastructure
+- **Privacy Controls**: Granular permissions for data sharing
 
-### Design System Overview
-- Custom color palette
-- Consistent component library
-- Typography system
-- Spacing and layout rules
+### Authentication & Authorization
+- **Supabase Auth**: Enterprise-grade authentication
+- **OAuth Integration**: Google and other provider support
+- **Session Management**: Secure token handling
+- **Audit Logging**: Comprehensive activity tracking
 
-### Interaction Patterns
-- Drag-and-drop file upload
-- Step-by-step test configuration
-- Smooth transitions between states
-- Progress indicators
+## The Development Journey
 
-### Accessibility Considerations
-- ARIA labels implementation
-- Keyboard navigation support
-- Color contrast compliance
-- Screen reader compatibility
+### From Concept to Reality
+The project evolved through several key phases:
 
-## 5. AI/ML INTEGRATION CONTEXT
-### 5.1 AI Feature Overview
-#### AI Components
-- Question generation engine
-- Answer validation system
-- Difficulty assessment
-- Topic extraction
+1. **Foundation**: Basic document processing and question generation
+2. **Intelligence**: Multi-provider AI integration with failover systems
+3. **Scale**: Comprehensive database design and analytics infrastructure
+4. **Experience**: Mobile-first UI/UX with accessibility considerations
+5. **Community**: Content sharing and collaborative features
 
-#### Machine Learning Models
-- Currently using mock implementation
-- Prepared for LLM integration
-- Pattern recognition for question generation
+### Technical Challenges Overcome
+- **Document Parsing Complexity**: Handling diverse file formats and layouts
+- **AI Reliability**: Building resilient multi-provider systems
+- **Real-Time Performance**: Optimizing for smooth user interactions
+- **Data Privacy**: Implementing comprehensive security measures
+- **Scalability**: Designing for growth from MVP to enterprise
 
-#### Data Processing Pipelines
-- Text extraction
-- Content analysis
-- Question formulation
-- Answer generation
+## Impact and Future Vision
 
-#### AI-Driven Functionality
-- Intelligent question creation
-- Topic identification
-- Difficulty scaling
-- Learning pattern analysis
+### Current Value Proposition
+StudyWise AI addresses fundamental problems in education:
+- **Time Efficiency**: Reduces study time while improving retention
+- **Personalization**: Adapts to individual learning styles
+- **Accessibility**: Makes quality education tools available to all
+- **Effectiveness**: Based on proven learning science principles
 
-### 5.2 AI Technical Specifications
-#### AI Model Types
-- Text processing models
-- Question generation models
-- Answer validation models
+### Future Horizons
+The platform is designed for continuous evolution:
+- **Advanced Analytics**: Deeper learning pattern recognition
+- **Collaborative Features**: Study groups and shared content
+- **Mobile Applications**: Native iOS and Android experiences
+- **Integration APIs**: Connection with existing learning management systems
+- **Advanced AI**: More sophisticated question generation and insights
 
-#### Training Data Characteristics
-- Academic text samples
-- Question-answer pairs
-- Subject matter examples
+## The Human Element
 
-#### Inference Mechanisms
-- Real-time question generation
-- Answer probability scoring
-- Topic relevance assessment
+### Developer Philosophy
+We believe technology should enhance human potential, not replace human judgment. StudyWise AI is designed to:
+- **Augment Learning**: Provide tools that make studying more effective
+- **Preserve Creativity**: Allow teachers and students to focus on what matters
+- **Ensure Accessibility**: Make advanced learning tools available to everyone
+- **Maintain Privacy**: Protect user data while enabling powerful features
 
-#### Performance Metrics
-- Question quality assessment
-- Generation speed
-- Accuracy validation
-- User feedback integration
+### User-Centric Design
+Every feature decision considers the end user:
+- **Intuitive Interfaces**: Clean, distraction-free design
+- **Progressive Disclosure**: Information revealed as needed
+- **Error Prevention**: Smart validation and helpful guidance
+- **Performance Optimization**: Fast, responsive interactions
 
-## 6. DEVELOPMENT WORKFLOW
-### Development Methodology
-- Agile development process
-- Feature-based iterations
-- Continuous integration practices
+## Conclusion: AI as a Learning Partner
 
-### Version Control Strategy
-- Git-based version control
-- Feature branch workflow
-- Pull request reviews
+StudyWise AI represents the future of educational technology—an intelligent companion that understands how people learn and adapts to help them succeed. By combining cutting-edge AI with proven learning science, we've created a platform that doesn't just help students study, but fundamentally improves how they learn.
 
-### Branching Model
-- Main branch for production
-- Development branch for integration
-- Feature branches for development
+The system demonstrates that when AI is thoughtfully designed and properly integrated, it can enhance human learning in ways that were previously impossible, making quality education more accessible, effective, and engaging for everyone.
 
-### CI/CD Process
-- Automated builds on Netlify
-- Pre-deployment testing
-- Automatic deployment on merge
+---
 
-### Code Review Guidelines
-- TypeScript type checking
-- Component testing
-- Performance review
-- Accessibility verification
-
-## 7. ENVIRONMENT SETUP
-### Local Development Environment
-```bash
-# Installation
-npm install
-
-# Development
-npm run dev
-
-# Build
-npm run build
-```
-
-### Staging and Production Environments
-- Development: Local environment
-- Staging: Netlify preview deployments
-- Production: Netlify production environment
-
-### Environment-Specific Configurations
-- Development mode features
-- Production optimizations
-- API endpoint configurations
-- Worker configurations
-
-### Dependency Management
-- NPM for package management
-- Peer dependency resolution
-- Version locking
-- Security auditing
-
-## 8. DATA MANAGEMENT
-### Data Models
-- Test configurations
-- Question banks
-- User sessions
-- Results analytics
-
-### Data Flow
-- Document upload → Processing → Test generation
-- Test taking → Results calculation → Analytics
-- Session management → State persistence
-
-### Data Privacy
-- Local storage encryption
-- Secure document handling
-- Session data management
-- User privacy controls
-
-### Storage Policies
-- Document temporary storage
-- Test result persistence
-- Analytics data retention
-- Cache management
-
-## 9. INTEGRATION POINTS
-### External API Integrations
-- PDF.js for document processing
-- CDN for worker files
-- Future AI service integration
-
-### Third-Party Services
-- Authentication services
-- Analytics platforms
-- Document processing services
-
-### Inter-Service Communication
-- WebSocket for real-time updates
-- HTTP/REST for API calls
-- Event-based communication
-
-### Authentication Mechanisms
-- Session-based authentication
-- Token management
-- Authorization controls
-
-## 10. KNOWN CHALLENGES AND LIMITATIONS
-### Technical Debt
-- Mock AI implementation
-- PDF processing limitations
-- Mobile optimization needs
-
-### Performance Bottlenecks
-- Large document processing
-- State management scaling
-- Real-time updates
-
-### Scaling Challenges
-- Question generation speed
-- Storage optimization
-- Concurrent user support
-
-### Future Improvement Areas
-- Real AI integration
-- Mobile applications
-- Advanced analytics
-- Learning management system integration
-
-## 11. DECISION LOG
-### Key Architectural Decisions
-1. Zustand over Redux for simpler state management
-2. Radix UI for accessible component library
-3. PDF.js worker configuration for document processing
-4. Local storage for state persistence
-
-### Technical Choices Rationale
-- React 18 for concurrent features
-- TypeScript for type safety
-- Vite for build performance
-- TailwindCSS for styling efficiency
-
-### Alternative Solutions Considered
-- Redux for state management
-- Next.js for framework
-- Firebase for backend
-- Material UI for components
-
-### Trade-offs Evaluated
-- Bundle size vs. feature set
-- Performance vs. compatibility
-- Complexity vs. flexibility
-- Development speed vs. scalability
+*Built with ❤️ using React, TypeScript, AI, and a deep understanding of how people learn.*

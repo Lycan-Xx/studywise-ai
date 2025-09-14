@@ -348,7 +348,7 @@ export function TestResultsOverlay({
 
                 {insightsLoading ? (
                   <div className="flex items-center justify-center py-8">
-                    <LoadingModal
+                    <LoadingModal type="insightGeneration"
                       message="Analyzing Your Test"
                       subMessage="AI is generating personalized insights and performance analysis..."
                     />
