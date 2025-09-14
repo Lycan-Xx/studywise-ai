@@ -113,7 +113,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth?mode=signup&step=3&oauth=true`,
+        redirectTo: `${window.location.origin}/auth?mode=signup&step=2&oauth=true`,
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',

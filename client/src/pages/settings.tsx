@@ -380,7 +380,7 @@ export default function Settings() {
           <h2 className="text-lg font-semibold text-studywise-gray-900">Privacy & Data</h2>
         </div>
         <CardContent className="p-6 space-y-6">
-          <div className="flex items-center justify-between">
+          {/* <div className="flex items-center justify-between">
             <div>
               <h4 className="text-sm font-medium text-studywise-gray-900">Data Collection</h4>
               <p className="text-sm text-studywise-gray-500">Allow anonymous usage data collection for service improvement</p>
@@ -400,9 +400,9 @@ export default function Settings() {
               checked={privacySettings.analyticsTracking}
               onCheckedChange={(checked) => setPrivacySettings({ ...privacySettings, analyticsTracking: checked })}
             />
-          </div>
+          </div> */}
 
-          <div className="border-t border-studywise-gray-200 pt-6">
+          {/* <div className="border-t border-studywise-gray-200 pt-6"> */}
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="text-sm font-medium text-red-600">Delete Account</h4>
@@ -417,7 +417,7 @@ export default function Settings() {
                 Delete Account
               </Button>
             </div>
-          </div>
+          {/* </div> */}
         </CardContent>
       </Card>
 
