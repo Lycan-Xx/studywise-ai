@@ -29,6 +29,10 @@ services:
         fromSecret: VITE_SUPABASE_URL
       - key: VITE_SUPABASE_ANON_KEY
         fromSecret: VITE_SUPABASE_ANON_KEY
+      - key: SUPABASE_URL
+        fromSecret: SUPABASE_URL
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        fromSecret: SUPABASE_SERVICE_ROLE_KEY
       - key: GOOGLE_OAUTH_CLIENT_ID
         fromSecret: GOOGLE_OAUTH_CLIENT_ID
       - key: GOOGLE_OAUTH_CLIENT_SECRET
