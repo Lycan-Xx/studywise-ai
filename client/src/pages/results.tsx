@@ -40,116 +40,172 @@ export default function Results() {
   };
 
   return (
-    <div>
+    <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-7xl mx-auto">
       {/* Summary Stats */}
       {testResults.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6 lg:mb-8">
           <Card className="border-studywise-gray-200">
-            <CardContent className="p-4 md:p-6 text-center">
-              <div className="text-2xl md:text-3xl font-bold text-studywise-gray-900">{totalTestsTaken}</div>
-              <div className="text-sm text-studywise-gray-600">Tests Taken</div>
+            <CardContent className="p-4 sm:p-6 text-center">
+              <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-studywise-gray-900">{totalTestsTaken}</div>
+              <div className="text-xs sm:text-sm text-studywise-gray-600 mt-1">Tests Taken</div>
             </CardContent>
           </Card>
 
           <Card className="border-studywise-gray-200">
-            <CardContent className="p-4 md:p-6 text-center">
-              <div className="text-2xl md:text-3xl font-bold text-studywise-gray-900">{averageScore}%</div>
-              <div className="text-sm text-studywise-gray-600">Average Score</div>
+            <CardContent className="p-4 sm:p-6 text-center">
+              <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-studywise-gray-900">{averageScore}%</div>
+              <div className="text-xs sm:text-sm text-studywise-gray-600 mt-1">Average Score</div>
             </CardContent>
           </Card>
 
           <Card className="border-studywise-gray-200">
-            <CardContent className="p-4 md:p-6 text-center">
-              <div className="text-2xl md:text-3xl font-bold text-studywise-gray-900">{bestScore}%</div>
-              <div className="text-sm text-studywise-gray-600">Best Score</div>
+            <CardContent className="p-4 sm:p-6 text-center">
+              <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-studywise-gray-900">{bestScore}%</div>
+              <div className="text-xs sm:text-sm text-studywise-gray-600 mt-1">Best Score</div>
             </CardContent>
           </Card>
         </div>
       )}
 
-      {/* Results Table */}
+      {/* Results Section */}
       <Card className="shadow-sm border-studywise-gray-200 overflow-hidden" data-testid="card-results-table">
-        <div className="px-6 py-4 border-b border-studywise-gray-200">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-studywise-gray-900" data-testid="text-table-title">
-              Recent Test Scores
-            </h2>
-          </div>
+        <div className="px-4 sm:px-6 py-4 border-b border-studywise-gray-200">
+          <h2 className="text-lg sm:text-xl font-semibold text-studywise-gray-900" data-testid="text-table-title">
+            Recent Test Scores
+          </h2>
         </div>
 
         {testResults.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-studywise-gray-600 mb-4">No test results yet. Take your first test to see results here!</p>
+          <div className="text-center py-8 sm:py-12 px-4">
+            <p className="text-studywise-gray-600 mb-4 text-sm sm:text-base">
+              No test results yet. Take your first test to see results here!
+            </p>
             <Button 
               onClick={() => setLocation('/dashboard')}
               size="lg"
-              className="bg-primary hover:bg-primary/90"
+              className="bg-primary hover:bg-primary/90 w-full sm:w-auto"
             >
               Create Your First Test
             </Button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full" data-testid="table-results">
-              <thead className="bg-studywise-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-studywise-gray-500 uppercase tracking-wider">
-                    Test Title
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-studywise-gray-500 uppercase tracking-wider">
-                    Score
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-studywise-gray-500 uppercase tracking-wider">
-                    Time Taken
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-studywise-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-studywise-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-studywise-gray-200">
-                {recentResults.map((result) => (
-                  <tr key={result.id} className="hover:bg-studywise-gray-50" data-testid={`row-result-${result.id}`}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="font-medium text-studywise-gray-900">{result.testTitle}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <span className="text-lg font-semibold text-studywise-gray-900" data-testid={`text-score-${result.id}`}>
-                          {result.score}%
-                        </span>
-                        <div className="ml-2 w-16 bg-studywise-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-black h-2 rounded-full"
-                            style={{ width: `${result.score}%` }}
-                            data-testid={`progress-bar-${result.id}`}
-                          />
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-studywise-gray-900" data-testid={`text-time-${result.id}`}>
+          <>
+            {/* Mobile Card View */}
+            <div className="block sm:hidden">
+              {recentResults.map((result) => (
+                <div 
+                  key={result.id} 
+                  className="border-b border-studywise-gray-200 p-4 space-y-3"
+                  data-testid={`row-result-${result.id}`}
+                >
+                  <div className="flex justify-between items-start">
+                    <h3 className="font-medium text-studywise-gray-900 text-sm leading-tight pr-2">
+                      {result.testTitle}
+                    </h3>
+                    <span 
+                      className="text-lg font-semibold text-studywise-gray-900 flex-shrink-0" 
+                      data-testid={`text-score-${result.id}`}
+                    >
+                      {result.score}%
+                    </span>
+                  </div>
+                  
+                  <div className="w-full bg-studywise-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-black h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${result.score}%` }}
+                      data-testid={`progress-bar-${result.id}`}
+                    />
+                  </div>
+                  
+                  <div className="flex justify-between items-center text-sm text-studywise-gray-500">
+                    <span data-testid={`text-time-${result.id}`}>
                       {result.timeSpent ? Math.round(result.timeSpent / 60) + ' min' : '--'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-studywise-gray-500" data-testid={`text-date-${result.id}`}>
+                    </span>
+                    <span data-testid={`text-date-${result.id}`}>
                       {new Date(result.completedAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <button 
-                        onClick={() => handleViewDetails(result.id)}
-                        className="text-primary hover:text-blue-600"
-                        data-testid={`button-view-details-${result.id}`}
-                      >
-                        View Details
-                      </button>
-                    </td>
+                    </span>
+                  </div>
+                  
+                  <button 
+                    onClick={() => handleViewDetails(result.id)}
+                    className="w-full text-center py-2 text-primary hover:text-blue-600 text-sm font-medium border border-primary rounded-md hover:bg-primary/5 transition-colors"
+                    data-testid={`button-view-details-${result.id}`}
+                  >
+                    View Details
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full" data-testid="table-results">
+                <thead className="bg-studywise-gray-50">
+                  <tr>
+                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-studywise-gray-500 uppercase tracking-wider">
+                      Test Title
+                    </th>
+                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-studywise-gray-500 uppercase tracking-wider">
+                      Score
+                    </th>
+                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-studywise-gray-500 uppercase tracking-wider">
+                      Time Taken
+                    </th>
+                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-studywise-gray-500 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-studywise-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-studywise-gray-200">
+                  {recentResults.map((result) => (
+                    <tr key={result.id} className="hover:bg-studywise-gray-50" data-testid={`row-result-${result.id}`}>
+                      <td className="px-4 lg:px-6 py-4">
+                        <span className="font-medium text-studywise-gray-900 text-sm lg:text-base">
+                          {result.testTitle}
+                        </span>
+                      </td>
+                      <td className="px-4 lg:px-6 py-4">
+                        <div className="flex items-center">
+                          <span 
+                            className="text-lg font-semibold text-studywise-gray-900" 
+                            data-testid={`text-score-${result.id}`}
+                          >
+                            {result.score}%
+                          </span>
+                          <div className="ml-2 w-12 lg:w-16 bg-studywise-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-black h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${result.score}%` }}
+                              data-testid={`progress-bar-${result.id}`}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 lg:px-6 py-4 text-studywise-gray-900 text-sm lg:text-base" data-testid={`text-time-${result.id}`}>
+                        {result.timeSpent ? Math.round(result.timeSpent / 60) + ' min' : '--'}
+                      </td>
+                      <td className="px-4 lg:px-6 py-4 text-studywise-gray-500 text-sm lg:text-base" data-testid={`text-date-${result.id}`}>
+                        {new Date(result.completedAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 lg:px-6 py-4">
+                        <button 
+                          onClick={() => handleViewDetails(result.id)}
+                          className="text-primary hover:text-blue-600 text-sm font-medium"
+                          data-testid={`button-view-details-${result.id}`}
+                        >
+                          View Details
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </Card>
     </div>
