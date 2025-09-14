@@ -52,9 +52,9 @@ function ToggleButton({
       aria-pressed={!!active}
       aria-label={ariaLabel}
       className={`${compact ? 'p-3' : 'p-4'} border-2 rounded-lg text-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300 ${
-        active 
-          ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium ring-2 ring-blue-200' 
-          : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+        active
+          ? 'border-primary bg-blue-50 text-primary font-medium ring-2 ring-blue-200'
+          : 'border-studywise-gray-300 bg-white text-studywise-gray-700 hover:border-studywise-gray-400 hover:bg-gray-50'
       }`}
     >
       {children}
@@ -102,14 +102,14 @@ export default function TestCustomizationPanel(props: Props) {
 
       {/* Title */}
       <div>
-        <label className={`block font-medium text-gray-700 mb-2 ${compact ? 'text-xs' : 'text-sm'}`}>
+        <label className={`block font-medium text-studywise-gray-700 mb-2 ${compact ? 'text-xs' : 'text-sm'}`}>
           Test Title
         </label>
         <input
           value={config.title}
           onChange={(e) => onChange({ title: e.target.value })}
           placeholder="Enter a title for your test"
-          className={`w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+          className={`w-full rounded-lg border border-studywise-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
             compact ? 'text-sm' : ''
           }`}
         />
@@ -117,7 +117,7 @@ export default function TestCustomizationPanel(props: Props) {
 
       {/* Topics management */}
       <div>
-        <label className={`block font-medium text-gray-700 mb-2 ${compact ? 'text-xs' : 'text-sm'}`}>
+        <label className={`block font-medium text-studywise-gray-700 mb-2 ${compact ? 'text-xs' : 'text-sm'}`}>
           Focus Topics
         </label>
         <div className={`flex gap-2 mb-3 ${compact ? 'flex-col sm:flex-row' : ''}`}>
@@ -126,14 +126,14 @@ export default function TestCustomizationPanel(props: Props) {
             onChange={(e) => setCustomTopic(e.target.value)}
             placeholder="Add a specific topic..."
             onKeyDown={handleKeyDown}
-            className={`flex-1 rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+            className={`flex-1 rounded-lg border border-studywise-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
               compact ? 'text-sm mb-2 sm:mb-0' : ''
             }`}
           />
-          <button 
-            onClick={addTopic} 
-            disabled={!customTopic.trim()} 
-            className={`px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2 ${
+          <button
+            onClick={addTopic}
+            disabled={!customTopic.trim()}
+            className={`px-4 py-2 rounded-lg bg-primary text-white font-medium hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2 ${
               compact ? 'w-full sm:w-auto justify-center' : ''
             }`}
           >
@@ -147,9 +147,9 @@ export default function TestCustomizationPanel(props: Props) {
             {topicsArray.map((topic) => (
               <div key={topic} className={`flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full ${compact ? 'text-xs' : 'text-sm'}`}>
                 <span>{topic}</span>
-                <button 
-                  onClick={() => removeTopic(topic)} 
-                  className="ml-1 text-blue-600 hover:text-blue-800 transition-colors" 
+                <button
+                  onClick={() => removeTopic(topic)}
+                  className="ml-1 text-blue-600 hover:text-blue-800 transition-colors"
                   aria-label={`Remove ${topic}`}
                 >
                   <X className="w-3 h-3" />
@@ -162,7 +162,7 @@ export default function TestCustomizationPanel(props: Props) {
 
       {/* Question Format */}
       <div>
-        <label className={`block font-medium text-gray-700 mb-3 ${compact ? 'text-xs' : 'text-sm'}`}>
+        <label className={`block font-medium text-studywise-gray-700 mb-3 ${compact ? 'text-xs' : 'text-sm'}`}>
           Question Format
         </label>
         <div className={`grid gap-3 ${compact ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
@@ -190,7 +190,7 @@ export default function TestCustomizationPanel(props: Props) {
 
       {/* Difficulty */}
       <div>
-        <label className={`block font-medium text-gray-700 mb-3 ${compact ? 'text-xs' : 'text-sm'}`}>
+        <label className={`block font-medium text-studywise-gray-700 mb-3 ${compact ? 'text-xs' : 'text-sm'}`}>
           Difficulty Level
         </label>
         <div className={`grid gap-3 ${compact ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-3'}`}>
@@ -215,7 +215,7 @@ export default function TestCustomizationPanel(props: Props) {
 
       {/* Question Count */}
       <div>
-        <label className={`block font-medium text-gray-700 mb-3 ${compact ? 'text-xs' : 'text-sm'}`}>
+        <label className={`block font-medium text-studywise-gray-700 mb-3 ${compact ? 'text-xs' : 'text-sm'}`}>
           Number of Questions
         </label>
         <div className={`grid grid-cols-3 gap-3 ${compact ? 'gap-2' : ''}`}>
@@ -223,10 +223,10 @@ export default function TestCustomizationPanel(props: Props) {
             <button
               key={count}
               onClick={() => onChange({ numberOfQuestions: count })}
-              className={`${compact ? 'p-2' : 'p-3'} border-2 rounded-lg text-center transition-all duration-200 font-medium ${
-                config.numberOfQuestions === count 
-                  ? 'border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-200' 
-                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700'
+              className={`${compact ? 'p-2' : 'p-3'} border rounded-lg text-center transition-all font-medium ${
+                config.numberOfQuestions === count
+                  ? 'border-primary bg-blue-50 text-primary'
+                  : 'border-studywise-gray-300 hover:border-studywise-gray-400 text-studywise-gray-700'
               } ${compact ? 'text-sm' : ''}`}
             >
               {count}
@@ -236,7 +236,7 @@ export default function TestCustomizationPanel(props: Props) {
       </div>
 
       {/* Footer actions */}
-      <div className={`flex ${compact ? 'flex-col pt-4 gap-3' : 'justify-end pt-4 gap-3'} border-t border-gray-200`}>
+      <div className={`flex ${compact ? 'flex-col pt-4 gap-3' : 'justify-end pt-4 gap-3'} border-t border-studywise-gray-200`}>
         {onSave && (
           <button 
             onClick={onSave} 
@@ -251,9 +251,9 @@ export default function TestCustomizationPanel(props: Props) {
           onClick={onGenerate}
           disabled={isGenerating}
           className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-            isGenerating 
-              ? 'bg-gray-300 text-gray-700 cursor-not-allowed' 
-              : 'bg-slate-900 text-white hover:bg-slate-800'
+            isGenerating
+              ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
+              : 'bg-slate-900 hover:bg-slate-800 text-white'
           } ${compact ? 'w-full' : ''}`}
         >
           {isGenerating ? (
