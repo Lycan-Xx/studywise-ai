@@ -93,17 +93,17 @@ export function MobileBottomSheet({ isOpen, onClose, children, title }: MobileBo
       >
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-2">
-          <div className="w-10 h-1 bg-gray-300 rounded-full" />
+          <div className="w-10 h-1 bg-studywise-gray-300 rounded-full" />
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-studywise-gray-200">
+          <h2 className="text-lg font-semibold text-studywise-gray-900">
             {title || 'Customize Your Test'}
           </h2>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded-full transition-colors"
+            className="w-8 h-8 flex items-center justify-center text-studywise-gray-500 hover:bg-gray-100 rounded-full transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
