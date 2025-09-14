@@ -134,10 +134,10 @@ class MultiProviderAIService {
         maxTokens: 200000
       });
 
-      // Meta Llama via OpenRouter
+      // Meta Llama via OpenRouter (disabled - model not available)
       this.providers.set('llama-3.1-8b', {
         name: 'Llama 3.1 8B (OpenRouter)',
-        available: true,
+        available: false, // Disabled due to model availability issues
         requestCount: 0,
         lastReset: Date.now(),
         maxRequests: 12,
@@ -145,6 +145,19 @@ class MultiProviderAIService {
         priority: 6,
         costPerToken: 0.00005,
         maxTokens: 131072
+      });
+
+      // Add Mistral as backup
+      this.providers.set('mistral-7b', {
+        name: 'Mistral 7B (OpenRouter)',
+        available: true,
+        requestCount: 0,
+        lastReset: Date.now(),
+        maxRequests: 15,
+        resetInterval: 60 * 1000,
+        priority: 7,
+        costPerToken: 0.00002,
+        maxTokens: 32768
       });
 
       console.log("✅ OpenRouter providers initialized");
@@ -219,7 +232,8 @@ class MultiProviderAIService {
       'gpt-4o-mini': 'openai/gpt-4o-mini',
       'gpt-3.5-turbo': 'openai/gpt-3.5-turbo',
       'claude-3-haiku': 'anthropic/claude-3-haiku',
-      'llama-3.1-8b': 'meta-llama/llama-3.1-8b-instruct:free'
+      'llama-3.1-8b': 'meta-llama/llama-3.1-8b-instruct',
+      'mistral-7b': 'mistralai/mistral-7b-instruct'
     };
 
     const openrouterModel = modelMapping[model] || model;

@@ -184,15 +184,19 @@ export default function Library() {
 
   const handleRetakeTest = () => {
     // Reset session and restart the test
-    if (startingTest) {
-      const test = getTestById(startingTest);
+    if (currentSession?.testId) {
+      const test = getTestById(currentSession.testId);
       if (test) {
         resetSession();
         const questions = test.metadata?.questions || [];
         startTest(test.id, test.title, questions, testTimeLimit);
         setShowTestResults(false);
         setCompletedTestData(null);
+      } else {
+        console.error("Test data not found for current session testId:", currentSession.testId);
       }
+    } else {
+      console.error("No current session available for retake");
     }
   };
 
