@@ -9,12 +9,13 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 
 export default function AuthRoot() {
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(0); // Start with welcome step
   const [formData, setFormData] = useState({
     fullName: "",
     learningGoal: ""
   });
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isWelcomeLoading, setIsWelcomeLoading] = useState(false);
   const [errors, setErrors] = useState<{general?: string; learningGoal?: string}>({});
 
   const { signInWithGoogle, user } = useAuth();
@@ -29,6 +30,19 @@ export default function AuthRoot() {
       const params = new URLSearchParams(window.location.search);
       const step = params.get('step');
       const isOAuth = params.get('oauth') === 'true';
+
+      // Show welcome back step for returning users
+      if (!isOAuth) {
+        setCurrentStep(0); // Welcome back step
+        setIsWelcomeLoading(true);
+        
+        // Simulate loading and then redirect
+        setTimeout(() => {
+          setIsWelcomeLoading(false);
+          setTimeout(() => setLocation('/dashboard'), 800);
+        }, 2000);
+        return;
+      }
 
       // Special handling for OAuth users who need to complete profile
       if (step === '2' && isOAuth) {
@@ -64,6 +78,13 @@ export default function AuthRoot() {
     handleAuthRedirect();
   }, [user, setLocation]);
 
+  // Initialize step based on user state
+  useEffect(() => {
+    if (!user) {
+      setCurrentStep(1); // Sign in step for unauthenticated users
+    }
+  }, [user]);
+
   // Check for OAuth completion in URL params
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -79,39 +100,55 @@ export default function AuthRoot() {
   // Animation variants
   const cardVariants = {
     initial: (direction: number) => ({
-      x: direction > 0 ? 300 : -300,
+      x: direction > 0 ? 100 : -100,
       opacity: 0,
-      scale: 0.95
+      scale: 0.9,
+      filter: "blur(10px)"
     }),
     animate: {
       x: 0,
       opacity: 1,
       scale: 1,
+      filter: "blur(0px)",
       transition: {
         type: "spring",
-        stiffness: 300,
-        damping: 30,
-        duration: 0.5
+        stiffness: 260,
+        damping: 20,
+        duration: 0.6
       }
     },
     exit: (direction: number) => ({
-      x: direction > 0 ? -300 : 300,
+      x: direction > 0 ? -100 : 100,
       opacity: 0,
-      scale: 0.95,
+      scale: 0.9,
+      filter: "blur(10px)",
       transition: {
         type: "spring",
         stiffness: 300,
-        damping: 30,
+        damping: 25,
         duration: 0.4
       }
     })
   };
 
   const backgroundVariants = {
-    initial: { opacity: 0 },
+    initial: { opacity: 0, scale: 1.1 },
     animate: {
       opacity: 1,
-      transition: { duration: 0.8, ease: "easeOut" }
+      scale: 1,
+      transition: { duration: 1.2, ease: "easeOut" }
+    }
+  };
+
+  const floatingParticles = {
+    animate: {
+      y: [0, -20, 0],
+      opacity: [0.3, 0.6, 0.3],
+      transition: {
+        duration: 3,
+        repeat: Infinity,
+        ease: "easeInOut"
+      }
     }
   };
 
@@ -125,7 +162,7 @@ export default function AuthRoot() {
 
   // Background content
   const backgroundContent = {
-    image: "https://picsum.photos/1920/1080?random=1",
+    image: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=2560&auto=format&fit=crop",
     title: "Transform your\nstudy habits",
     subtitle: "Join thousands of students who've already discovered the power of active learning"
   };
@@ -179,7 +216,7 @@ export default function AuthRoot() {
         });
 
         setCurrentStep(3); // Show success step briefly
-        setTimeout(() => setLocation('/dashboard'), 1500);
+        setTimeout(() => setLocation('/dashboard'), 2000);
       }
     } catch (error) {
       setErrors({ general: "Failed to complete profile. Please try again." });
@@ -201,19 +238,45 @@ export default function AuthRoot() {
         }}
       />
 
-      {/* Background overlay */}
-      <div className="absolute inset-0 bg-black bg-opacity-40 z-10" />
+      {/* Floating particles */}
+      <div className="absolute inset-0 z-5">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <motion.div
+            key={i}
+            variants={floatingParticles}
+            animate="animate"
+            className="absolute w-2 h-2 bg-white/20 rounded-full blur-sm"
+            style={{
+              left: `${20 + i * 15}%`,
+              top: `${30 + (i % 3) * 20}%`,
+              animationDelay: `${i * 0.5}s`
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Background overlay with gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-black/30 via-black/40 to-black/50 z-10" />
 
       {/* Left side - Authentication Card */}
       <div className="flex-1 flex items-center justify-center p-4 md:p-8 relative z-20">
         <div className="w-full max-w-lg">
-          <Card className="bg-white rounded-xl shadow-2xl border-0 overflow-hidden">
-            <CardContent className="p-10 relative">
+          {/* Glassmorphism Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl shadow-2xl overflow-hidden"
+          >
+            <div className="p-10 relative">
+              {/* Glass reflection effect */}
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
               {/* Header */}
-              <div className="text-center mb-8">
+              <div className="text-center mb-8 relative z-10">
                 <Link href="/" className="inline-flex items-center justify-center mb-6">
-                  <Brain className="w-8 h-8 text-primary mr-2" />
-                  <span className="text-xl font-semibold text-studywise-gray-900">StudyWise AI</span>
+                  <Brain className="w-8 h-8 text-white mr-2" />
+                  <span className="text-xl font-semibold text-white">StudyWise AI</span>
                 </Link>
 
                 {/* Progress indicator for profile completion */}
@@ -224,16 +287,16 @@ export default function AuthRoot() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2, duration: 0.5 }}
                   >
-                    <div className="w-full bg-gray-100 rounded-full h-2 mb-2">
+                    <div className="w-full bg-white/20 rounded-full h-2 mb-2 backdrop-blur-sm">
                       <motion.div
-                        className="bg-gradient-to-r from-slate-800 to-slate-900 h-2 rounded-full shadow-sm"
+                        className="bg-gradient-to-r from-white/60 to-white/80 h-2 rounded-full shadow-sm"
                         initial={{ width: 0 }}
                         animate={{ width: "66%" }}
                         transition={{ duration: 0.7, ease: "easeOut" }}
                       />
                     </div>
                     <div className="text-center">
-                      <span className="text-xs font-medium text-gray-500">
+                      <span className="text-xs font-medium text-white/70">
                         Step 2 of 3
                       </span>
                     </div>
@@ -249,16 +312,71 @@ export default function AuthRoot() {
                     initial="initial"
                     animate="animate"
                     exit="exit"
-                    className="space-y-6"
+                    className="space-y-6 relative z-10"
                   >
+                    {/* Step 0 - Welcome Back */}
+                    {currentStep === 0 && user && (
+                      <div className="space-y-8 text-center">
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ delay: 0.2, type: "spring", stiffness: 300 }}
+                          className="mx-auto w-20 h-20 bg-gradient-to-br from-white/20 to-white/10 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/30"
+                        >
+                          <CheckCircle className="w-10 h-10 text-white" />
+                        </motion.div>
+                        
+                        <div>
+                          <motion.h1
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.4 }}
+                            className="text-3xl font-bold text-white mb-4"
+                          >
+                            Welcome back,
+                          </motion.h1>
+                          <motion.p
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.6 }}
+                            className="text-xl text-white/80 font-medium"
+                          >
+                            {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there'}!
+                          </motion.p>
+                        </div>
+
+                        {isWelcomeLoading ? (
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.8 }}
+                            className="space-y-4"
+                          >
+                            <div className="flex justify-center">
+                              <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            </div>
+                            <p className="text-white/60">Taking you to your dashboard...</p>
+                          </motion.div>
+                        ) : (
+                          <motion.p
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.8 }}
+                            className="text-white/60"
+                          >
+                            Preparing your personalized experience...
+                          </motion.p>
+                        )}
+                      </div>
+                    )}
                     {/* Step 1 - Google Sign In */}
                     {currentStep === 1 && (
                       <div className="space-y-8">
                         <div className="text-center mb-8">
-                          <h1 className="text-3xl font-bold text-studywise-gray-900 mb-4">
+                          <h1 className="text-3xl font-bold text-white mb-4">
                             Welcome to StudyWise AI
                           </h1>
-                          <p className="text-lg text-studywise-gray-600">
+                          <p className="text-lg text-white/80">
                             Sign in with Google to start your learning journey
                           </p>
                         </div>
@@ -267,9 +385,9 @@ export default function AuthRoot() {
                           <motion.div
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl"
+                            className="mb-6 p-4 bg-red-500/20 border border-red-500/30 rounded-xl backdrop-blur-sm"
                           >
-                            <p className="text-sm text-red-600">{errors.general}</p>
+                            <p className="text-sm text-white">{errors.general}</p>
                           </motion.div>
                         )}
 
@@ -283,7 +401,7 @@ export default function AuthRoot() {
                             onClick={handleGoogleLogin}
                             disabled={isGoogleLoading}
                             size="lg"
-                            className="w-full border-2 px-8 py-4 border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50 rounded-xl font-medium transition-all duration-200 bg-white"
+                            className="w-full border-2 px-8 py-4 border-white/30 text-white hover:border-white/50 hover:bg-white/10 rounded-xl font-medium transition-all duration-300 bg-white/20 backdrop-blur-sm"
                           >
                             <svg className="w-6 h-6 mr-3" viewBox="0 0 24 24">
                               <path fill="#4285f4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -297,13 +415,13 @@ export default function AuthRoot() {
                           </Button>
 
                           <div className="text-center">
-                            <p className="text-sm text-studywise-gray-500 max-w-md mx-auto leading-relaxed">
+                            <p className="text-sm text-white/60 max-w-md mx-auto leading-relaxed">
                               By continuing, you agree to our{" "}
-                              <Link href="/terms-of-service" className="text-primary hover:underline">
+                              <Link href="/terms-of-service" className="text-white hover:underline">
                                 Terms of Service
                               </Link>{" "}
                               and{" "}
-                              <Link href="/privacy-policy" className="text-primary hover:underline">
+                              <Link href="/privacy-policy" className="text-white hover:underline">
                                 Privacy Policy
                               </Link>
                             </p>
@@ -317,10 +435,10 @@ export default function AuthRoot() {
                       <div className="space-y-6">
                         <div className="flex items-start mb-6">
                           <div>
-                            <h1 className="text-2xl font-bold text-studywise-gray-900 mb-2">
+                            <h1 className="text-2xl font-bold text-white mb-2">
                               Complete your profile
                             </h1>
-                            <p className="text-studywise-gray-600">
+                            <p className="text-white/80">
                               Help us personalize your learning experience
                             </p>
                           </div>
@@ -330,9 +448,9 @@ export default function AuthRoot() {
                           <motion.div
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl"
+                            className="mb-6 p-4 bg-red-500/20 border border-red-500/30 rounded-xl backdrop-blur-sm"
                           >
-                            <p className="text-sm text-red-600">{errors.general}</p>
+                            <p className="text-sm text-white">{errors.general}</p>
                           </motion.div>
                         )}
 
@@ -342,16 +460,16 @@ export default function AuthRoot() {
                           transition={{ delay: 0.1 }}
                         >
                           <div className="relative">
-                            <label className="absolute -top-2 left-3 bg-white px-1 text-xs font-medium text-studywise-gray-700 z-10">
+                            <label className="absolute -top-2 left-3 bg-white/20 backdrop-blur-sm px-1 text-xs font-medium text-white z-10">
                               Full Name (Optional)
                             </label>
-                            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-studywise-gray-400" />
+                            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/60" />
                             <input
                               type="text"
                               value={formData.fullName}
                               onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                               placeholder={user?.user_metadata?.full_name || "Enter your name"}
-                              className="w-full pl-10 pr-4 py-4 border border-studywise-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base transition-all duration-200"
+                              className="w-full pl-10 pr-4 py-4 border border-white/30 bg-white/10 backdrop-blur-sm rounded-xl focus:ring-2 focus:ring-white/50 focus:border-white/50 outline-none text-base text-white placeholder-white/50 transition-all duration-300"
                             />
                           </div>
                         </motion.div>
@@ -362,7 +480,7 @@ export default function AuthRoot() {
                           transition={{ delay: 0.2 }}
                         >
                           <div className="space-y-3">
-                            <label className="block text-sm font-medium text-studywise-gray-700 mb-3">
+                            <label className="block text-sm font-medium text-white mb-3">
                               What's your learning goal?
                             </label>
                             {learningGoals.map((goal, index) => (
@@ -371,10 +489,10 @@ export default function AuthRoot() {
                                 initial={{ opacity: 0, x: -20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: 0.3 + index * 0.1 }}
-                                className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all duration-200 ${
+                                className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all duration-300 backdrop-blur-sm ${
                                   formData.learningGoal === goal.value
-                                    ? 'border-primary bg-blue-50 scale-[1.02]'
-                                    : 'border-studywise-gray-300 hover:bg-gray-50 hover:scale-[1.01]'
+                                    ? 'border-white/60 bg-white/20 scale-[1.02]'
+                                    : 'border-white/30 bg-white/10 hover:bg-white/15 hover:scale-[1.01]'
                                 }`}
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
@@ -390,25 +508,25 @@ export default function AuthRoot() {
                                 <motion.div
                                   className={`w-5 h-5 rounded-full border-2 mr-3 flex items-center justify-center ${
                                     formData.learningGoal === goal.value 
-                                      ? 'border-primary bg-primary' 
-                                      : 'border-studywise-gray-300'
+                                      ? 'border-white bg-white' 
+                                      : 'border-white/50'
                                   }`}
                                   animate={{
-                                    borderColor: formData.learningGoal === goal.value ? '#3b82f6' : '#d1d5db',
-                                    backgroundColor: formData.learningGoal === goal.value ? '#3b82f6' : 'transparent'
+                                    borderColor: formData.learningGoal === goal.value ? '#ffffff' : 'rgba(255,255,255,0.5)',
+                                    backgroundColor: formData.learningGoal === goal.value ? '#ffffff' : 'transparent'
                                   }}
                                   transition={{ duration: 0.2 }}
                                 >
                                   {formData.learningGoal === goal.value && (
                                     <motion.div
-                                      className="w-2 h-2 bg-white rounded-full"
+                                      className="w-2 h-2 bg-black rounded-full"
                                       initial={{ scale: 0 }}
                                       animate={{ scale: 1 }}
                                       transition={{ duration: 0.2 }}
                                     />
                                   )}
                                 </motion.div>
-                                <span className="text-studywise-gray-900 font-medium">{goal.label}</span>
+                                <span className="text-white font-medium">{goal.label}</span>
                               </motion.label>
                             ))}
                           </div>
@@ -449,12 +567,12 @@ export default function AuthRoot() {
                         transition={{ duration: 0.5 }}
                       >
                         <motion.div
-                          className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6"
+                          className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-6 border border-white/30"
                           initial={{ scale: 0, rotate: -180 }}
                           animate={{ scale: 1, rotate: 0 }}
                           transition={{ delay: 0.2, duration: 0.6, type: "spring", stiffness: 200 }}
                         >
-                          <CheckCircle className="w-8 h-8 text-green-600" />
+                          <CheckCircle className="w-8 h-8 text-green-400" />
                         </motion.div>
 
                         <motion.div
@@ -462,10 +580,10 @@ export default function AuthRoot() {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: 0.4 }}
                         >
-                          <h1 className="text-2xl font-bold text-studywise-gray-900 mb-2">
+                          <h1 className="text-2xl font-bold text-white mb-2">
                             Welcome to StudyWise AI!
                           </h1>
-                          <p className="text-studywise-gray-600">
+                          <p className="text-white/80">
                             Your profile is complete. Redirecting you to your dashboard...
                           </p>
                         </motion.div>
@@ -474,8 +592,8 @@ export default function AuthRoot() {
                   </motion.div>
                 </AnimatePresence>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </motion.div>
         </div>
       </div>
 
