@@ -90,34 +90,40 @@ export function Header(): JSX.Element {
 
               {/* Simple Avatar - Links to Settings */}
               <Link href="/settings" className="ml-4" aria-label="Settings">
-                <div className={`w-12 h-12 rounded-lg border border-gray-200 flex items-center justify-center overflow-hidden bg-white transition-colors duration-200 ${
-                  isActive("/settings") ? "border-primary bg-primary/5" : "hover:bg-gray-50"
+                <div className={`w-12 h-12 rounded-lg border-2 border-primary flex items-center justify-center overflow-hidden bg-white transition-colors duration-200 ${
+                  isActive("/settings") ? "bg-primary/5" : "hover:bg-gray-50"
                 }`}>
-                  {user?.user_metadata?.avatar_url || user?.user_metadata?.picture || user?.user_metadata?.photoURL ? (
-                    <img
-                      src={user.user_metadata.avatar_url || user.user_metadata.picture || user.user_metadata.photoURL}
-                      alt="Profile"
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLElement;
-                        target.style.display = 'none';
-                        const parent = target.parentElement;
-                        if (parent && !parent.querySelector('svg')) {
-                          const fallbackIcon = document.createElement('div');
-                          fallbackIcon.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor"/></svg>';
-                          const svg = fallbackIcon.querySelector('svg');
-                          if (svg) {
-                            svg.setAttribute('class', isActive("/settings") ? "text-primary" : "text-studywise-gray-800");
-                            parent.appendChild(svg);
+                  {(() => {
+                    // Check for avatar URL from various sources including Google OAuth
+                    const googleIdentity = user?.identities?.find((identity: any) => identity.provider === 'google');
+                    const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || user?.user_metadata?.photoURL || googleIdentity?.identity_data?.picture;
+
+                    return avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt="Profile"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLElement;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent && !parent.querySelector('svg')) {
+                            const fallbackIcon = document.createElement('div');
+                            fallbackIcon.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor"/></svg>';
+                            const svg = fallbackIcon.querySelector('svg');
+                            if (svg) {
+                              svg.setAttribute('class', isActive("/settings") ? "text-primary" : "text-studywise-gray-800");
+                              parent.appendChild(svg);
+                            }
                           }
-                        }
-                      }}
-                    />
-                  ) : (
-                    <FaUserCircle size={28} className={`${
-                      isActive("/settings") ? "text-primary" : "text-studywise-gray-800"
-                    }`} />
-                  )}
+                        }}
+                      />
+                    ) : (
+                      <FaUserCircle size={28} className={`${
+                        isActive("/settings") ? "text-primary" : "text-studywise-gray-800"
+                      }`} />
+                    );
+                  })()}
                 </div>
               </Link>
             </div>
@@ -193,39 +199,45 @@ export function Header(): JSX.Element {
                 }`}
                 onClick={closeMenu}
               >
-                <div className={`w-10 h-10 rounded-md border flex items-center justify-center overflow-hidden ${
+                <div className={`w-10 h-10 rounded-md border-2 border-primary flex items-center justify-center overflow-hidden ${
                   isActive("/settings")
-                    ? "border-white/20 bg-white/10"
-                    : "border-gray-200 bg-white"
+                    ? "bg-white/10"
+                    : "bg-white"
                 }`}>
-                  {user?.user_metadata?.avatar_url || user?.user_metadata?.picture || user?.user_metadata?.photoURL ? (
-                    <img
-                      src={user.user_metadata.avatar_url || user.user_metadata.picture || user.user_metadata.photoURL}
-                      alt="Profile"
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLElement;
-                        target.style.display = 'none';
-                        const parent = target.parentElement;
-                        if (parent && !parent.querySelector('svg')) {
-                          const fallbackIcon = document.createElement('div');
-                          fallbackIcon.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor"/></svg>';
-                          const svg = fallbackIcon.querySelector('svg');
-                          if (svg) {
-                            svg.setAttribute('class', isActive("/settings") ? "text-white" : "text-studywise-gray-800");
-                            parent.appendChild(svg);
+                  {(() => {
+                    // Check for avatar URL from various sources including Google OAuth
+                    const googleIdentity = user?.identities?.find((identity: any) => identity.provider === 'google');
+                    const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || user?.user_metadata?.photoURL || googleIdentity?.identity_data?.picture;
+
+                    return avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt="Profile"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLElement;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent && !parent.querySelector('svg')) {
+                            const fallbackIcon = document.createElement('div');
+                            fallbackIcon.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor"/></svg>';
+                            const svg = fallbackIcon.querySelector('svg');
+                            if (svg) {
+                              svg.setAttribute('class', isActive("/settings") ? "text-white" : "text-studywise-gray-800");
+                              parent.appendChild(svg);
+                            }
                           }
-                        }
-                      }}
-                    />
-                  ) : (
-                    <FaUserCircle
-                      size={22}
-                      className={isActive("/settings") ? "text-white" : "text-studywise-gray-800"}
-                    />
-                  )}
+                        }}
+                      />
+                    ) : (
+                      <FaUserCircle
+                        size={22}
+                        className={isActive("/settings") ? "text-white" : "text-studywise-gray-800"}
+                      />
+                    );
+                  })()}
                 </div>
-                <span className="font-medium">Settings</span>
+                <span className="font-medium">Profile Settings</span>
               </Link>
             </div>
           </aside>
