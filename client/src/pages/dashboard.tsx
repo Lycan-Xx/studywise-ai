@@ -432,14 +432,17 @@ export default function Dashboard() {
   {/* Welcome text in center */}
   <div className="flex-1 flex items-center justify-center px-6">
     <h1 className="text-[3.6rem] leading-tight font-light text-center">
-      Turn your notes into smart tests
+      Welcome back, {profileInfo.fullName || 'there'}!
     </h1>
+    <p className="text-xl text-gray-600 mt-4 text-center max-w-md">
+      Ready to transform your notes into intelligent practice tests?
+    </p>
   </div>
 
   {/* Fixed bottom textarea */}
   <div className="fixed left-4 right-4 bottom-6 z-50">
-    <div className={`bg-white rounded-full border flex items-center gap-3 px-2 py-3 ${isDragOver ? 'border-blue-400 bg-blue-50' : 'border-black'}`}>
-      <button onClick={handleFileUpload} className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center border border-gray-400">
+    <div className={`bg-white rounded-xl border flex items-center h-40 gap-3 px-2 py-3 ${isDragOver ? 'border-blue-400 bg-blue-50' : 'border-black'}`}>
+      <button onClick={handleFileUpload} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center border border-gray-400">
         <Paperclip className="w-6 h-6 text-gray-700" />
       </button>
 
@@ -478,10 +481,10 @@ export default function Dashboard() {
       <button
         onClick={handleGenerateWithDefaults}
         disabled={!notes.trim() || isGenerating}
-        className={`w-12 h-12 rounded-full border flex items-center justify-center ${notes.trim() && !isGenerating ? "bg-primary text-white border-transparent" : "bg-white text-gray-400 border-gray-200 cursor-not-allowed"}`}
+        className={`w-10 h-10 rounded-full border flex items-center justify-center ${notes.trim() && !isGenerating ? "bg-primary text-white border-transparent" : "bg-white text-gray-400 border-gray-200 cursor-not-allowed"}`}
       >
         {isGenerating ? (
-          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
         ) : (
           <Wand2 className="w-6 h-6" />
         )}
