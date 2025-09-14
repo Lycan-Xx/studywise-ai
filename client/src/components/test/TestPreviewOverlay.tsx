@@ -44,7 +44,7 @@ export function TestPreviewOverlay({
 
   // Use workflow hook for coordinated store operations
   const { generateAndSaveTest, completeTest } = useTestWorkflow();
-  const { generatedQuestions, isGenerating, generateQuestions } = useTestStore();
+  const { generatedQuestions, isGenerating, generateQuestions, clearTest } = useTestStore();
   const { currentResult } = useResultsStore();
   const { startTest, resetSession } = useTestSessionStore();
   const libraryStore = useLibraryStore();
@@ -87,6 +87,11 @@ export function TestPreviewOverlay({
       };
 
       await libraryStore.saveTest(savedTest);
+
+      // Only clear the initial notes from dashboard after successful save
+      // Don't clear the test context that's being previewed
+      const { setNotes } = useTestStore.getState();
+      setNotes(""); // Clear only the notes, not the entire test context
 
       toast({
         title: "Test saved to library",

@@ -53,6 +53,7 @@ export function TestTakingOverlay({
   );
   const [showQuestionList, setShowQuestionList] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Initialize userAnswers from session if available
   useEffect(() => {
@@ -160,8 +161,14 @@ export function TestTakingOverlay({
     });
   };
 
-  const handleSubmit = () => {
-    onSubmit(userAnswers);
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      await onSubmit(userAnswers);
+    } catch (error) {
+      console.error('Submit failed:', error);
+      setIsSubmitting(false);
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -181,6 +188,27 @@ export function TestTakingOverlay({
   };
 
   const answeredCount = questions.filter(q => userAnswers[q.id]).length;
+
+  // Show loading overlay immediately when submitting
+  if (isSubmitting) {
+    return (
+      <div className="fixed inset-0 z-50 bg-white flex items-center justify-center">
+        <div className="w-full text-center py-12">
+          <div className="mb-6">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+              <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              Submitting Test
+            </h3>
+            <p className="text-gray-600">
+              Processing your answers...
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 bg-white flex flex-col">
@@ -373,8 +401,8 @@ export function TestTakingOverlay({
                     onClick={handlePrevious}
                     disabled={safeCurrentQuestionIndex === 0}
                     variant="outline"
-                    size="sm"
-                    className="border-2 px-4 py-2 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    size="lgsm"
+                    className="border-2 px-6 py-3 border-black text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <ChevronLeft className="w-4 h-4" />
                     <span className="text-sm">Previous</span>
@@ -383,20 +411,22 @@ export function TestTakingOverlay({
                   {safeCurrentQuestionIndex === questions.length - 1 ? (
                     <Button
                       onClick={handleSubmit}
-                      size="sm"
-                      className="px-6 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium"
+                      size="lg"
+                      className="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium"
                     >
                       Submit Test
                     </Button>
                   ) : (
                     <Button
                       onClick={handleNext}
-                      size="sm"
-                      className="px-6 py-2 bg-slate-900 hover:bg-slate-800 text-white flex items-center gap-1 text-sm"
+                      size="lg"
+                      className="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white flex items-center gap-1 text-sm"
                     >
                       <span>Next</span>
                       <ChevronRight className="w-4 h-4" />
                     </Button>
+
+
                   )}
                 </div>
               </div>
