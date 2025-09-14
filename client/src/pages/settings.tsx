@@ -35,11 +35,15 @@ export default function Settings() {
   // Load user data when component mounts or user changes
   useEffect(() => {
     if (user) {
+      // For Google OAuth, the avatar URL is typically in identities[0].identity_data.picture
+      const googleIdentity = user.identities?.find((identity: any) => identity.provider === 'google');
+      const googleAvatarUrl = googleIdentity?.identity_data?.picture;
+
       setProfileInfo({
         username: user.email?.split('@')[0] || '',
         email: user.email || '',
         fullName: user.user_metadata?.full_name || user.user_metadata?.name || '',
-        avatarUrl: user.user_metadata?.avatar_url || user.user_metadata?.picture || user.user_metadata?.photoURL || '',
+        avatarUrl: user.user_metadata?.avatar_url || user.user_metadata?.picture || user.user_metadata?.photoURL || googleAvatarUrl || '',
       });
     }
   }, [user]);
@@ -171,12 +175,35 @@ export default function Settings() {
   };
 
   const handleSubmitFeedback = () => {
-    // In a real app, this would submit to your feedback system
-    toast({
-      title: "Feedback submitted",
-      description: "Thank you for your feedback! We'll review it shortly.",
-    });
+    if (!feedback.trim()) return;
+
+    // Create a well-formatted email message
+    const subject = encodeURIComponent("StudyWise AI Feedback");
+    const body = encodeURIComponent(`Dear StudyWise AI Support Team,
+
+I have some feedback regarding StudyWise AI:
+
+${feedback}
+
+User Details:
+- Email: ${user?.email || 'Not available'}
+- Name: ${profileInfo.fullName || 'Not available'}
+
+Best regards,
+${profileInfo.fullName || 'StudyWise AI User'}`);
+
+    // Create mailto link
+    const mailtoLink = `mailto:mossaic_mw@yahoo.com?subject=${subject}&body=${body}`;
+
+    // Open the email client
+    window.location.href = mailtoLink;
+
+    // Clear the feedback and show success message
     setFeedback("");
+    toast({
+      title: "Email client opened",
+      description: "Your feedback has been prepared in your email client.",
+    });
   };
 
   const handleDeleteAccount = async () => {
@@ -201,7 +228,7 @@ export default function Settings() {
     <div className="max-w-4xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-studywise-gray-900 mb-2">
-          Settings
+          Profile Settings
         </h1>
         <p className="text-studywise-gray-600">
           Manage your account preferences and application settings
@@ -213,7 +240,7 @@ export default function Settings() {
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 rounded-full border-2 border-studywise-gray-200 overflow-hidden flex items-center justify-center">
+              <div className="w-20 h-20 rounded-2xl border-2 border-studywise-gray-200 overflow-hidden flex items-center justify-center">
                 {profileInfo.avatarUrl ? (
                   <img
                     src={profileInfo.avatarUrl}
@@ -280,9 +307,10 @@ export default function Settings() {
                 id="fullName"
                 type="text"
                 value={profileInfo.fullName}
-                onChange={(e) => setProfileInfo({ ...profileInfo, fullName: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProfileInfo({ ...profileInfo, fullName: e.target.value })}
                 className="mt-2"
                 placeholder="Enter your full name"
+                disabled
               />
             </div>
             <div>
@@ -293,9 +321,10 @@ export default function Settings() {
                 id="username"
                 type="text"
                 value={profileInfo.username}
-                onChange={(e) => setProfileInfo({ ...profileInfo, username: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProfileInfo({ ...profileInfo, username: e.target.value })}
                 className="mt-2"
                 placeholder="Enter username"
+                disabled
               />
             </div>
             <div className="md:col-span-2">
@@ -306,14 +335,15 @@ export default function Settings() {
                 id="email"
                 type="email"
                 value={profileInfo.email}
-                onChange={(e) => setProfileInfo({ ...profileInfo, email: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProfileInfo({ ...profileInfo, email: e.target.value })}
                 className="mt-2"
                 placeholder="Enter email address"
+                disabled
               />
             </div>
           </div>
           
-          <div className="flex justify-end">
+          {/* <div className="flex justify-end">
             <Button 
               onClick={handleSaveProfile}
               size="sm"
@@ -321,7 +351,7 @@ export default function Settings() {
             >
               Save Profile
             </Button>
-          </div>
+          </div> */}
         </CardContent>
       </Card>
 
@@ -460,7 +490,7 @@ export default function Settings() {
             <Textarea
               placeholder="Tell us what you think about StudyWise AI or suggest improvements..."
               value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFeedback(e.target.value)}
               className="min-h-[100px] resize-none"
             />
             <div className="flex justify-end">
@@ -518,7 +548,7 @@ export default function Settings() {
                 className="mt-2"
                 placeholder="Enter current password"
                 value={passwordData.currentPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
                 disabled={isUpdatingPassword}
               />
             </div>
@@ -532,7 +562,7 @@ export default function Settings() {
                 className="mt-2"
                 placeholder="Enter new password"
                 value={passwordData.newPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
                 disabled={isUpdatingPassword}
               />
             </div>
@@ -546,7 +576,7 @@ export default function Settings() {
                 className="mt-2"
                 placeholder="Confirm new password"
                 value={passwordData.confirmPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
                 disabled={isUpdatingPassword}
               />
             </div>
