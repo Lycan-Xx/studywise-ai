@@ -29,6 +29,7 @@ export default function Settings() {
     username: "",
     email: "",
     fullName: "",
+    avatarUrl: "",
   });
 
   // Load user data when component mounts or user changes
@@ -38,6 +39,7 @@ export default function Settings() {
         username: user.email?.split('@')[0] || '',
         email: user.email || '',
         fullName: user.user_metadata?.full_name || user.user_metadata?.name || '',
+        avatarUrl: user.user_metadata?.avatar_url || user.user_metadata?.picture || user.user_metadata?.photoURL || '',
       });
     }
   }, [user]);
@@ -211,11 +213,34 @@ export default function Settings() {
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 rounded-full border-2 border-studywise-gray-200 bg-primary/10 flex items-center justify-center">
-                <span className="text-xl font-semibold text-primary">
-                  {profileInfo.fullName ? profileInfo.fullName.charAt(0).toUpperCase() : 
-                   profileInfo.email ? profileInfo.email.charAt(0).toUpperCase() : 'U'}
-                </span>
+              <div className="w-16 h-16 rounded-full border-2 border-studywise-gray-200 overflow-hidden flex items-center justify-center">
+                {profileInfo.avatarUrl ? (
+                  <img
+                    src={profileInfo.avatarUrl}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback to initials if image fails to load
+                      const target = e.target as HTMLElement;
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent) {
+                        parent.innerHTML = `<span class="text-xl font-semibold text-primary">${
+                          profileInfo.fullName ? profileInfo.fullName.charAt(0).toUpperCase() :
+                          profileInfo.email ? profileInfo.email.charAt(0).toUpperCase() : 'U'
+                        }</span>`;
+                        parent.classList.add('bg-primary/10');
+                      }
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-xl font-semibold text-primary">
+                      {profileInfo.fullName ? profileInfo.fullName.charAt(0).toUpperCase() :
+                       profileInfo.email ? profileInfo.email.charAt(0).toUpperCase() : 'U'}
+                    </span>
+                  </div>
+                )}
               </div>
               <div>
                 <h2 className="text-xl font-semibold text-studywise-gray-900">

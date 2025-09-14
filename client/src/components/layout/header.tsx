@@ -1,10 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { FaUserCircle, FaChevronLeft } from "react-icons/fa";
+import { Brain } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function Header(): JSX.Element {
   const [location] = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user } = useAuth();
 
   // Ref to focus the first mobile nav link when panel opens
   const firstMobileLinkRef = useRef<HTMLAnchorElement | null>(null);
@@ -63,11 +66,11 @@ export function Header(): JSX.Element {
             </div>
 
             {/* CENTER LOGO */}
-            <div className="flex items-center justify-center">
-              <Link href="/" className="nav-logo text-2xl font-extrabold tracking-tight">
-                StudyWise AI
-              </Link>
+            <div className="justify-center nav-logo text-2xl font-bold tracking-tight flex items-center gap-2">
+                <Brain className="w-6 h-6 text-primary" />
+                <span>StudyWise AI</span>
             </div>
+
 
             {/* RIGHT */}
             <div className="flex items-center justify-end gap-6 pr-4">
@@ -90,9 +93,31 @@ export function Header(): JSX.Element {
                 <div className={`w-12 h-12 rounded-lg border border-gray-200 flex items-center justify-center overflow-hidden bg-white transition-colors duration-200 ${
                   isActive("/settings") ? "border-primary bg-primary/5" : "hover:bg-gray-50"
                 }`}>
-                  <FaUserCircle size={28} className={`${
-                    isActive("/settings") ? "text-primary" : "text-studywise-gray-800"
-                  }`} />
+                  {user?.user_metadata?.avatar_url || user?.user_metadata?.picture || user?.user_metadata?.photoURL ? (
+                    <img
+                      src={user.user_metadata.avatar_url || user.user_metadata.picture || user.user_metadata.photoURL}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent && !parent.querySelector('svg')) {
+                          const fallbackIcon = document.createElement('div');
+                          fallbackIcon.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor"/></svg>';
+                          const svg = fallbackIcon.querySelector('svg');
+                          if (svg) {
+                            svg.setAttribute('class', isActive("/settings") ? "text-primary" : "text-studywise-gray-800");
+                            parent.appendChild(svg);
+                          }
+                        }
+                      }}
+                    />
+                  ) : (
+                    <FaUserCircle size={28} className={`${
+                      isActive("/settings") ? "text-primary" : "text-studywise-gray-800"
+                    }`} />
+                  )}
                 </div>
               </Link>
             </div>
@@ -105,10 +130,9 @@ export function Header(): JSX.Element {
         <div className="relative">
           <div className="rounded-xl border border-black bg-white h-14 flex items-center justify-center">
             {/* Centered Logo */}
-            <div className="absolute left-1/2 transform -translate-x-1/2">
-              <Link href="/" className="text-lg font-semibold">
-                StudyWise AI
-              </Link>
+            <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2">
+                <Brain className="w-5 h-5 text-primary" />
+                <span>StudyWise AI</span>
             </div>
 
             {/* Top-right left-facing arrow (opens menu from the right) */}
@@ -169,15 +193,37 @@ export function Header(): JSX.Element {
                 }`}
                 onClick={closeMenu}
               >
-                <div className={`w-10 h-10 rounded-md border flex items-center justify-center ${
-                  isActive("/settings") 
-                    ? "border-white/20 bg-white/10" 
+                <div className={`w-10 h-10 rounded-md border flex items-center justify-center overflow-hidden ${
+                  isActive("/settings")
+                    ? "border-white/20 bg-white/10"
                     : "border-gray-200 bg-white"
                 }`}>
-                  <FaUserCircle 
-                    size={22} 
-                    className={isActive("/settings") ? "text-white" : "text-studywise-gray-800"} 
-                  />
+                  {user?.user_metadata?.avatar_url || user?.user_metadata?.picture || user?.user_metadata?.photoURL ? (
+                    <img
+                      src={user.user_metadata.avatar_url || user.user_metadata.picture || user.user_metadata.photoURL}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent && !parent.querySelector('svg')) {
+                          const fallbackIcon = document.createElement('div');
+                          fallbackIcon.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor"/></svg>';
+                          const svg = fallbackIcon.querySelector('svg');
+                          if (svg) {
+                            svg.setAttribute('class', isActive("/settings") ? "text-white" : "text-studywise-gray-800");
+                            parent.appendChild(svg);
+                          }
+                        }
+                      }}
+                    />
+                  ) : (
+                    <FaUserCircle
+                      size={22}
+                      className={isActive("/settings") ? "text-white" : "text-studywise-gray-800"}
+                    />
+                  )}
                 </div>
                 <span className="font-medium">Settings</span>
               </Link>
