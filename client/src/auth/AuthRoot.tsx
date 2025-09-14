@@ -2,100 +2,106 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Brain, User, ArrowLeft, CheckCircle } from "lucide-react";
+import { Brain, User, CheckCircle, ArrowRight } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 
 export default function AuthRoot() {
-  const [currentStep, setCurrentStep] = useState(0); // Start with welcome step
+  const [currentStep, setCurrentStep] = useState(1); // Start with sign in step
   const [formData, setFormData] = useState({
     fullName: "",
     learningGoal: ""
   });
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [isWelcomeLoading, setIsWelcomeLoading] = useState(false);
+  const [isReturningUser, setIsReturningUser] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [isOAuthLoading, setIsOAuthLoading] = useState(false);
   const [errors, setErrors] = useState<{general?: string; learningGoal?: string}>({});
 
-  const { signInWithGoogle, user } = useAuth();
+  const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  // Handle user redirect and OAuth completion
+  // Handle user authentication and profile checking
   useEffect(() => {
     const handleAuthRedirect = async () => {
-      if (!user) return;
-
       const params = new URLSearchParams(window.location.search);
       const step = params.get('step');
       const isOAuth = params.get('oauth') === 'true';
 
-      // Show welcome back step for returning users
-      if (!isOAuth) {
-        setCurrentStep(0); // Welcome back step
-        setIsWelcomeLoading(true);
-        
-        // Simulate loading and then redirect
-        setTimeout(() => {
-          setIsWelcomeLoading(false);
-          setTimeout(() => setLocation('/dashboard'), 800);
-        }, 2000);
+      // Show OAuth loading if returning from OAuth and still loading
+      if (isOAuth && loading && !user) {
+        setIsOAuthLoading(true);
+        setCurrentStep(0);
         return;
       }
 
-      // Special handling for OAuth users who need to complete profile
-      if (step === '2' && isOAuth) {
-        try {
-          // Check if profile has learning_goal
-          const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('learning_goal')
-            .eq('id', user.id)
-            .single();
+      if (loading || !user) return;
 
-          if (!error && !profile?.learning_goal) {
-            // User needs to complete profile, don't redirect
-            setCurrentStep(2);
-            // Pre-fill data from OAuth
-            if (user?.user_metadata?.full_name) {
-              setFormData(prev => ({
-                ...prev,
-                fullName: user.user_metadata.full_name
-              }));
-            }
-            return; // Don't redirect to dashboard
+      // Clear OAuth loading when user is authenticated
+      setIsOAuthLoading(false);
+
+      try {
+        // Check user profile
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('learning_goal, full_name')
+          .eq('id', user.id)
+          .single();
+
+        if (!error && profile?.learning_goal) {
+          // Returning user with complete profile
+          setIsReturningUser(true);
+          setUserProfile(profile);
+          setCurrentStep(4); // Welcome back step
+          return;
+        }
+
+        // New user or incomplete profile
+        if (step === '2' && isOAuth) {
+          // OAuth user needs to complete profile
+          setCurrentStep(2);
+          if (user?.user_metadata?.full_name) {
+            setFormData(prev => ({
+              ...prev,
+              fullName: user.user_metadata.full_name
+            }));
           }
-        } catch (err) {
-          console.error('Error checking profile:', err);
+        } else {
+          // Regular authenticated user without OAuth flow - redirect to dashboard
+          setLocation('/dashboard');
+        }
+      } catch (err) {
+        console.error('Error checking profile:', err);
+        // On error, assume new user and show profile completion
+        if (step === '2' && isOAuth) {
+          setCurrentStep(2);
+          if (user?.user_metadata?.full_name) {
+            setFormData(prev => ({
+              ...prev,
+              fullName: user.user_metadata.full_name
+            }));
+          }
         }
       }
-
-      // For authenticated users with complete profiles, redirect to dashboard
-      setLocation('/dashboard');
     };
 
     handleAuthRedirect();
-  }, [user, setLocation]);
+  }, [user, loading, setLocation]);
 
-  // Initialize step based on user state
-  useEffect(() => {
-    if (!user) {
-      setCurrentStep(1); // Sign in step for unauthenticated users
-    }
-  }, [user]);
-
-  // Check for OAuth completion in URL params
+  // Initialize step for unauthenticated users
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const step = params.get('step');
-    const oauth = params.get('oauth');
+    const isOAuth = params.get('oauth') === 'true';
 
-    if (step === '2' && oauth === 'true' && !user) {
-      // Set the step for OAuth but don't process if no user yet
-      setCurrentStep(2);
+    if (loading && isOAuth) {
+      setCurrentStep(0); // OAuth loading step
+    } else if (!loading && !user) {
+      setCurrentStep(1); // Sign in step for unauthenticated users
     }
-  }, []);
+  }, [user, loading]);
 
   // Animation variants
   const cardVariants = {
@@ -114,7 +120,7 @@ export default function AuthRoot() {
         type: "spring",
         stiffness: 260,
         damping: 20,
-        duration: 0.6
+        duration: 0.5
       }
     },
     exit: (direction: number) => ({
@@ -126,7 +132,7 @@ export default function AuthRoot() {
         type: "spring",
         stiffness: 300,
         damping: 25,
-        duration: 0.4
+        duration: 0.5
       }
     })
   };
@@ -136,7 +142,7 @@ export default function AuthRoot() {
     animate: {
       opacity: 1,
       scale: 1,
-      transition: { duration: 1.2, ease: "easeOut" }
+      transition: { duration: 0.5, ease: "easeOut" }
     }
   };
 
@@ -145,7 +151,7 @@ export default function AuthRoot() {
       y: [0, -20, 0],
       opacity: [0.3, 0.6, 0.3],
       transition: {
-        duration: 3,
+        duration: 1.5,
         repeat: Infinity,
         ease: "easeInOut"
       }
@@ -156,7 +162,6 @@ export default function AuthRoot() {
   const learningGoals = [
     { value: "student", label: "I'm a Student" },
     { value: "teacher", label: "I'm a Teacher" },
-    { value: "certification", label: "I'm preparing for a Certification or Career Exam" },
     { value: "other", label: "Other" }
   ];
 
@@ -173,11 +178,8 @@ export default function AuthRoot() {
     setErrors({});
 
     try {
-      const { error } = await signInWithGoogle();
-
-      if (error) {
-        setErrors({ general: error.message });
-      }
+      const { signInWithGoogle } = await import("@/contexts/AuthContext");
+      // This will trigger the useEffect above when user state changes
     } catch (error) {
       setErrors({ general: "Google sign-in failed. Please try again." });
     } finally {
@@ -210,16 +212,33 @@ export default function AuthRoot() {
           return;
         }
 
-        toast({
-          title: "Welcome to StudyWise AI!",
-          description: "Your profile has been completed. Let's start learning!",
-        });
 
-        setCurrentStep(3); // Show success step briefly
-        setTimeout(() => setLocation('/dashboard'), 2000);
+        setCurrentStep(3); // Show success step
       }
     } catch (error) {
       setErrors({ general: "Failed to complete profile. Please try again." });
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
+  const handleGoToDashboard = () => {
+    setLocation('/dashboard');
+  };
+
+  const { signInWithGoogle } = useAuth();
+
+  const handleActualGoogleLogin = async () => {
+    setIsGoogleLoading(true);
+    setErrors({});
+
+    try {
+      const { error } = await signInWithGoogle();
+      if (error) {
+        setErrors({ general: error.message });
+      }
+    } catch (error) {
+      setErrors({ general: "Google sign-in failed. Please try again." });
     } finally {
       setIsGoogleLoading(false);
     }
@@ -255,28 +274,32 @@ export default function AuthRoot() {
         ))}
       </div>
 
-      {/* Background overlay with gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-black/30 via-black/40 to-black/50 z-10" />
+      {/* Unified background overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-black/30 via-black/40 to-black z-10" />
 
+              {/* Background blur behind card */}
+        <div className="absolute inset-0 backdrop-blur-lg bg-black/60 z-10" />
+
+        
       {/* Left side - Authentication Card */}
       <div className="flex-1 flex items-center justify-center p-4 md:p-8 relative z-20">
-        <div className="w-full max-w-lg">
-          {/* Glassmorphism Card */}
+        <div className="w-full max-w-lg relative z-20">
+          {/* Glassmorphism card effect */}
           <motion.div
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl shadow-2xl overflow-hidden"
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className="backdrop-blur-3xl bg-gray-900/20 border border-white/20 rounded-2xl shadow-2xl overflow-hidden"
           >
             <div className="p-10 relative">
-              {/* Glass reflection effect */}
-              <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none" />
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+              {/* Subtle top highlight */}
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              
               {/* Header */}
               <div className="text-center mb-8 relative z-10">
                 <Link href="/" className="inline-flex items-center justify-center mb-6">
                   <Brain className="w-8 h-8 text-white mr-2" />
-                  <span className="text-xl font-semibold text-white">StudyWise AI</span>
+                  <span className="text-xl font-semibold text-white text-nowrap">StudyWise AI</span>
                 </Link>
 
                 {/* Progress indicator for profile completion */}
@@ -292,7 +315,7 @@ export default function AuthRoot() {
                         className="bg-gradient-to-r from-white/60 to-white/80 h-2 rounded-full shadow-sm"
                         initial={{ width: 0 }}
                         animate={{ width: "66%" }}
-                        transition={{ duration: 0.7, ease: "easeOut" }}
+                        transition={{ duration: 0.5, ease: "easeOut" }}
                       />
                     </div>
                     <div className="text-center">
@@ -314,8 +337,8 @@ export default function AuthRoot() {
                     exit="exit"
                     className="space-y-6 relative z-10"
                   >
-                    {/* Step 0 - Welcome Back */}
-                    {currentStep === 0 && user && (
+                    {/* Step 0 - OAuth Loading */}
+                    {currentStep === 0 && (
                       <div className="space-y-8 text-center">
                         <motion.div
                           initial={{ scale: 0 }}
@@ -323,9 +346,9 @@ export default function AuthRoot() {
                           transition={{ delay: 0.2, type: "spring", stiffness: 300 }}
                           className="mx-auto w-20 h-20 bg-gradient-to-br from-white/20 to-white/10 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/30"
                         >
-                          <CheckCircle className="w-10 h-10 text-white" />
+                          <Brain className="w-10 h-10 text-white animate-pulse" />
                         </motion.div>
-                        
+
                         <div>
                           <motion.h1
                             initial={{ opacity: 0, y: 20 }}
@@ -333,7 +356,7 @@ export default function AuthRoot() {
                             transition={{ delay: 0.4 }}
                             className="text-3xl font-bold text-white mb-4"
                           >
-                            Welcome back,
+                            Signing you in...
                           </motion.h1>
                           <motion.p
                             initial={{ opacity: 0, y: 20 }}
@@ -341,34 +364,24 @@ export default function AuthRoot() {
                             transition={{ delay: 0.6 }}
                             className="text-xl text-white/80 font-medium"
                           >
-                            {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there'}!
+                            Please wait while we authenticate your account
                           </motion.p>
                         </div>
 
-                        {isWelcomeLoading ? (
-                          <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.8 }}
-                            className="space-y-4"
-                          >
-                            <div className="flex justify-center">
-                              <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                            </div>
-                            <p className="text-white/60">Taking you to your dashboard...</p>
-                          </motion.div>
-                        ) : (
-                          <motion.p
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.8 }}
-                            className="text-white/60"
-                          >
-                            Preparing your personalized experience...
-                          </motion.p>
-                        )}
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.8 }}
+                          className="space-y-4"
+                        >
+                          <div className="flex justify-center">
+                            <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          </div>
+                          <p className="text-white/60">This will only take a moment...</p>
+                        </motion.div>
                       </div>
                     )}
+
                     {/* Step 1 - Google Sign In */}
                     {currentStep === 1 && (
                       <div className="space-y-8">
@@ -398,7 +411,7 @@ export default function AuthRoot() {
                           className="space-y-6"
                         >
                           <Button
-                            onClick={handleGoogleLogin}
+                            onClick={handleActualGoogleLogin}
                             disabled={isGoogleLoading}
                             size="lg"
                             className="w-full border-2 px-8 py-4 border-white/30 text-white hover:border-white/50 hover:bg-white/10 rounded-xl font-medium transition-all duration-300 bg-white/20 backdrop-blur-sm"
@@ -460,7 +473,7 @@ export default function AuthRoot() {
                           transition={{ delay: 0.1 }}
                         >
                           <div className="relative">
-                            <label className="absolute -top-2 left-3 bg-white/20 backdrop-blur-sm px-1 text-xs font-medium text-white z-10">
+                            <label className="absolute -top-2 left-3 bg-gray-900/50 backdrop-blur-sm px-2 text-xs font-medium text-white z-10 rounded">
                               Full Name (Optional)
                             </label>
                             <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/60" />
@@ -534,7 +547,7 @@ export default function AuthRoot() {
                             <motion.p
                               initial={{ opacity: 0, y: -10 }}
                               animate={{ opacity: 1, y: 0 }}
-                              className="mt-2 text-sm text-red-600"
+                              className="mt-2 text-sm text-red-400"
                             >
                               {errors.learningGoal}
                             </motion.p>
@@ -550,7 +563,7 @@ export default function AuthRoot() {
                             onClick={handleCompleteProfile}
                             disabled={!formData.learningGoal || isGoogleLoading}
                             size="lg"
-                            className="w-full px-8 py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium transition-all duration-200"
+                            className="w-full px-8 py-4 bg-white/90 hover:bg-white text-black rounded-xl font-medium transition-all duration-300 backdrop-blur-sm"
                           >
                             {isGoogleLoading ? "Completing..." : "Complete Profile & Start Learning"}
                           </Button>
@@ -558,21 +571,21 @@ export default function AuthRoot() {
                       </div>
                     )}
 
-                    {/* Step 3 - Success */}
+                    {/* Step 3 - Success (New User) */}
                     {currentStep === 3 && (
                       <motion.div
-                        className="space-y-6 text-center"
+                        className="space-y-8 text-center"
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.5 }}
                       >
                         <motion.div
-                          className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-6 border border-white/30"
+                          className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-6 border border-white/30"
                           initial={{ scale: 0, rotate: -180 }}
                           animate={{ scale: 1, rotate: 0 }}
                           transition={{ delay: 0.2, duration: 0.6, type: "spring", stiffness: 200 }}
                         >
-                          <CheckCircle className="w-8 h-8 text-green-400" />
+                          <CheckCircle className="w-10 h-10 text-green-400" />
                         </motion.div>
 
                         <motion.div
@@ -580,12 +593,62 @@ export default function AuthRoot() {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: 0.4 }}
                         >
-                          <h1 className="text-2xl font-bold text-white mb-2">
+                          <h1 className="text-2xl font-bold text-white mb-4">
                             Welcome to StudyWise AI!
                           </h1>
-                          <p className="text-white/80">
-                            Your profile is complete. Redirecting you to your dashboard...
+                          <p className="text-white/80 mb-8">
+                            Your profile is complete. Ready to start your learning journey?
                           </p>
+                          
+                          <Button
+                            onClick={handleGoToDashboard}
+                            size="lg"
+                            className="bg-white/90 hover:bg-white text-black px-8 py-3 rounded-xl font-medium transition-all duration-300 backdrop-blur-sm inline-flex items-center"
+                          >
+                            Proceed to Dashboard
+                            <ArrowRight className="w-5 h-5 ml-2" />
+                          </Button>
+                        </motion.div>
+                      </motion.div>
+                    )}
+
+                    {/* Step 4 - Welcome Back (Returning User) */}
+                    {currentStep === 4 && isReturningUser && (
+                      <motion.div
+                        className="space-y-8 text-center"
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.5 }}
+                      >
+                        <motion.div
+                          className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-6 border border-white/30"
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ delay: 0.2, type: "spring", stiffness: 300 }}
+                        >
+                          <Brain className="w-10 h-10 text-white" />
+                        </motion.div>
+                        
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.4 }}
+                        >
+                          <h1 className="text-2xl font-bold text-white mb-2">
+                            Welcome back{user?.user_metadata?.full_name ? `, ${user.user_metadata.full_name.split(' ')[0]}` : ''}!
+                          </h1>
+                          <p className="text-white/80 mb-8">
+                            Great to see you again. Ready to continue learning?
+                          </p>
+
+                          <Button
+                            onClick={handleGoToDashboard}
+                            size="lg"
+                            className="bg-white/90 hover:bg-white text-black px-8 py-3 rounded-xl font-medium transition-all duration-300 backdrop-blur-sm inline-flex items-center"
+                          >
+                            Go to Dashboard
+                            <ArrowRight className="w-5 h-5 ml-2" />
+                          </Button>
                         </motion.div>
                       </motion.div>
                     )}
@@ -602,14 +665,14 @@ export default function AuthRoot() {
         <motion.div
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
           className="text-center text-white px-8"
         >
           <motion.h2
             className="text-5xl xl:text-6xl font-light leading-tight mb-4"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.8 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
           >
             {backgroundContent.title.split('\n').map((line, i) => (
               <span key={i}>
@@ -622,7 +685,7 @@ export default function AuthRoot() {
             className="text-xl opacity-90 max-w-md"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 0.9, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.8 }}
+            transition={{ delay: 0.4, duration: 0.5 }}
           >
             {backgroundContent.subtitle}
           </motion.p>
