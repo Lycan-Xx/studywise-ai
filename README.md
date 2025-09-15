@@ -2,6 +2,17 @@
 
 A modern full-stack application that uses multi-provider AI to generate personalized tests and study materials from any text content, with advanced analytics and learning insights.
 
+## 📚 Documentation
+
+For comprehensive project documentation, see:
+- **[Project Documentation](docs/PROJECT_DOCUMENTATION.md)** - Technical overview, architecture, and implementation details
+- **[Context & Vision](docs/CONTEXT.md)** - Project vision, learning science foundation, and future roadmap
+- **[Architecture Analysis](docs/ARCHITECTURE_ANALYSIS.md)** - Frontend/backend architecture and component analysis
+- **[AI Integration Plan](docs/ai-plan.md)** - Multi-provider AI system design and implementation
+- **[Backend Documentation](docs/backend_documentation_2025-09-12.md)** - Complete backend API and service documentation
+- **[State Management](docs/zustant-state-management-setup.md)** - Zustand store architecture and implementation
+- **[Deployment Guide](docs/RENDER_DEPLOYMENT.md)** - Production deployment instructions
+
 ## Project Structure
 
 ```
@@ -236,11 +247,15 @@ This script validates:
 - `tailwind.config.ts` - Styling configuration
 
 ### `/docs` - Documentation
-- `CONTEXT.md` - Comprehensive project overview and context
-- `PROJECT_DOCUMENTATION.md` - Technical documentation
-- `ARCHITECTURE_ANALYSIS.md` - Architecture decisions
-- `RENDER_DEPLOYMENT.md` - Deployment guide
-- `database_schema.sql` - Database schema
+- [`CONTEXT.md`](docs/CONTEXT.md) - Comprehensive project overview and context
+- [`PROJECT_DOCUMENTATION.md`](docs/PROJECT_DOCUMENTATION.md) - Technical documentation
+- [`ARCHITECTURE_ANALYSIS.md`](docs/ARCHITECTURE_ANALYSIS.md) - Architecture decisions
+- [`RENDER_DEPLOYMENT.md`](docs/RENDER_DEPLOYMENT.md) - Deployment guide
+- [`backend_documentation_2025-09-12.md`](docs/backend_documentation_2025-09-12.md) - Complete backend API documentation
+- [`ai-plan.md`](docs/ai-plan.md) - Multi-provider AI integration plan
+- [`zustant-state-management-setup.md`](docs/zustant-state-management-setup.md) - State management implementation
+- [`database_schema.sql`](docs/database_schema.sql) - Database schema
+- [`supabase_and_OAuth_setup.md`](docs/supabase_and_OAuth_setup.md) - Supabase and OAuth configuration
 
 ### `/scripts` - Utilities
 - `test-deployment.js` - Pre-deployment testing and validation
@@ -259,13 +274,13 @@ This script validates:
 
 ## License
 
-MIT License - see LICENSE file for details.
+This project is licensed under the GNU GPL version 3 - see the [LICENSE](LICENSE) file for details.
 
 ## Support
 
 - **Issues**: GitHub Issues
-- **Documentation**: `/docs/` directory
-- **Deployment**: `docs/RENDER_DEPLOYMENT.md`
+- **Documentation**: See the [📚 Documentation](#-documentation) section above
+- **Deployment**: [Render Deployment Guide](docs/RENDER_DEPLOYMENT.md)
 
 ---
 
