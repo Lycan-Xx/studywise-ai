@@ -12,25 +12,48 @@ It all started with a simple yet profound frustration - the struggle to effectiv
 
 #### Technology Stack
 - **Frontend**: React 18 + TypeScript + Vite
-- **Styling**: Tailwind CSS with Radix UI components
+- **Backend**: Node.js + Express + TypeScript
+- **Styling**: Tailwind CSS with shadcn/ui components
 - **State Management**: Zustand with localStorage persistence
 - **Routing**: Wouter for lightweight client-side routing
+- **Database**: Supabase (PostgreSQL) with Row-Level Security
+- **Authentication**: Supabase Auth with OAuth support
 - **Build Tool**: Vite for fast development and optimized builds
-- **Deployment**: Netlify with serverless functions
+- **Deployment**: Render (backend) + Netlify/Vercel (frontend)
 
 #### Project Structure
 ```
-coding-test/
-├── client/                 # Frontend application
-│   ├── public/            # Static assets (including PDF.js worker)
+studywise-ai/
+├── client/                 # React frontend application
 │   ├── src/
-│   │   ├── components/    # Reusable UI components
-│   │   ├── pages/        # Route components
-│   │   ├── stores/       # Zustand state management
-│   │   ├── types/        # TypeScript definitions
-│   │   └── utils/        # Utility functions
-├── package.json          # Root dependencies
-└── netlify.toml         # Deployment configuration
+│   │   ├── components/     # Reusable UI components
+│   │   ├── pages/         # Page components
+│   │   ├── stores/        # Zustand state management
+│   │   ├── contexts/      # React contexts
+│   │   ├── hooks/         # Custom React hooks
+│   │   ├── lib/           # Utilities and configurations
+│   │   ├── types/         # TypeScript type definitions
+│   │   ├── utils/         # Helper functions
+│   │   └── services/      # API service functions
+│   ├── public/
+│   └── index.html
+├── server/                 # Node.js/Express backend
+│   ├── controllers/        # Route handlers
+│   ├── services/          # Business logic (AI, database)
+│   ├── lib/               # Database and utility functions
+│   ├── routes.ts          # API route definitions
+│   ├── index.ts           # Server entry point
+│   ├── config.ts          # Server configuration
+│   └── storage.ts         # Legacy storage (deprecated)
+├── shared/                 # Shared types and utilities
+├── config/                 # Configuration files
+│   ├── vite.config.ts     # Frontend build configuration
+│   ├── tsconfig.json      # TypeScript configuration
+│   └── tailwind.config.ts # Styling configuration
+├── scripts/                # Build and deployment scripts
+├── docs/                   # Documentation
+├── supabase/               # Database migrations and config
+└── src/                   # Legacy source directory (deprecated)
 ```
 
 ### 🚀 Key Features Implemented
@@ -226,12 +249,19 @@ npm run dev
 npm run build
 ```
 
-#### Netlify Deployment
-The project is configured for seamless Netlify deployment:
-- Build command: `npm run build`
-- Publish directory: `dist/public`
-- Node version: 18
-- SPA-friendly redirects
+#### Render Deployment (Backend)
+The backend is deployed on Render with:
+- Web service configuration using `render.yaml`
+- Automatic builds from GitHub
+- Environment variable management
+- Health check endpoints
+- Automatic scaling
+
+#### Netlify/Vercel Deployment (Frontend)
+The frontend can be deployed to:
+- **Netlify**: Build command `npm run build:client`, publish `dist/public`
+- **Vercel**: Automatic deployment with zero configuration
+- Environment variables for API endpoints and Supabase configuration
 
 ### 🎯 Lessons Learned
 

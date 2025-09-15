@@ -1,7 +1,7 @@
-# StudyWise AI - Google Gemini Integration Plan
+# StudyWise AI - Multi-Provider AI Integration Plan
 
 ## Overview
-This plan outlines the implementation strategy for integrating Google Gemini AI into StudyWise AI's document-to-test generation workflow. The plan follows the existing application architecture and enhances the current mock AI service with real Gemini capabilities.
+This plan outlines the implementation strategy for integrating multiple AI providers (Google Gemini, OpenAI GPT, Anthropic Claude, and Meta Llama) into StudyWise AI's document-to-test generation workflow. The plan follows the existing application architecture and creates a robust, cost-effective AI orchestration system with intelligent provider selection and failover mechanisms.
 
 ## Current Application Workflow Analysis
 
@@ -25,12 +25,15 @@ Based on the codebase analysis, StudyWise AI follows this user journey:
   VITE_GEMINI_FLASH_MODEL=gemini-1.5-flash
   ```
 
-#### 1.2 Enhanced AI Service Architecture
-- Refactor `aiService.ts` to use a multi-model strategy:
-  - **Gemini 1.5 Pro**: Complex question generation, content analysis
-  - **Gemini 1.5 Flash**: Quick validation, simple tasks, cost optimization
-- Implement retry logic and fallback mechanisms
-- Add comprehensive error handling and logging
+#### 1.2 Multi-Provider AI Service Architecture
+- Refactor `AIService.ts` to orchestrate multiple AI providers:
+  - **Google Gemini Flash/Pro**: Fast, cost-effective question generation
+  - **OpenAI GPT-4o Mini/3.5**: Complex reasoning and content analysis
+  - **Anthropic Claude 3 Haiku**: Nuanced content understanding
+  - **Meta Llama 3.1**: Cost-effective fallback option
+- Implement intelligent provider selection based on cost, speed, and availability
+- Add comprehensive error handling, retry logic, and automatic failover
+- Include caching system to reduce API costs and improve response times
 
 #### 1.3 Content Preprocessing Pipeline
 - Enhance document text extraction quality
