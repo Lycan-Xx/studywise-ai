@@ -282,9 +282,6 @@ html {
 }
 
 /* Utility: subtle header container max width (keeps centered) */
-header .max-w-[1200px] {
-  max-width: 1200px;
-}
 
 /* Ensure the mobile slide panel scrolls if content bigger than viewport */
 #mobile-nav-panel {
@@ -348,6 +345,44 @@ textarea {
   .fixed.left-0.right-0.bottom-0 {
     bottom: 10px;
   }
+}
+
+/* Video Section Styles */
+.video-container {
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-bottom: 56.25%; /* 16:9 aspect ratio */
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border-radius: 1.5rem;
+  overflow: hidden;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.video-container iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 1rem;
+}
+
+/* Enhanced card borders for refined look */
+.card-with-border {
+  border: 2px solid hsl(var(--studywise-gray-200));
+  transition: all 0.3s ease;
+}
+
+.card-with-border:hover {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Video section background */
+.video-section-bg {
+  background: linear-gradient(135deg, hsl(var(--studywise-gray-50)) 0%, rgba(255, 255, 255, 0.8) 100%);
 }
 
 /* Modal question index: smooth scrolling on touch */
