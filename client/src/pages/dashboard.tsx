@@ -87,18 +87,61 @@ export default function Dashboard() {
   const handleGenerateWithDefaults = async () => {
     if (!notes.trim()) return;
 
-    const defaultConfig: TestConfig = {
-      title: testConfig.title || "Quick Study Test",
-      topics: testConfig.topics || "General",
-      questionType: 'mcq',
-      numberOfQuestions: 10,
-      difficulty: 'medium'
-    };
+    try {
+      const defaultConfig: TestConfig = {
+        title: testConfig.title || "Quick Study Test",
+        topics: testConfig.topics || "General",
+        questionType: 'mcq',
+        numberOfQuestions: 10,
+        difficulty: 'medium'
+      };
 
-    updateConfig(defaultConfig);
-    const result = await generateQuestions(defaultConfig, notes);
-    setIsUsingCache(result.usedCache);
-    showPreview();
+      updateConfig(defaultConfig);
+      const result = await generateQuestions(defaultConfig, notes);
+      setIsUsingCache(result.usedCache);
+
+      // Auto-save successful test generation to library
+      if (result.questions && result.questions.length > 0) {
+        try {
+          const savedTest = {
+            title: defaultConfig.title,
+            subject: defaultConfig.topics,
+            questionCount: result.questions.length,
+            config: defaultConfig,
+            questions: result.questions,
+            notes,
+            gradient: getRandomGradient()
+          };
+
+          console.log('🔄 Attempting to auto-save test:', savedTest);
+          await saveTest(savedTest);
+          console.log('✅ Test automatically saved to library');
+
+          // Show success toast for auto-save
+          toast({
+            title: "Test saved to library",
+            description: "Your generated test has been automatically saved to your library.",
+          });
+        } catch (saveError) {
+          console.error('❌ Failed to auto-save test:', saveError);
+          // Show error toast for auto-save failure
+          toast({
+            title: "Auto-save failed",
+            description: "Test was generated but couldn't be saved to library. You can save it manually from the preview.",
+            variant: "destructive",
+          });
+        }
+      }
+
+      showPreview();
+    } catch (error) {
+      console.error('❌ Test generation failed:', error);
+      toast({
+        title: "Test Generation Failed",
+        description: "Unable to generate questions from your content. Please check your input and try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleStartTest = async (timeLimit: number | null) => {
@@ -117,10 +160,53 @@ export default function Dashboard() {
   const handleGenerateCustom = async () => {
     if (!notes.trim() || !testConfig.title.trim()) return;
 
-    updateConfig(testConfig);
-    const result = await generateQuestions(testConfig, notes);
-    setIsUsingCache(result.usedCache);
-    showPreview();
+    try {
+      updateConfig(testConfig);
+      const result = await generateQuestions(testConfig, notes);
+      setIsUsingCache(result.usedCache);
+
+      // Auto-save successful test generation to library
+      if (result.questions && result.questions.length > 0) {
+        try {
+          const savedTest = {
+            title: testConfig.title || "Generated Test",
+            subject: testConfig.topics || "General",
+            questionCount: result.questions.length,
+            config: testConfig,
+            questions: result.questions,
+            notes,
+            gradient: getRandomGradient()
+          };
+
+          console.log('🔄 Attempting to auto-save test:', savedTest);
+          await saveTest(savedTest);
+          console.log('✅ Test automatically saved to library');
+
+          // Show success toast for auto-save
+          toast({
+            title: "Test saved to library",
+            description: "Your generated test has been automatically saved to your library.",
+          });
+        } catch (saveError) {
+          console.error('❌ Failed to auto-save test:', saveError);
+          // Show error toast for auto-save failure
+          toast({
+            title: "Auto-save failed",
+            description: "Test was generated but couldn't be saved to library. You can save it manually from the preview.",
+            variant: "destructive",
+          });
+        }
+      }
+
+      showPreview();
+    } catch (error) {
+      console.error('❌ Test generation failed:', error);
+      toast({
+        title: "Test Generation Failed",
+        description: "Unable to generate questions from your content. Please check your input and try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSaveToLibrary = async () => {
@@ -429,7 +515,6 @@ export default function Dashboard() {
         notes={notes}
         onStartTest={handleStartTest}
         onRegenerateAll={handleGenerateCustom}
-        onSaveToLibrary={handleSaveToLibrary}
         onBack={backToDashboard}
         isUsingCache={isUsingCache}
       />

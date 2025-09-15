@@ -140,15 +140,26 @@ export class DatabaseService {
     notes: string;
   }) {
     try {
+      console.log('🔄 Saving test to library:', {
+        id: data.id,
+        userId: data.userId,
+        title: data.title,
+        questionCount: data.questionCount,
+        hasQuestions: data.questions?.length > 0,
+        notesLength: data.notes?.length || 0
+      });
+
       const { error } = await supabase
         .from('tests')
         .upsert({
           id: data.id,
           user_id: data.userId,
           title: data.title,
-          description: data.notes,
+          description: data.notes || 'Generated test',
+          subject: data.config?.topics || 'General',
+          difficulty: data.config?.difficulty || 'medium',
           question_count: data.questionCount,
-          question_types: [data.config.questionType],
+          question_types: [data.config?.questionType || 'mcq'],
           metadata: {
             config: data.config,
             questions: data.questions,
@@ -158,14 +169,14 @@ export class DatabaseService {
         });
 
       if (error) {
-        console.error('Error saving test to library:', error);
+        console.error('❌ Error saving test to library:', error);
         throw error;
       }
 
-      console.log('Test saved to library successfully:', data.id);
+      console.log('✅ Test saved to library successfully:', data.id);
       return { success: true };
     } catch (error) {
-      console.error('Database service error:', error);
+      console.error('❌ Database service error:', error);
       throw error;
     }
   }
@@ -173,6 +184,8 @@ export class DatabaseService {
   // Get user tests
   static async getUserTests(userId: string) {
     try {
+      console.log('🔍 DatabaseService: Fetching tests for user:', userId);
+
       const { data, error } = await supabase
         .from('tests')
         .select('*')
@@ -180,13 +193,28 @@ export class DatabaseService {
         .order('updated_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching user tests:', error);
+        console.error('❌ DatabaseService: Error fetching user tests:', error);
         throw error;
+      }
+
+      console.log('✅ DatabaseService: Retrieved tests:', data?.length || 0, 'tests');
+
+      // Log metadata for first test if available
+      if (data && data.length > 0) {
+        console.log('📋 DatabaseService: First test sample:', {
+          id: data[0].id,
+          title: data[0].title,
+          hasMetadata: !!data[0].metadata,
+          metadataKeys: data[0].metadata ? Object.keys(data[0].metadata) : [],
+          notesLength: data[0].metadata?.notes?.length || 0,
+          questionsCount: data[0].metadata?.questions?.length || 0,
+          descriptionLength: data[0].description?.length || 0
+        });
       }
 
       return data || [];
     } catch (error) {
-      console.error('Database service error:', error);
+      console.error('❌ DatabaseService: Error in getUserTests:', error);
       throw error;
     }
   }

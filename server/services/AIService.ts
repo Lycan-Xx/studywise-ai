@@ -95,7 +95,7 @@ class MultiProviderAIService {
 
     // Initialize OpenRouter (supports 200+ models)
     const openrouterKey = process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY;
-    if (openrouterKey) {
+    if (openrouterKey && openrouterKey !== 'your_openrouter_api_key') {
       // GPT models via OpenRouter
       this.providers.set('gpt-4o-mini', {
         name: 'GPT-4o Mini (OpenRouter)',
@@ -134,19 +134,6 @@ class MultiProviderAIService {
         maxTokens: 200000
       });
 
-      // Meta Llama via OpenRouter (disabled - model not available)
-      this.providers.set('llama-3.1-8b', {
-        name: 'Llama 3.1 8B (OpenRouter)',
-        available: false, // Disabled due to model availability issues
-        requestCount: 0,
-        lastReset: Date.now(),
-        maxRequests: 12,
-        resetInterval: 60 * 1000,
-        priority: 6,
-        costPerToken: 0.00005,
-        maxTokens: 131072
-      });
-
       // Add Mistral as backup
       this.providers.set('mistral-7b', {
         name: 'Mistral 7B (OpenRouter)',
@@ -161,6 +148,8 @@ class MultiProviderAIService {
       });
 
       console.log("✅ OpenRouter providers initialized");
+    } else {
+      console.log("ℹ️ OpenRouter API key not configured - OpenRouter providers disabled");
     }
 
     console.log(`🤖 Multi-provider AI service initialized with ${this.providers.size} providers`);
@@ -224,6 +213,12 @@ class MultiProviderAIService {
 
   private async makeOpenRouterRequest(model: string, prompt: string): Promise<string> {
     const openrouterKey = process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY;
+
+    // Check if OpenRouter key is configured
+    if (!openrouterKey || openrouterKey === 'your_openrouter_api_key') {
+      throw new Error('OpenRouter API key not configured');
+    }
+
     const siteUrl = process.env.SITE_URL || process.env.VITE_SITE_URL || "http://localhost:3000";
     const appName = process.env.APP_NAME || process.env.VITE_APP_NAME || "AI Test Generator";
 
@@ -256,11 +251,22 @@ class MultiProviderAIService {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`OpenRouter API error: ${response.status} ${response.statusText} - ${errorText}`);
+      console.error(`OpenRouter API error (${response.status}):`, errorText);
+
+      // Handle specific error cases
+      if (response.status === 401) {
+        throw new Error('OpenRouter API key is invalid or expired. Please update your API key.');
+      } else if (response.status === 429) {
+        throw new Error('OpenRouter rate limit exceeded. Please try again later.');
+      } else if (response.status >= 500) {
+        throw new Error('OpenRouter service is temporarily unavailable. Please try again later.');
+      } else {
+        throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
+      }
     }
 
     const data = await response.json();
-    
+
     if (!data.choices || !data.choices[0] || !data.choices[0].message) {
       throw new Error('Invalid response format from OpenRouter');
     }
@@ -291,9 +297,13 @@ class MultiProviderAIService {
     } catch (error) {
       console.error(`❌ Request failed with ${provider.name}:`, error);
 
-      // Handle rate limiting and temporary unavailability
+      // Handle different types of errors
       if (error instanceof Error) {
-        if (error.message.includes('429') || error.message.includes('rate limit')) {
+        if (error.message.includes('401') || error.message.includes('invalid') || error.message.includes('User not found')) {
+          // Authentication/API key errors - disable provider permanently for this session
+          provider.available = false;
+          console.log(`🔐 Provider ${provider.name} authentication failed - disabled for session`);
+        } else if (error.message.includes('429') || error.message.includes('rate limit')) {
           provider.available = false;
           console.log(`⏳ Provider ${provider.name} rate limited, cooldown for 60 seconds`);
           setTimeout(() => {
@@ -308,6 +318,15 @@ class MultiProviderAIService {
             provider.available = true;
             provider.requestCount = 0;
           }, 3600000); // 1 hour
+        } else if (error.message.includes('temporarily unavailable') || error.message.includes('5')) {
+          // Temporary server errors - retry after delay
+          provider.available = false;
+          console.log(`🌐 Provider ${provider.name} temporarily unavailable, cooldown for 30 seconds`);
+          setTimeout(() => {
+            provider.available = true;
+            provider.requestCount = 0;
+            console.log(`✅ Provider ${provider.name} back online`);
+          }, 30000);
         }
       }
 
@@ -414,26 +433,59 @@ Generate ${questionCount} questions now:`;
 
   private parseAIResponse(text: string): any {
     try {
+      // Check if response looks like gibberish or is too short
+      if (!text || text.trim().length < 10) {
+        throw new Error("Response is too short or empty");
+      }
+
+      // Check for common gibberish patterns
+      const gibberishPatterns = [
+        /^[^\w\s]*$/, // Only symbols/no alphanumeric
+        /(\w{20,})/, // Very long words (likely gibberish)
+        /^.{0,50}$/, // Too short for valid JSON response
+        /(.)\1{10,}/, // Repeated characters
+      ];
+
+      if (gibberishPatterns.some(pattern => pattern.test(text))) {
+        throw new Error("Response appears to be gibberish or malformed");
+      }
+
       let jsonText = text.trim();
-      
+
       // Remove markdown code blocks
       jsonText = jsonText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
       jsonText = jsonText.replace(/^```\s*/, "").replace(/\s*```$/, "");
-      
-      // Find JSON object
-      const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+
+      // Find JSON object - try multiple patterns
+      let jsonMatch = jsonText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        throw new Error("No JSON object found in response");
+        // Try to find JSON in a larger context
+        jsonMatch = jsonText.match(/\{[\s\S]{50,}\}/);
+      }
+
+      if (!jsonMatch) {
+        throw new Error("No valid JSON object found in response");
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
-      
+
+      // Validate structure
       if (!parsed.questions || !Array.isArray(parsed.questions)) {
         throw new Error("Invalid response format - questions array missing");
       }
 
       if (parsed.questions.length === 0) {
         throw new Error("No questions generated");
+      }
+
+      // Validate each question has required fields
+      for (const question of parsed.questions) {
+        if (!question.question || typeof question.question !== 'string') {
+          throw new Error("Invalid question format - missing or invalid question text");
+        }
+        if (!question.correctAnswer || typeof question.correctAnswer !== 'string') {
+          throw new Error("Invalid question format - missing or invalid correct answer");
+        }
       }
 
       return parsed;

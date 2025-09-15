@@ -21,7 +21,6 @@ interface TestPreviewOverlayProps {
   notes: string;
   onStartTest: (timeLimit: number | null) => void;
   onRegenerateAll: () => void;
-  onSaveToLibrary: () => void;
   onBack: () => void;
   isUsingCache?: boolean;
 }
@@ -32,7 +31,6 @@ export function TestPreviewOverlay({
   notes,
   onStartTest,
   onRegenerateAll,
-  onSaveToLibrary,
   onBack,
   isUsingCache = false
 }: TestPreviewOverlayProps) {
@@ -70,39 +68,6 @@ export function TestPreviewOverlay({
     setSourceModalOpen(true);
   };
 
-  const handleSaveToLibrary = async () => {
-    try {
-      const savedTest = {
-        title: config.title || "Generated Test",
-        subject: config.topics || "General",
-        questionCount: questions.length,
-        config,
-        questions: questions,
-        notes,
-        gradient: getRandomGradient()
-      };
-
-      await libraryStore.saveTest(savedTest);
-
-      // Only clear the initial notes from dashboard after successful save
-      // Don't clear the test context that's being previewed
-      const { setNotes } = useTestStore.getState();
-      setNotes(""); // Clear only the notes, not the entire test context
-
-      toast({
-        title: "Test saved to library",
-        description: "Your test has been successfully saved and is now available in your library.",
-        duration: 4000,
-      });
-    } catch (error) {
-      console.error("Failed to save test:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save test to library. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
 
   // Helper function for random gradients
   const getRandomGradient = () => {
@@ -333,15 +298,6 @@ export function TestPreviewOverlay({
       <div className="sticky bottom-0 bg-white border-t border-slate-200 p-4">
         <div className="max-w-6xl mx-auto">
           <div className="flex justify-end gap-3">
-            <Button
-              onClick={handleSaveToLibrary}
-              variant="outline"
-              size="lg"
-              className="border-2 px-6 py-3 border-primary text-black hover:border-green-400 hover:bg-green-50 flex items-center gap-2"
-            >
-              <FileText className="w-4 h-4" />
-              Save to Library
-            </Button>
             <Button
               onClick={handleStartTest}
               size="lg"
