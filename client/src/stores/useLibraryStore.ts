@@ -121,23 +121,25 @@ export const useLibraryStore = create<LibraryStore>()(
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error('User not authenticated');
 
-          // Use server API instead of direct Supabase calls
-          const response = await fetch('/api/library', {
-            method: 'GET',
-            headers: {
-              'user-id': user.id
-            }
-          });
+          console.log('📚 Library Store: Loading tests for user:', user.id);
+
+          // Use ApiService instead of direct fetch for proper URL handling
+          const response = await ApiService.get('/api/library');
+
+          console.log('📥 Library Store: Load tests response status:', response.status);
 
           if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to load tests');
+            const errorText = await response.text();
+            console.error('❌ Library Store: Load tests failed with response:', errorText);
+            throw new Error(`Failed to load tests: ${response.status} ${response.statusText}`);
           }
 
           const tests = await response.json();
+          console.log('✅ Library Store: Loaded tests:', tests?.length || 0, 'tests');
+
           set({ tests: tests || [], loading: false });
         } catch (error) {
-          console.error('Error loading tests:', error);
+          console.error('❌ Library Store: Error loading tests:', error);
           set({
             error: error instanceof Error ? error.message : 'Failed to load tests',
             loading: false
@@ -244,8 +246,10 @@ export const useLibraryStore = create<LibraryStore>()(
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error('User not authenticated');
 
-          // Use server API instead of direct Supabase calls
-          const response = await fetch(`/api/library/tests/${id}`, {
+          console.log('🔄 Library Store: Updating test:', id, 'with updates:', updates);
+
+          // Use ApiService instead of direct fetch for proper URL handling
+          const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/library/tests/${id}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
@@ -254,8 +258,11 @@ export const useLibraryStore = create<LibraryStore>()(
             body: JSON.stringify(updates)
           });
 
+          console.log('📥 Library Store: Update test response status:', response.status);
+
           if (!response.ok) {
             const errorData = await response.json();
+            console.error('❌ Library Store: Update test failed:', errorData);
             throw new Error(errorData.error || 'Failed to update test');
           }
 
@@ -264,7 +271,7 @@ export const useLibraryStore = create<LibraryStore>()(
 
           set({ loading: false });
         } catch (error) {
-          console.error('Error updating test:', error);
+          console.error('❌ Library Store: Error updating test:', error);
           set({
             error: error instanceof Error ? error.message : 'Failed to update test',
             loading: false
@@ -279,16 +286,21 @@ export const useLibraryStore = create<LibraryStore>()(
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error('User not authenticated');
 
-          // Use server API instead of direct Supabase calls
-          const response = await fetch(`/api/library/tests/${id}`, {
+          console.log('🗑️ Library Store: Deleting test:', id);
+
+          // Use proper API URL for delete operation
+          const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/library/tests/${id}`, {
             method: 'DELETE',
             headers: {
               'user-id': user.id
             }
           });
 
+          console.log('📥 Library Store: Delete test response status:', response.status);
+
           if (!response.ok) {
             const errorData = await response.json();
+            console.error('❌ Library Store: Delete test failed:', errorData);
             throw new Error(errorData.error || 'Failed to delete test');
           }
 
@@ -297,7 +309,7 @@ export const useLibraryStore = create<LibraryStore>()(
             loading: false
           }));
         } catch (error) {
-          console.error('Error deleting test:', error);
+          console.error('❌ Library Store: Error deleting test:', error);
           set({
             error: error instanceof Error ? error.message : 'Failed to delete test',
             loading: false
@@ -338,7 +350,7 @@ export const useLibraryStore = create<LibraryStore>()(
 
           console.log('📤 Library Store: Sending request payload:', requestPayload);
 
-          const response = await fetch('/api/library/tests', {
+          const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/library/tests`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
