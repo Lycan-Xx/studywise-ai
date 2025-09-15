@@ -22,6 +22,7 @@ import { Question } from "@/types";
 import { SourcePreviewModal } from "./SourcePreviewModal";
 import { LoadingModal } from "./LoadingModal";
 import { useLocation } from "wouter";
+import { ApiService } from "@/services/apiService";
 
 interface TestResultsOverlayProps {
   testTitle: string;
@@ -106,13 +107,7 @@ export function TestResultsOverlay({
 
       console.log('📤 Sending insights request payload:', testResultPayload);
 
-      const response = await fetch(`/api/tests/${testId}/insights`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(testResultPayload)
-      });
+      const response = await ApiService.post(`/api/tests/${testId}/insights`, testResultPayload);
 
       if (!response.ok) {
         const errorText = await response.text();

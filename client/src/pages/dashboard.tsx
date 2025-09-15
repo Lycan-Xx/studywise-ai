@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import TestCustomizationPanel from './mobileDashboard/TestCustomizationPanel';
 import { MobileBottomSheet } from './mobileDashboard/MobileBottomSheet';
 import { v4 as uuidv4 } from 'uuid';
+import { ApiService } from "@/services/apiService";
 
 export default function Dashboard() {
   const [showMobileCustomization, setShowMobileCustomization] = useState(false);
@@ -192,13 +193,7 @@ export default function Dashboard() {
 
       console.log('📤 Sending insights request payload:', testResultPayload);
 
-      const response = await fetch(`/api/tests/${testId}/insights`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(testResultPayload)
-      });
+      const response = await ApiService.post(`/api/tests/${testId}/insights`, testResultPayload);
 
       if (!response.ok) {
         const errorText = await response.text();

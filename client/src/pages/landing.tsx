@@ -72,7 +72,7 @@ export default function Landing() {
 
           <div className="max-w-3xl mx-auto mb-12 space-y-6">
             <p className="text-xl md:text-2xl text-studywise-gray-600 font-light leading-relaxed" data-testid="text-hero-description">
-              You've spent hours reading your notes. Highlighting every line. Re-reading pages until your eyes blur.
+              <span className="text-nowrap">You've spent hours reading your notes. Highlighting every line. </span> Re-reading pages until your eyes blur.
               But when it's time for the test, you still feel lost.
             </p>
             <p className="text-lg md:text-xl font-medium text-studywise-gray-800 bg-studywise-gray-50 rounded-2xl px-8 py-4 inline-block">
