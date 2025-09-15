@@ -249,14 +249,7 @@ export const useLibraryStore = create<LibraryStore>()(
           console.log('🔄 Library Store: Updating test:', id, 'with updates:', updates);
 
           // Use ApiService instead of direct fetch for proper URL handling
-          const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/library/tests/${id}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'user-id': user.id
-            },
-            body: JSON.stringify(updates)
-          });
+          const response = await ApiService.put(`/api/library/tests/${id}`, updates);
 
           console.log('📥 Library Store: Update test response status:', response.status);
 
@@ -288,13 +281,8 @@ export const useLibraryStore = create<LibraryStore>()(
 
           console.log('🗑️ Library Store: Deleting test:', id);
 
-          // Use proper API URL for delete operation
-          const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/library/tests/${id}`, {
-            method: 'DELETE',
-            headers: {
-              'user-id': user.id
-            }
-          });
+          // Use ApiService instead of direct fetch for proper URL handling
+          const response = await ApiService.delete(`/api/library/tests/${id}`);
 
           console.log('📥 Library Store: Delete test response status:', response.status);
 
@@ -350,14 +338,7 @@ export const useLibraryStore = create<LibraryStore>()(
 
           console.log('📤 Library Store: Sending request payload:', requestPayload);
 
-          const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/library/tests`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'user-id': user.id
-            },
-            body: JSON.stringify(requestPayload)
-          });
+          const response = await ApiService.post('/api/library/tests', requestPayload);
 
           console.log('📥 Library Store: Response status:', response.status);
 
