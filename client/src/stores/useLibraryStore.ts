@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '@/lib/supabase';
+import { ApiService } from '@/services/apiService';
 
 export interface Test {
   id: string;
@@ -120,15 +121,21 @@ export const useLibraryStore = create<LibraryStore>()(
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error('User not authenticated');
 
-          const { data, error } = await supabase
-            .from('tests')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('updated_at', { ascending: false });
+          // Use server API instead of direct Supabase calls
+          const response = await fetch('/api/library', {
+            method: 'GET',
+            headers: {
+              'user-id': user.id
+            }
+          });
 
-          if (error) throw error;
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to load tests');
+          }
 
-          set({ tests: data || [], loading: false });
+          const tests = await response.json();
+          set({ tests: tests || [], loading: false });
         } catch (error) {
           console.error('Error loading tests:', error);
           set({
@@ -234,21 +241,28 @@ export const useLibraryStore = create<LibraryStore>()(
         set({ loading: true, error: null });
 
         try {
-          const { data, error } = await supabase
-            .from('tests')
-            .update(updates)
-            .eq('id', id)
-            .select()
-            .single();
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error('User not authenticated');
 
-          if (error) throw error;
+          // Use server API instead of direct Supabase calls
+          const response = await fetch(`/api/library/tests/${id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'user-id': user.id
+            },
+            body: JSON.stringify(updates)
+          });
 
-          set(state => ({
-            tests: state.tests.map(test => 
-              test.id === id ? { ...test, ...data } : test
-            ),
-            loading: false
-          }));
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to update test');
+          }
+
+          // Refresh the tests list to get the updated data
+          await get().loadTests();
+
+          set({ loading: false });
         } catch (error) {
           console.error('Error updating test:', error);
           set({
@@ -262,12 +276,21 @@ export const useLibraryStore = create<LibraryStore>()(
         set({ loading: true, error: null });
 
         try {
-          const { error } = await supabase
-            .from('tests')
-            .delete()
-            .eq('id', id);
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error('User not authenticated');
 
-          if (error) throw error;
+          // Use server API instead of direct Supabase calls
+          const response = await fetch(`/api/library/tests/${id}`, {
+            method: 'DELETE',
+            headers: {
+              'user-id': user.id
+            }
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to delete test');
+          }
 
           set(state => ({
             tests: state.tests.filter(test => test.id !== id),
@@ -289,40 +312,59 @@ export const useLibraryStore = create<LibraryStore>()(
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error('User not authenticated');
 
-          const testToSave = {
-            user_id: user.id,
+          console.log('🔄 Library Store: Attempting to save test:', {
+            userId: user.id,
+            testData: {
+              id: testData.id,
+              title: testData.title,
+              questionCount: testData.questions?.length || 0,
+              hasConfig: !!testData.config,
+              hasQuestions: testData.questions?.length > 0,
+              notesLength: testData.notes?.length || 0
+            }
+          });
+
+          // Use server API instead of direct Supabase calls
+          const requestPayload = {
+            id: testData.id || crypto.randomUUID(),
             title: testData.title || 'Generated Test',
-            description: testData.notes || '',
+            questionCount: testData.questions?.length || 0,
+            config: testData.config || {},
+            questions: testData.questions || [],
+            notes: testData.notes || '',
             subject: testData.subject || testData.config?.topics || 'General',
-            difficulty: testData.config?.difficulty || 'medium',
-            question_count: testData.questions?.length || 0,
-            question_types: testData.config?.questionType === 'mcq' ? ['multiple-choice'] : ['true-false'],
-            tags: [],
-            metadata: {
-              questions: testData.questions || [],
-              notes: testData.notes || '',
-              config: testData.config || {}
-            },
-            version: 1,
-            passing_score: 70
+            difficulty: testData.config?.difficulty || 'medium'
           };
 
-          const { data, error } = await supabase
-            .from('tests')
-            .insert(testToSave)
-            .select()
-            .single();
+          console.log('📤 Library Store: Sending request payload:', requestPayload);
 
-          if (error) throw error;
+          const response = await fetch('/api/library/tests', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'user-id': user.id
+            },
+            body: JSON.stringify(requestPayload)
+          });
 
-          set(state => ({
-            tests: [data, ...state.tests],
-            loading: false
-          }));
+          console.log('📥 Library Store: Response status:', response.status);
 
-          return data;
+          if (!response.ok) {
+            const errorData = await response.json();
+            console.error('❌ Library Store: API error response:', errorData);
+            throw new Error(errorData.error || 'Failed to save test');
+          }
+
+          const result = await response.json();
+          console.log('✅ Library Store: Test saved successfully:', result);
+
+          // Refresh the tests list to get the updated data
+          await get().loadTests();
+
+          set({ loading: false });
+          return result;
         } catch (error) {
-          console.error('Error saving test:', error);
+          console.error('❌ Library Store: Error saving test:', error);
           set({
             error: error instanceof Error ? error.message : 'Failed to save test',
             loading: false

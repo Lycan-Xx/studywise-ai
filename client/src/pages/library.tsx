@@ -229,13 +229,22 @@ export default function Library() {
     return words.length < notes.length ? `${words}...` : words;
   };
 
-  const handleSaveNotes = (testId: string, notes: string) => {
+  // Helper function to get notes from test data (prioritize metadata.notes, fallback to description)
+  const getTestNotes = (test: any) => {
+    return test.metadata?.notes || test.description || "";
+  };
+
+  const handleSaveNotes = async (testId: string, notes: string) => {
     // Update the test in the library store
     try {
-      // For now, we'll just log the save operation
-      console.log("Saving notes for test:", testId);
+      const { updateTest } = useLibraryStore.getState();
+      await updateTest(testId, {
+        notes: notes
+      });
+      console.log("Notes saved successfully for test:", testId);
     } catch (error) {
       console.error("Failed to update test notes:", error);
+      throw error;
     }
   };
 
@@ -309,7 +318,7 @@ export default function Library() {
       <TestPreviewOverlay
         config={testConfig}
         questions={questions}
-        notes={startingTestData.metadata?.notes || ""}
+        notes={getTestNotes(startingTestData)}
         onStartTest={handleStartTestFromPreview}
         onRegenerateAll={handleRegenerateTest}
         onSaveToLibrary={handleSaveToLibrary}
@@ -325,7 +334,7 @@ export default function Library() {
         testId={selectedTestData.id}
         title={selectedTestData.title}
         subject={selectedTestData.subject || "General"}
-        initialNotes={selectedTestData.metadata?.notes || ""}
+        initialNotes={getTestNotes(selectedTestData)}
         highlightText={highlightText}
         onClose={() => {
           setSelectedTest(null);
@@ -405,7 +414,7 @@ export default function Library() {
                   </h3>
                 </div>
                 <p className="text-sm text-studywise-gray-600 mb-2 line-clamp-2" data-testid={`text-test-notes-${test.id}`}>
-                  {getNotesPreview(test.description || "")}
+                  {getNotesPreview(getTestNotes(test))}
                 </p>
                 <p className="text-xs text-studywise-gray-500 mb-1" data-testid={`text-test-date-${test.id}`}>
                   Created on {new Date(test.created_at).toLocaleDateString()}
