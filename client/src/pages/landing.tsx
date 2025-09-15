@@ -79,7 +79,7 @@ export default function Landing() {
               You're not alone.
             </p>
             <p className="text-lg md:text-xl text-studywise-gray-600 leading-relaxed">
-              Most of us study passively—and it's a huge waste of time. StudyWise AI takes a different approach.
+              Most of us study passively and it's a huge waste of time. StudyWise AI takes a different approach.
               It turns your notes into personalized practice tests, so you can stop just reading and start truly learning.
             </p>
           </div>
@@ -160,7 +160,7 @@ export default function Landing() {
                 </div>
                 <div className="w-12 h-1 bg-primary rounded-full mx-auto mb-4"></div>
                 <p className="text-studywise-gray-700 text-lg leading-relaxed">
-                  <strong className="text-studywise-gray-900">AI follows strict rules</strong>—it only creates questions from your notes.
+                  <strong className="text-studywise-gray-900">AI follows strict rules</strong>it only creates questions from your notes.
                 </p>
               </div>
               <div className="group">
@@ -169,7 +169,7 @@ export default function Landing() {
                 </div>
                 <div className="w-12 h-1 bg-primary rounded-full mx-auto mb-4"></div>
                 <p className="text-studywise-gray-700 text-lg leading-relaxed">
-                  <strong className="text-studywise-gray-900">Auto double-check</strong>—the AI verifies each answer before you see it.
+                  <strong className="text-studywise-gray-900">Auto double-check</strong>the AI verifies each answer before you see it.
                 </p>
               </div>
               <div className="group">

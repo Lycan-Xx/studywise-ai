@@ -9,7 +9,5 @@ vite.config.ts.*
 .env.production
 .env.staging
 
-# Netlify configuration (may contain sensitive data)
-netlify.toml
 
 .replit

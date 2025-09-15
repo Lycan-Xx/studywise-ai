@@ -654,7 +654,7 @@ export default function AuthRoot() {
                             size="lg"
                             className="bg-white/95 lg:bg-white/90 hover:bg-white text-black px-6 lg:px-8 py-3 rounded-lg lg:rounded-xl font-medium transition-all duration-300 backdrop-blur-sm inline-flex items-center text-sm lg:text-base"
                           >
-                            Go to Dashboard
+                            Proceed to Dashboard
                             <ArrowRight className="w-4 h-4 lg:w-5 lg:h-5 ml-2" />
                           </Button>
                         </motion.div>
