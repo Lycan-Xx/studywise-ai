@@ -28,6 +28,7 @@ import {
 import { Question } from "@/types";
 import { useTestSessionStore } from "@/stores";
 import { LoadingModal } from "./LoadingModal";
+import { ApiService } from "@/services/apiService";
 
 interface TestTakingOverlayProps {
   testTitle: string;
@@ -202,13 +203,7 @@ export function TestTakingOverlay({
 
       console.log('📤 Sending insights request payload:', testResultPayload);
 
-      const response = await fetch(`/api/tests/temp-test-id/insights`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(testResultPayload)
-      });
+      const response = await ApiService.post(`/api/tests/temp-test-id/insights`, testResultPayload);
 
       if (!response.ok) {
         const errorText = await response.text();
