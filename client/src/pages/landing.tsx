@@ -64,7 +64,7 @@ export default function Landing() {
           </div>
 
           {/* Improved typography hierarchy */}
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold text-studywise-gray-900 mb-8 tracking-tight leading-none" data-testid="text-hero-title">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-studywise-gray-900 mb-8 tracking-tight leading-none" data-testid="text-hero-title">
             Your Notes.<br/>
             <span className="text-primary">Your Tests.</span><br/>
             Your A's.
@@ -106,7 +106,7 @@ export default function Landing() {
 
           <div className="grid md:grid-cols-3 gap-10 mb-20">
             {/* Step 1 - Enhanced card design */}
-            <Card className="text-center p-10 border-0 bg-white shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 rounded-3xl" data-testid="card-step-1">
+            <Card className="text-center p-10 border-2 border-studywise-gray-200 bg-white shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 rounded-3xl" data-testid="card-step-1">
               <CardContent className="pt-8">
                 <div className="w-20 h-20 bg-gradient-to-br from-blue-50 to-blue-100 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-inner">
                   <Upload className="w-10 h-10 text-primary" />
@@ -114,13 +114,13 @@ export default function Landing() {
                 <div className="w-8 h-1 bg-primary rounded-full mx-auto mb-6"></div>
                 <h3 className="text-2xl font-bold text-studywise-gray-900 mb-6 tracking-tight">Upload Your Notes</h3>
                 <p className="text-studywise-gray-600 text-lg leading-relaxed">
-                  Got notes in a doc, markdown, or text file? Just drop them in. Our AI reads and understands your study material instantly.
+                  Got notes in a PDF, markdown, or text file? Just drop them in. Our AI reads and understands your study material instantly.
                 </p>
               </CardContent>
             </Card>
 
             {/* Step 2 - Enhanced card design */}
-            <Card className="text-center p-10 border-0 bg-white shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 rounded-3xl" data-testid="card-step-2">
+            <Card className="text-center p-10 border-2 border-studywise-gray-200 bg-white shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 rounded-3xl" data-testid="card-step-2">
               <CardContent className="pt-8">
                 <div className="w-20 h-20 bg-gradient-to-br from-purple-50 to-purple-100 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-inner">
                   <Wand2 className="w-10 h-10 text-purple-600" />
@@ -128,13 +128,13 @@ export default function Landing() {
                 <div className="w-8 h-1 bg-purple-600 rounded-full mx-auto mb-6"></div>
                 <h3 className="text-2xl font-bold text-studywise-gray-900 mb-6 tracking-tight">We Craft Your Perfect Test</h3>
                 <p className="text-studywise-gray-600 text-lg leading-relaxed">
-                  Just tell our AI wizard what you want to focus on: a subject, a few topics, or specific question types. We'll handle the rest.
+                  With our AI wizard you can customize the questions to your liking, just focus on: topics, specific question types. We'll handle the rest.
                 </p>
               </CardContent>
             </Card>
 
             {/* Step 3 - Enhanced card design */}
-            <Card className="text-center p-10 border-0 bg-white shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 rounded-3xl" data-testid="card-step-3">
+            <Card className="text-center p-10 border-2 border-studywise-gray-200 bg-white shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 rounded-3xl" data-testid="card-step-3">
               <CardContent className="pt-8">
                 <div className="w-20 h-20 bg-gradient-to-br from-green-50 to-green-100 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-inner">
                   <CheckCircle className="w-10 h-10 text-green-600" />
@@ -194,103 +194,174 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section className="py-20 bg-studywise-bg" data-testid="section-pricing">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* YouTube Tutorial Video Section */}
+      <section className="py-20 bg-gradient-to-br from-blue-50/30 to-white" data-testid="section-video-tutorial">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-studywise-gray-900 mb-4" data-testid="text-pricing-title">
-              Start Your Learning Journey
+            <h2 className="text-3xl md:text-4xl font-bold text-studywise-gray-900 mb-4" data-testid="text-video-title">
+              See StudyWise in Action
             </h2>
-            <p className="text-xl text-studywise-gray-600">
-              Join thousands of students transforming their learning with AI
+            <p className="text-xl text-studywise-gray-600 max-w-2xl mx-auto">
+              Watch how StudyWise AI transforms your study notes into personalized practice tests in just minutes
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 mb-20">
-            {/* Free Plan - Enhanced */}
-            <Card className="p-10 border border-studywise-gray-200 rounded-3xl hover:shadow-lg transition-all duration-300" data-testid="card-free-plan">
-              <CardContent className="pt-8">
-                <div className="flex items-center mb-6">
-                  <div className="w-12 h-12 bg-studywise-gray-100 rounded-2xl flex items-center justify-center mr-4">
-                    <Lock className="w-6 h-6 text-studywise-gray-500" />
-                  </div>
-                  <h3 className="text-3xl font-bold text-studywise-gray-900 tracking-tight">Free Trial</h3>
+          <div className="max-w-4xl mx-auto">
+            <Card className="border-2 border-studywise-gray-200 rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300" data-testid="card-video-container">
+              <CardContent className="p-0">
+                <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                  <iframe
+                    className="absolute top-0 left-0 w-full h-full rounded-2xl"
+                    src="https://www.youtube.com/embed/YOUR_VIDEO_ID_HERE"
+                    title="StudyWise AI Tutorial - Transform Your Notes Into Tests"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    data-testid="youtube-video"
+                  ></iframe>
                 </div>
-                <p className="text-studywise-gray-600 mb-8 text-lg">Perfect for trying it out</p>
-                <ul className="space-y-4 mb-10 text-studywise-gray-700">
-                  <li className="flex items-center text-lg">
-                    <div className="w-2 h-2 bg-studywise-gray-400 rounded-full mr-4"></div>
-                    Create up to 3 tests
-                  </li>
-                  <li className="flex items-center text-lg">
-                    <div className="w-2 h-2 bg-studywise-gray-400 rounded-full mr-4"></div>
-                    Limited question types
-                  </li>
-                  <li className="flex items-center text-lg">
-                    <div className="w-2 h-2 bg-studywise-gray-400 rounded-full mr-4"></div>
-                    Basic progress tracking
-                  </li>
-                </ul>
-                <div className="mb-8">
-                  <span className="text-5xl font-bold text-studywise-gray-900 tracking-tight">$0</span>
-                </div>
-                <Link href={user ? "/dashboard" : "/auth"}>
-                  <Button variant="outline" size="lg" className="w-full rounded-2xl py-4 text-lg font-semibold border-2 hover:bg-studywise-gray-50 transition-colors" data-testid="button-get-started-free">
-                    Get Started for Free
-                  </Button>
-                </Link>
               </CardContent>
             </Card>
 
-            {/* Premium Plan - Enhanced */}
-            <Card className="p-10 border-2 border-primary bg-gradient-to-b from-primary/5 to-white rounded-3xl relative hover:shadow-xl transition-all duration-300 hover:-translate-y-1" data-testid="card-premium-plan">
-              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                <span className="bg-primary text-white px-6 py-2 rounded-2xl text-sm font-semibold shadow-lg">Recommended</span>
-              </div>
-              <CardContent className="pt-8">
-                <div className="flex items-center mb-6">
-                  <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mr-4">
-                    <Unlock className="w-6 h-6 text-primary" />
+            <div className="text-center mt-8">
+              <p className="text-studywise-gray-600 text-lg mb-6">
+                Ready to try it yourself? Upload your notes and see the magic happen.
+              </p>
+              <Link href={user ? "/dashboard" : "/auth"}>
+                <Button size="lg" className="bg-primary hover:bg-blue-600 px-8 py-4 text-lg font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105" data-testid="button-try-after-video">
+                  Try StudyWise Now
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Get Started Section - Freemium Approach */}
+      <section className="py-20 bg-studywise-bg" data-testid="section-get-started">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-studywise-gray-900 mb-4" data-testid="text-get-started-title">
+              Start Learning Smarter Today
+            </h2>
+            <p className="text-xl text-studywise-gray-600 max-w-3xl mx-auto">
+              Join thousands of students who are already transforming their study habits with AI-powered learning
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8 mb-16">
+            {/* Current Free Access */}
+            <Card className="text-center p-8 border-2 border-studywise-gray-200 bg-white rounded-3xl hover:shadow-lg transition-all duration-300" data-testid="card-free-access">
+              <CardContent className="pt-6">
+                <div className="w-16 h-16 bg-gradient-to-br from-green-50 to-green-100 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner">
+                  <CheckCircle className="w-8 h-8 text-green-600" />
+                </div>
+                <h3 className="text-2xl font-bold text-studywise-gray-900 mb-4 tracking-tight">Free Access</h3>
+                <p className="text-studywise-gray-600 text-lg mb-6 leading-relaxed">
+                  Full access to all features while we're in beta. Transform your notes into tests completely free.
+                </p>
+                <div className="space-y-3 text-sm text-studywise-gray-600">
+                  <div className="flex items-center justify-center">
+                    <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                    Unlimited test generation
                   </div>
-                  <h3 className="text-3xl font-bold text-studywise-gray-900 tracking-tight">Premium</h3>
-                </div>
-                <p className="text-studywise-gray-600 mb-8 text-lg">Perfect for taking your grades to the next level</p>
-                <ul className="space-y-4 mb-10 text-studywise-gray-700">
-                  <li className="flex items-center text-lg">
-                    <div className="w-2 h-2 bg-primary rounded-full mr-4"></div>
-                    Unlimited tests
-                  </li>
-                  <li className="flex items-center text-lg">
-                    <div className="w-2 h-2 bg-primary rounded-full mr-4"></div>
+                  <div className="flex items-center justify-center">
+                    <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
                     All question types
-                  </li>
-                  <li className="flex items-center text-lg">
-                    <div className="w-2 h-2 bg-primary rounded-full mr-4"></div>
-                    Advanced progress tracking
-                  </li>
-                  <li className="flex items-center text-lg">
-                    <div className="w-2 h-2 bg-primary rounded-full mr-4"></div>
-                    Early access to new features
-                  </li>
-                </ul>
-                <div className="mb-8">
-                  <span className="text-5xl font-bold text-studywise-gray-900 tracking-tight">$9</span>
-                  <span className="text-xl text-studywise-gray-600 ml-2">/month</span>
+                  </div>
+                  <div className="flex items-center justify-center">
+                    <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                    Progress tracking
+                  </div>
                 </div>
-                <Link href={user ? "/dashboard" : "/auth"}>
-                  <Button size="lg" className="w-full bg-primary hover:bg-blue-600 rounded-2xl py-4 text-lg font-semibold shadow-md hover:shadow-lg transition-all duration-200" data-testid="button-start-premium">
-                    Start Your Journey Now
-                  </Button>
-                </Link>
               </CardContent>
             </Card>
+
+            {/* Future Premium Features */}
+            <Card className="text-center p-8 border-2 border-primary bg-gradient-to-b from-primary/5 to-white rounded-3xl relative hover:shadow-xl transition-all duration-300 hover:-translate-y-1" data-testid="card-future-premium">
+              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                <span className="bg-primary text-white px-4 py-1 rounded-xl text-xs font-semibold shadow-lg">Coming Soon</span>
+              </div>
+              <CardContent className="pt-6">
+                <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-primary/20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner">
+                  <Unlock className="w-8 h-8 text-primary" />
+                </div>
+                <h3 className="text-2xl font-bold text-studywise-gray-900 mb-4 tracking-tight">Premium Features</h3>
+                <p className="text-studywise-gray-600 text-lg mb-6 leading-relaxed">
+                  Advanced features for serious learners who want to maximize their study efficiency.
+                </p>
+                <div className="space-y-3 text-sm text-studywise-gray-600">
+                  <div className="flex items-center justify-center">
+                    <div className="w-4 h-4 bg-primary/20 rounded-full mr-2"></div>
+                    Advanced analytics
+                  </div>
+                  <div className="flex items-center justify-center">
+                    <div className="w-4 h-4 bg-primary/20 rounded-full mr-2"></div>
+                    Study groups & collaboration
+                  </div>
+                  <div className="flex items-center justify-center">
+                    <div className="w-4 h-4 bg-primary/20 rounded-full mr-2"></div>
+                    Priority support
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Community & Updates */}
+            <Card className="text-center p-8 border-2 border-studywise-gray-200 bg-white rounded-3xl hover:shadow-lg transition-all duration-300" data-testid="card-community">
+              <CardContent className="pt-6">
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-50 to-purple-100 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner">
+                  <Twitter className="w-8 h-8 text-purple-600" />
+                </div>
+                <h3 className="text-2xl font-bold text-studywise-gray-900 mb-4 tracking-tight">Join the Community</h3>
+                <p className="text-studywise-gray-600 text-lg mb-6 leading-relaxed">
+                  Be the first to know about new features and help shape the future of AI-powered learning.
+                </p>
+                <div className="space-y-3 text-sm text-studywise-gray-600">
+                  <div className="flex items-center justify-center">
+                    <div className="w-4 h-4 bg-purple-500/20 rounded-full mr-2"></div>
+                    Early access to new features
+                  </div>
+                  <div className="flex items-center justify-center">
+                    <div className="w-4 h-4 bg-purple-500/20 rounded-full mr-2"></div>
+                    Community discussions
+                  </div>
+                  <div className="flex items-center justify-center">
+                    <div className="w-4 h-4 bg-purple-500/20 rounded-full mr-2"></div>
+                    Feature voting
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Call to Action */}
+          <div className="text-center">
+            <div className="bg-gradient-to-r from-studywise-gray-50 to-blue-50/30 rounded-3xl p-12 mb-8 border border-studywise-gray-100">
+              <h3 className="text-3xl font-bold text-studywise-gray-900 mb-4 tracking-tight">
+                Ready to Transform Your Learning?
+              </h3>
+              <p className="text-xl text-studywise-gray-600 mb-8 max-w-2xl mx-auto">
+                Start using StudyWise AI today while it's completely free. Join the growing community of students learning smarter, not harder.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <Link href={user ? "/dashboard" : "/auth"}>
+                  <Button size="lg" className="bg-primary hover:bg-blue-600 px-10 py-4 text-lg font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105" data-testid="button-get-started-main">
+                    {user ? "Go to Dashboard" : "Get Started Free"}
+                  </Button>
+                </Link>
+                <p className="text-studywise-gray-500 text-sm">
+                  No credit card required • Full access during beta
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Enhanced FAQ Section */}
           <div className="mb-20">
             <h3 className="text-3xl font-bold text-studywise-gray-900 mb-12 text-center tracking-tight">Frequently Asked Questions</h3>
             <div className="space-y-4 max-w-3xl mx-auto">
-              <Card className="border border-studywise-gray-200 rounded-2xl hover:shadow-md transition-shadow" data-testid="card-faq-security">
+              <Card className="border-2 border-studywise-gray-200 rounded-2xl hover:shadow-md transition-shadow" data-testid="card-faq-security">
                 <CardContent className="p-8">
                   <h4 className="text-xl font-bold text-studywise-gray-900 mb-3 tracking-tight">Is my data secure?</h4>
                   <p className="text-studywise-gray-600 text-lg leading-relaxed">
@@ -299,7 +370,7 @@ export default function Landing() {
                 </CardContent>
               </Card>
 
-              <Card className="border border-studywise-gray-200 rounded-2xl hover:shadow-md transition-shadow" data-testid="card-faq-file-types">
+              <Card className="border-2 border-studywise-gray-200 rounded-2xl hover:shadow-md transition-shadow" data-testid="card-faq-file-types">
                 <CardContent className="p-8">
                   <h4 className="text-xl font-bold text-studywise-gray-900 mb-3 tracking-tight">What file types can I upload?</h4>
                   <p className="text-studywise-gray-600 text-lg leading-relaxed">
@@ -308,7 +379,7 @@ export default function Landing() {
                 </CardContent>
               </Card>
 
-              <Card className="border border-studywise-gray-200 rounded-2xl hover:shadow-md transition-shadow" data-testid="card-faq-verification">
+              <Card className="border-2 border-studywise-gray-200 rounded-2xl hover:shadow-md transition-shadow" data-testid="card-faq-verification">
                 <CardContent className="p-8">
                   <h4 className="text-xl font-bold text-studywise-gray-900 mb-3 tracking-tight">How does the AI verify the answers?</h4>
                   <p className="text-studywise-gray-600 text-lg leading-relaxed">
