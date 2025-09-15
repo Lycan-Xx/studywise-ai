@@ -308,7 +308,7 @@ export default function AuthRoot() {
               {/* Header */}
               <div className="text-center mb-6 lg:mb-8 relative z-10">
                 <Link href="/" className="inline-flex items-center justify-center mb-4 lg:mb-6">
-                  <Brain className="w-7 h-7 lg:w-8 lg:h-8 text-white mr-2" />
+                  <Brain className="w-7 h-7 lg:w-8 lg:h-8 text-primary mr-2" />
                   <span className="text-lg lg:text-xl font-semibold text-white">StudyWise AI</span>
                 </Link>
 
@@ -356,7 +356,7 @@ export default function AuthRoot() {
                           transition={{ delay: 0.2, type: "spring", stiffness: 300 }}
                           className="mx-auto w-16 h-16 lg:w-20 lg:h-20 bg-gradient-to-br from-white/30 to-white/20 lg:from-white/20 lg:to-white/10 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/40 lg:border-white/30"
                         >
-                          <Brain className="w-8 h-8 lg:w-10 lg:h-10 text-white animate-pulse" />
+                          <Brain className="w-8 h-8 lg:w-10 lg:h-10 text-primary animate-pulse" />
                         </motion.div>
 
                         <div>
@@ -698,6 +698,18 @@ export default function AuthRoot() {
             {backgroundContent.subtitle}
           </motion.p>
         </motion.div>
+      </div>
+
+      {/* Unsplash Attribution */}
+      <div className="absolute bottom-1 right-2 z-30">
+        <a
+          href="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=2560&auto=format&fit=crop"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-white/30 text-xs hover:text-white/50 transition-colors duration-200"
+        >
+          unsplash image
+        </a>
       </div>
     </div>
   );

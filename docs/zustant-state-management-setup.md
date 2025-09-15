@@ -40,6 +40,12 @@ client/src/stores/
 ├── useLibraryStore.ts       # Saved tests library
 ├── useTestSessionStore.ts   # Active test session state
 ├── useResultsStore.ts       # Test results and performance
+├── useAnalyticsStore.ts     # Analytics and performance tracking
+├── useCategoriesStore.ts    # Content categorization
+├── useFlashcardStore.ts     # Flashcard management
+├── useNotificationsStore.ts # User notifications
+├── useUserPreferencesStore.ts # User settings and preferences
+├── useTestWorkflow.ts       # Cross-store workflow coordination
 └── index.ts                 # Export all stores
 ```
 
@@ -101,11 +107,88 @@ interface ResultsStore {
   // State
   testResults: TestResult[]
   currentResult: TestResult | null
-  
+
   // Actions
   saveResult: (result: TestResult) => Promise<void>
   loadResults: () => Promise<void>
   getResultById: (resultId: string) => TestResult | null
+}
+```
+
+#### 2.5 Analytics Store (useAnalyticsStore.ts)
+```typescript
+interface AnalyticsStore {
+  // State
+  userStats: UserStats
+  performanceMetrics: PerformanceMetric[]
+  learningProgress: LearningProgress[]
+
+  // Actions
+  trackEvent: (event: AnalyticsEvent) => void
+  updateUserStats: (stats: Partial<UserStats>) => void
+  generateInsights: () => Promise<Insight[]>
+}
+```
+
+#### 2.6 Categories Store (useCategoriesStore.ts)
+```typescript
+interface CategoriesStore {
+  // State
+  categories: Category[]
+  selectedCategory: Category | null
+
+  // Actions
+  loadCategories: () => Promise<void>
+  createCategory: (category: Omit<Category, 'id'>) => Promise<void>
+  updateCategory: (id: string, updates: Partial<Category>) => void
+  deleteCategory: (id: string) => Promise<void>
+}
+```
+
+#### 2.7 Flashcard Store (useFlashcardStore.ts)
+```typescript
+interface FlashcardStore {
+  // State
+  flashcards: Flashcard[]
+  decks: FlashcardDeck[]
+  currentDeck: FlashcardDeck | null
+  reviewQueue: Flashcard[]
+
+  // Actions
+  createDeck: (deck: Omit<FlashcardDeck, 'id'>) => Promise<void>
+  addFlashcard: (flashcard: Omit<Flashcard, 'id'>) => Promise<void>
+  updateFlashcard: (id: string, updates: Partial<Flashcard>) => void
+  deleteFlashcard: (id: string) => Promise<void>
+  getNextReviewCard: () => Flashcard | null
+}
+```
+
+#### 2.8 Notifications Store (useNotificationsStore.ts)
+```typescript
+interface NotificationsStore {
+  // State
+  notifications: Notification[]
+  unreadCount: number
+
+  // Actions
+  addNotification: (notification: Omit<Notification, 'id'>) => void
+  markAsRead: (id: string) => void
+  markAllAsRead: () => void
+  deleteNotification: (id: string) => void
+}
+```
+
+#### 2.9 User Preferences Store (useUserPreferencesStore.ts)
+```typescript
+interface UserPreferencesStore {
+  // State
+  preferences: UserPreferences
+  theme: 'light' | 'dark' | 'system'
+
+  // Actions
+  updatePreferences: (preferences: Partial<UserPreferences>) => void
+  setTheme: (theme: 'light' | 'dark' | 'system') => void
+  resetToDefaults: () => void
 }
 ```
 
@@ -643,6 +726,12 @@ IMPLEMENTATION COMPLETED
 - **useLibraryStore**: Handles saved tests with persistence
 - **useTestSessionStore**: Manages active test sessions and user progress
 - **useResultsStore**: Tracks test results and performance analytics
+- **useAnalyticsStore**: Analytics and performance tracking
+- **useCategoriesStore**: Content categorization system
+- **useFlashcardStore**: Flashcard deck and card management
+- **useNotificationsStore**: User notification management
+- **useUserPreferencesStore**: User settings and preferences
+- **useTestWorkflow**: Cross-store workflow coordination
 
 #### 2. Type Safety & Integration
 - ✅ Fixed type compatibility issues between local and global TestConfig
