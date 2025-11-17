@@ -74,12 +74,29 @@ export function TestResultsOverlay({
 
   // Generate AI insights if not provided as props
   useEffect(() => {
-    if (!initialInsights && !insights) {
+    // Only auto-generate insights if we don't have initial insights AND we have a valid testId (not a temp placeholder)
+    const isTempId = !testId || String(testId).includes("temp") || String(testId).trim() === "";
+
+    // If we have no initial insights and a non-temp id, generate final insights
+    if (!initialInsights && !insights && !isTempId) {
       console.log('🔍 Generating insights in TestResultsOverlay...');
       generateInsights();
-    } else if (initialInsights && !insights) {
-      // Use insights provided from dashboard
-      setInsights(initialInsights);
+      return;
+    }
+
+    // If there are initial insights provided, don't blindly accept them if they were produced for a temp testId
+    if (initialInsights && !insights) {
+      const payloadInsights = (initialInsights as any).insights || initialInsights;
+
+      // If the provided insights were flagged as temporary but we have a real testId, prefer to generate final insights
+      if ((payloadInsights as any).isTemp && !isTempId) {
+        console.log('⚠️ Received temporary insights, fetching final insights for real test id...');
+        generateInsights();
+        return;
+      }
+
+      // Otherwise, accept the provided insights (either final or temp when id is temp)
+      setInsights(payloadInsights);
     }
   }, [initialInsights, insights]);
 

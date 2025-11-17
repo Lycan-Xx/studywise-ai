@@ -216,7 +216,8 @@ export function TestTakingOverlay({
 
       // Call the callback to notify parent component
       if (onInsightsReady) {
-        onInsightsReady(insightsData);
+        // Mark these insights as temporary (generated using a temp id)
+        onInsightsReady({ ...insightsData, isTemp: true });
       }
 
     } catch (error) {
@@ -231,7 +232,7 @@ export function TestTakingOverlay({
       };
 
       if (onInsightsReady) {
-        onInsightsReady(fallbackInsights);
+        onInsightsReady({ ...fallbackInsights, isTemp: true });
       }
     } finally {
       setShowInsightsLoading(false);

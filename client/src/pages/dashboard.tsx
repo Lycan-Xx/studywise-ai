@@ -252,6 +252,16 @@ export default function Dashboard() {
 
       // Store the test result for later use
       setCurrentTestResult(result);
+
+      // Generate final insights using the real test ID (overwrite temp insights)
+      try {
+        setShowInsightsLoading(true);
+        await generateInsightsForResults(result.testId, answers);
+      } catch (err) {
+        console.error('Failed to generate final insights for result:', err);
+      } finally {
+        setShowInsightsLoading(false);
+      }
     } catch (error) {
       console.error("Failed to submit test:", error);
       // If test completion fails, still proceed with insights generation

@@ -100,6 +100,7 @@ interface LibraryStore {
   getFilteredTests: () => Test[];
   getFilteredMaterials: () => StudyMaterial[];
   getAllTags: () => string[];
+  getTestById: (testId: string) => Test | null;
 }
 
 export const useLibraryStore = create<LibraryStore>()(
@@ -696,6 +697,12 @@ export const useLibraryStore = create<LibraryStore>()(
         studyMaterials.forEach(material => material.tags.forEach(tag => allTags.add(tag)));
         
         return Array.from(allTags).sort();
+      },
+
+      // Getter to find test by ID - used by NotePreview and TestPreview
+      getTestById: (testId: string) => {
+        const { tests } = get();
+        return tests.find(test => test.id === testId) || null;
       },
     }),
     {

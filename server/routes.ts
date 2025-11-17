@@ -188,6 +188,48 @@ router.post('/library/tests', async (req, res) => {
   }
 });
 
+// ADMIN: Backfill notes for tests that have empty metadata.notes
+router.post('/admin/backfill-notes', async (req, res) => {
+  try {
+    const userId = req.headers['user-id'] as string;
+    if (!userId) return res.status(401).json({ error: 'User not authenticated' });
+
+    console.log('🔧 Admin: Backfill notes for user:', userId);
+
+    const { data: tests, error } = await supabase
+      .from('tests')
+      .select('id, user_id, metadata')
+      .eq('user_id', userId)
+      .not('metadata', 'is', null);
+
+    if (error) {
+      console.error('❌ Admin: Error fetching tests for backfill:', error);
+      throw error;
+    }
+
+    let updated = 0;
+    for (const t of tests || []) {
+      const notes = t.metadata?.notes?.trim();
+      if (!notes) {
+        const questions = t.metadata?.questions || [];
+        const notesFromQuestions = (questions || []).map((q: any) => q.sourceText).filter(Boolean).join('\n\n');
+        const updatedMetadata = { ...t.metadata, notes: notesFromQuestions };
+        const { error: updateError } = await supabase
+          .from('tests')
+          .update({ metadata: updatedMetadata })
+          .eq('id', t.id)
+          .eq('user_id', userId);
+        if (!updateError) updated++;
+      }
+    }
+
+    res.json({ success: true, updated });
+  } catch (error) {
+    console.error('❌ Admin: Backfill failed:', error);
+    res.status(500).json({ error: 'Backfill failed', details: error instanceof Error ? error.message : 'Unknown error' });
+  }
+});
+
 router.put('/library/tests/:testId', async (req, res) => {
   try {
     const { testId } = req.params;
@@ -201,23 +243,45 @@ router.put('/library/tests/:testId', async (req, res) => {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
+    console.log('🔄 API Route: Updating test:', testId, 'with notes length:', notes?.length || 0);
+
+    // First fetch existing test to preserve other metadata
+    const { data: existingTest, error: fetchError } = await supabase
+      .from('tests')
+      .select('metadata')
+      .eq('id', testId)
+      .eq('user_id', userId)
+      .single();
+
+    if (fetchError) {
+      console.error('❌ API Route: Error fetching existing test:', fetchError);
+      return res.status(404).json({ error: 'Test not found' });
+    }
+
+    // Merge existing metadata with new notes
+    const updatedMetadata = {
+      ...existingTest?.metadata,
+      notes: notes
+    };
+
     // Update the test in the database
     const { error } = await supabase
       .from('tests')
       .update({
         description: notes,
         title: title,
-        metadata: {
-          notes: notes
-        },
+        metadata: updatedMetadata,
         updated_at: new Date().toISOString()
       })
       .eq('id', testId)
       .eq('user_id', userId);
 
     if (error) {
+      console.error('❌ API Route: Error updating test:', error);
       throw error;
     }
+
+    console.log('✅ API Route: Test updated successfully');
 
     res.json({
       success: true,
@@ -262,6 +326,55 @@ router.delete('/library/tests/:testId', async (req, res) => {
     console.error('Error deleting test:', error);
     res.status(500).json({
       error: 'Failed to delete test',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Get detailed test info (notes + questions) - optimized for NotePreview
+router.get('/library/tests/:testId/details', async (req, res) => {
+  try {
+    const { testId } = req.params;
+    const userId = req.headers['user-id'] as string;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    console.log('📖 API Route: Fetching test details for testId:', testId);
+
+    const { data: test, error } = await supabase
+      .from('tests')
+      .select('id, title, description, metadata')
+      .eq('id', testId)
+      .eq('user_id', userId)
+      .single();
+
+    if (error) {
+      console.error('❌ API Route: Error fetching test details:', error);
+      return res.status(404).json({ error: 'Test not found' });
+    }
+
+    // Extract notes and questions from metadata
+    const notes = test.metadata?.notes || test.description || '';
+    const questions = test.metadata?.questions || [];
+
+    console.log('✅ API Route: Retrieved test details:', {
+      testId,
+      notesLength: notes.length,
+      questionsCount: questions.length
+    });
+
+    res.json({
+      id: test.id,
+      title: test.title,
+      notes: notes,
+      questions: questions
+    });
+  } catch (error) {
+    console.error('Error fetching test details:', error);
+    res.status(500).json({
+      error: 'Failed to fetch test details',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
