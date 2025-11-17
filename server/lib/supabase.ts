@@ -149,13 +149,22 @@ export class DatabaseService {
         notesLength: data.notes?.length || 0
       });
 
+      // Fallback: If no notes are provided, try to construct notes from the questions' sourceText
+      const notesFromQuestions = (data.questions || [])
+        .map((q: any) => q?.sourceText)
+        .filter(Boolean)
+        .join('\n\n')
+        .trim();
+
+      const notesToSave = (data.notes || '').trim() || notesFromQuestions || '';
+
       const { error } = await supabase
         .from('tests')
         .upsert({
           id: data.id,
           user_id: data.userId,
           title: data.title,
-          description: data.notes || 'Generated test',
+          description: notesToSave || 'Generated test',
           subject: data.config?.topics || 'General',
           difficulty: data.config?.difficulty || 'medium',
           question_count: data.questionCount,
@@ -163,7 +172,7 @@ export class DatabaseService {
           metadata: {
             config: data.config,
             questions: data.questions,
-            notes: data.notes
+            notes: notesToSave
           },
           updated_at: new Date().toISOString()
         });
@@ -188,7 +197,7 @@ export class DatabaseService {
 
       const { data, error } = await supabase
         .from('tests')
-        .select('*')
+        .select('id, user_id, title, description, subject, difficulty, question_count, question_types, tags, version, is_deleted, estimated_duration, passing_score, created_at, updated_at, metadata')
         .eq('user_id', userId)
         .order('updated_at', { ascending: false });
 

@@ -4,9 +4,10 @@ import * as pdfjsLib from "pdfjs-dist";
 // Configure PDF.js worker with optimized hybrid approach
 const LOCAL_URL = '/pdf.worker.min.mjs';
 
-// Use a reliable CDN version that's widely available
-// Version 3.11.174 is well-supported and stable
-const RELIABLE_CDN_VERSION = '3.11.174';
+// CRITICAL: Prefer using runtime pdfjs-dist version when available
+// Mismatch between API and Worker versions causes: "The API version X does not match the Worker version Y"
+const RUNTIME_PDFJS_VERSION = (pdfjsLib && (pdfjsLib as any).version) ? (pdfjsLib as any).version : '5.4.54';
+const RELIABLE_CDN_VERSION = RUNTIME_PDFJS_VERSION;
 const CDN_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${RELIABLE_CDN_VERSION}/pdf.worker.min.js`;
 
 // For optimal performance and reliability:
@@ -89,16 +90,40 @@ export class DocumentProcessor {
       console.log('PDF.js workerSrc:', pdfjsLib.GlobalWorkerOptions.workerSrc);
       console.log('PDF.js version:', pdfjsLib.version);
       
-      const pdf = await pdfjsLib.getDocument({
-        data: arrayBuffer
-      }).promise;
+      // Try loading the PDF document. If worker/API version mismatch occurs, fallback to local worker
+      try {
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        // proceed only if successful
+        var loadedPdf = pdf;
+      } catch (e) {
+        console.warn('PDF.js initial load error, attempting fallback to local worker...', e);
+
+        // Parse workerSrc to extract worker version if possible
+        try {
+          const workerSrc = pdfjsLib.GlobalWorkerOptions.workerSrc || '';
+          const versionMatch = workerSrc.match(/pdf.js\/(\d+\.\d+\.\d+)\//);
+          const workerVersion = versionMatch ? versionMatch[1] : null;
+          if (workerVersion && pdfjsLib.version && workerVersion !== pdfjsLib.version) {
+            console.warn(`PDF.js API version: ${pdfjsLib.version}, Worker version: ${workerVersion} (mismatch). Using local worker as fallback.`);
+          }
+        } catch (parseErr) {
+          console.warn('Could not parse worker version from workerSrc', parseErr);
+        }
+
+        // Force local worker as a safe fallback and retry
+        pdfjsLib.GlobalWorkerOptions.workerSrc = LOCAL_URL;
+        console.log('PDF.js worker fallback set to local worker:', LOCAL_URL);
+
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        var loadedPdf = pdf;
+      }
 
       let fullText = '';
       
       // Extract text from all pages
-      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+  for (let pageNum = 1; pageNum <= (loadedPdf as any).numPages; pageNum++) {
         try {
-          const page = await pdf.getPage(pageNum);
+          const page = await (loadedPdf as any).getPage(pageNum);
           const textContent = await page.getTextContent();
           
           const pageText = textContent.items
@@ -131,17 +156,47 @@ export class DocumentProcessor {
   }
 
   /**
-   * Process DOCX files (basic implementation)
-   * Note: This is a simplified version. For production use, consider using mammoth.js or similar
+   * Process DOCX files using mammoth.js
    */
   private static async processDocx(file: File): Promise<string> {
-    // For now, throw an error suggesting alternatives
-    // In production, you'd want to implement proper DOCX parsing
-    throw new Error('DOCX processing requires additional setup. Please convert to PDF or plain text first.');
-    
-    // If you want to implement DOCX support, you could use:
-    // 1. mammoth.js (npm install mammoth)
-    // 2. docx-preview (npm install docx-preview)
-    // 3. Convert to HTML first then extract text
+    try {
+      // Dynamically import mammoth to avoid loading it when not needed
+      const mammoth = await import('mammoth');
+      
+      // Convert file to ArrayBuffer
+      const arrayBuffer = await file.arrayBuffer();
+      
+      // Convert DOCX to HTML using mammoth
+      const result = await mammoth.convertToHtml({
+        arrayBuffer: arrayBuffer
+      });
+      
+      // Extract plain text from HTML
+      // Create a temporary div to parse HTML and extract text content
+      const parser = new DOMParser();
+      const htmlDoc = parser.parseFromString(result.value, 'text/html');
+      const text = htmlDoc.body.innerText || htmlDoc.body.textContent || '';
+      
+      if (!text.trim()) {
+        throw new Error('No text content found in DOCX. The file might be empty or corrupted.');
+      }
+      
+      // Log any conversion messages/warnings
+      if (result.messages && result.messages.length > 0) {
+        console.warn('Mammoth conversion warnings:', result.messages);
+      }
+      
+      return text;
+    } catch (error) {
+      console.error('DOCX processing error:', error);
+      if (error instanceof Error) {
+        // Check if mammoth import failed
+        if (error.message.includes('mammoth')) {
+          throw new Error('DOCX processing library not loaded. Please refresh the page and try again.');
+        }
+        throw new Error(`Failed to process DOCX: ${error.message}`);
+      }
+      throw new Error('Failed to process DOCX file');
+    }
   }
 }
