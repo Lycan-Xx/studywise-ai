@@ -228,6 +228,13 @@ class MultiProviderAIService {
         return true;
       })
       .sort(([_, a], [__, b]) => {
+        // Always prioritize Gemini providers first (they're more reliable and don't require OpenRouter)
+        const aIsGemini = a.name.includes('Gemini');
+        const bIsGemini = b.name.includes('Gemini');
+        
+        if (aIsGemini && !bIsGemini) return -1; // Gemini first
+        if (!aIsGemini && bIsGemini) return 1;  // Gemini first
+        
         // Smart provider selection based on request size
         if (options && options.questionCount >= 15) {
           // Large requests: prioritize cost-effectiveness
@@ -241,7 +248,13 @@ class MultiProviderAIService {
         }
       });
 
-    return availableProviders.length > 0 ? availableProviders[0][0] : null;
+    if (availableProviders.length === 0) {
+      console.warn('⚠️ No available providers found. Checking provider status...');
+      this.logProviderStatus();
+      return null;
+    }
+
+    return availableProviders[0][0];
   }
 
   private async makeGeminiRequest(model: string, prompt: string): Promise<string> {
@@ -254,12 +267,26 @@ class MultiProviderAIService {
     };
 
     const aiModel = this.geminiAI.getGenerativeModel({
-      model: modelMapping[model] || model
+      model: model === 'gemini-flash' ? 'gemini-1.5-flash' : 'gemini-1.5-pro',
+      // Increase timeout for network issues
+      generationConfig: {
+        temperature: 0.3,
+      }
     });
 
-    const result = await aiModel.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
+    // Use AbortController for timeout handling
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+    try {
+      const result = await aiModel.generateContent(prompt);
+      clearTimeout(timeoutId);
+      const response = await result.response;
+      return response.text();
+    } catch (error) {
+      clearTimeout(timeoutId);
+      throw error;
+    }
   }
 
   private async makeOpenRouterRequest(model: string, prompt: string): Promise<string> {
@@ -268,6 +295,11 @@ class MultiProviderAIService {
     // Check if OpenRouter key is configured
     if (!openrouterKey || openrouterKey === 'your_openrouter_api_key') {
       throw new Error('OpenRouter API key not configured');
+    }
+
+    // Validate key format (basic check)
+    if (openrouterKey.length < 20) {
+      throw new Error('OpenRouter API key appears to be invalid (too short)');
     }
 
     const siteUrl = process.env.SITE_URL || process.env.VITE_SITE_URL || "http://localhost:3000";
@@ -284,45 +316,59 @@ class MultiProviderAIService {
 
     const openrouterModel = modelMapping[model] || model;
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${openrouterKey}`,
-        'HTTP-Referer': siteUrl,
-        'X-Title': appName
-      },
-      body: JSON.stringify({
-        model: openrouterModel,
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 2000,
-        temperature: 0.3
-      })
-    });
+    // Use AbortController for timeout handling
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`OpenRouter API error (${response.status}):`, errorText);
+    try {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openrouterKey}`,
+          'HTTP-Referer': siteUrl,
+          'X-Title': appName
+        },
+        body: JSON.stringify({
+          model: openrouterModel,
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 2000,
+          temperature: 0.3
+        }),
+        signal: controller.signal
+      });
 
-      // Handle specific error cases
-      if (response.status === 401) {
-        throw new Error('OpenRouter API key is invalid or expired. Please update your API key.');
-      } else if (response.status === 429) {
-        throw new Error('OpenRouter rate limit exceeded. Please try again later.');
-      } else if (response.status >= 500) {
-        throw new Error('OpenRouter service is temporarily unavailable. Please try again later.');
-      } else {
-        throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`OpenRouter API error (${response.status}):`, errorText);
+
+        // Handle specific error cases
+        if (response.status === 401) {
+          throw new Error('OpenRouter API key is invalid or expired. Please update your API key.');
+        } else if (response.status === 429) {
+          throw new Error('OpenRouter rate limit exceeded. Please try again later.');
+        } else if (response.status >= 500) {
+          throw new Error('OpenRouter service is temporarily unavailable. Please try again later.');
+        } else {
+          throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
+        }
       }
+
+      const data = await response.json();
+
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        throw new Error('Invalid response format from OpenRouter');
+      }
+
+      clearTimeout(timeoutId);
+      return data.choices[0].message.content;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Request timeout: Connection to OpenRouter timed out after 30 seconds. This might be a network connectivity issue.');
+      }
+      throw error;
     }
-
-    const data = await response.json();
-
-    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-      throw new Error('Invalid response format from OpenRouter');
-    }
-
-    return data.choices[0].message.content;
   }
 
   private async makeHuggingFaceRequest(model: string, prompt: string): Promise<string> {
@@ -458,10 +504,19 @@ class MultiProviderAIService {
 
       // Handle different types of errors
       if (error instanceof Error) {
-        if (error.message.includes('401') || error.message.includes('invalid') || error.message.includes('User not found')) {
+        if (error.message.includes('401') || error.message.includes('invalid') || error.message.includes('User not found') || error.message.includes('expired')) {
           // Authentication/API key errors - disable provider permanently for this session
           provider.available = false;
           console.log(`🔐 Provider ${provider.name} authentication failed - disabled for session`);
+          // Also disable all other OpenRouter providers if one fails with auth error
+          if (providerId.includes('gpt') || providerId.includes('claude') || providerId.includes('mistral')) {
+            for (const [key, p] of this.providers.entries()) {
+              if (key !== providerId && (key.includes('gpt') || key.includes('claude') || key.includes('mistral'))) {
+                p.available = false;
+                console.log(`🔐 Disabling related OpenRouter provider: ${p.name}`);
+              }
+            }
+          }
         } else if (error.message.includes('429') || error.message.includes('rate limit')) {
           provider.available = false;
           console.log(`⏳ Provider ${provider.name} rate limited, cooldown for 60 seconds`);
@@ -509,48 +564,63 @@ class MultiProviderAIService {
     const prompt = this.buildPrompt(options);
     let lastError: Error | null = null;
 
-    // Try up to 3 different providers, but always try mock AI as final fallback
-    const maxAttempts = Math.min(3, this.providers.size);
-    let mockAITried = false;
-
+    // Try all available providers, but prioritize Gemini
+    // Get list of all available provider IDs upfront
+    const allProviderIds = Array.from(this.providers.keys());
+    const attemptedProviders = new Set<string>();
+    let consecutiveFailures = 0;
+    let providerIndex = 0;
+    const maxAttempts = allProviderIds.length * 2; // Allow retries
+    
+    // Try each provider at least once before retrying
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      const providerId = this.getAvailableProvider(options);
-
-      if (!providerId) {
-        // If no provider available and we haven't tried mock AI yet, force try mock AI
-        if (!mockAITried && this.providers.get('mock-ai')?.available) {
-          console.log("🔄 No suitable providers available, trying Mock AI fallback...");
-          const mockProvider = this.providers.get('mock-ai');
-          if (mockProvider) {
-            mockProvider.requestCount++;
-            try {
-              console.log(`🔄 Attempt ${attempt + 1}: Using ${mockProvider.name} (forced fallback)`);
-
-              const response = await this.makeMockRequest('mock-ai', prompt);
-              const parsedResponse = this.parseAIResponse(response);
-              const processedResponse = this.processGeneratedQuestions(parsedResponse, options);
-
-              // Cache the successful response
-              this.setCachedQuestions(contentHash, processedResponse);
-
-              console.log(`✅ Successfully generated ${processedResponse.questions.length} questions with ${mockProvider.name}`);
-              return processedResponse;
-            } catch (error) {
-              lastError = error as Error;
-              console.log(`❌ Mock AI fallback failed:`, error instanceof Error ? error.message : 'Unknown error');
-              mockProvider.available = false;
+      // First, try to get next untried provider
+      let providerId: string | null = null;
+      
+      // Try to find a provider we haven't tried yet
+      for (let i = 0; i < allProviderIds.length; i++) {
+        const candidateId = allProviderIds[(providerIndex + i) % allProviderIds.length];
+        const candidate = this.providers.get(candidateId);
+        
+        if (candidate && candidate.available && candidate.requestCount < candidate.maxRequests) {
+          // Check content size
+          const contentLength = options?.content?.length || 0;
+          if (!candidate.maxTokens || contentLength <= candidate.maxTokens * 0.6) {
+            if (!attemptedProviders.has(candidateId) || attempt >= allProviderIds.length) {
+              providerId = candidateId;
+              providerIndex = (providerIndex + i + 1) % allProviderIds.length;
+              break;
             }
-            mockAITried = true;
           }
         }
+      }
 
-        console.log("⏳ No suitable providers available, waiting 10 seconds...");
-        await this.sleep(10000);
+      if (!providerId) {
+        // If we've tried all providers at least once, break
+        if (attemptedProviders.size >= allProviderIds.length) {
+          console.error("❌ All providers have been attempted and failed");
+          break;
+        }
+        // If we've had too many consecutive failures, wait longer
+        if (consecutiveFailures >= 3) {
+          console.log("⏳ Multiple consecutive failures, waiting 5 seconds before retry...");
+          await this.sleep(5000);
+          consecutiveFailures = 0; // Reset counter
+        } else {
+          console.log("⏳ No suitable providers available, waiting 2 seconds before retry...");
+          await this.sleep(2000);
+        }
         continue;
       }
 
+      // Add to attempted set
+      if (!attemptedProviders.has(providerId)) {
+        attemptedProviders.add(providerId);
+      }
+
       try {
-        console.log(`🔄 Attempt ${attempt + 1}: Using ${this.providers.get(providerId)?.name}`);
+        const totalAttempts = allProviderIds.length * 2;
+        console.log(`🔄 Attempt ${attempt + 1}/${totalAttempts}: Using ${this.providers.get(providerId)?.name}`);
 
         const response = await this.makeProviderRequest(providerId, prompt);
         const parsedResponse = this.parseAIResponse(response);
@@ -564,11 +634,36 @@ class MultiProviderAIService {
 
       } catch (error) {
         lastError = error as Error;
-        console.log(`❌ Provider ${providerId} failed:`, error instanceof Error ? error.message : 'Unknown error');
+        const providerName = this.providers.get(providerId)?.name || providerId;
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.log(`❌ Provider ${providerName} failed:`, errorMessage);
+        
+        consecutiveFailures++;
 
-        // Small delay before trying next provider
-        if (attempt < maxAttempts - 1) {
-          await this.sleep(Math.min(2000 * (attempt + 1), 8000)); // Progressive delay
+        // Check if it's a network/connectivity error
+        const isNetworkError = errorMessage.includes('fetch failed') || 
+                               errorMessage.includes('timeout') || 
+                               errorMessage.includes('ECONNREFUSED') ||
+                               errorMessage.includes('ENOTFOUND') ||
+                               (error instanceof Error && 'code' in error && error.code === 'UND_ERR_CONNECT_TIMEOUT');
+        
+        if (isNetworkError) {
+          console.warn(`🌐 Network connectivity issue detected. This might be a firewall, proxy, or internet connection problem.`);
+          // For network errors, try other providers immediately without long delays
+          const totalAttempts = allProviderIds.length * 2;
+          if (attempt < totalAttempts - 1) {
+            const delay = 500; // Short delay for network errors
+            console.log(`⏳ Waiting ${delay}ms before trying next provider...`);
+            await this.sleep(delay);
+          }
+        } else {
+          // For other errors, use normal delay
+          const totalAttempts = allProviderIds.length * 2;
+          if (attempt < totalAttempts - 1) {
+            const delay = Math.min(1000 * (attempt + 1), 3000); // Max 3 seconds
+            console.log(`⏳ Waiting ${delay}ms before trying next provider...`);
+            await this.sleep(delay);
+          }
         }
       }
     }
@@ -596,9 +691,17 @@ class MultiProviderAIService {
       }
     }
 
-    // If all attempts failed
+    // If all attempts failed, provide helpful error message
     console.error("❌ All providers failed to generate questions");
-    throw new Error(`Question generation failed: ${lastError?.message || "All providers exhausted"}`);
+    this.logProviderStatus();
+    
+    // Check if Gemini is configured
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    if (!geminiKey) {
+      throw new Error(`Question generation failed: No AI providers configured. Please set GEMINI_API_KEY environment variable. Last error: ${lastError?.message || "Unknown"}`);
+    }
+    
+    throw new Error(`Question generation failed: All providers exhausted. Last error: ${lastError?.message || "Unknown"}`);
   }
 
   private buildPrompt(options: GenerateQuestionsOptions): string {

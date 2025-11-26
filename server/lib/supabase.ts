@@ -140,23 +140,23 @@ export class DatabaseService {
     notes: string;
   }) {
     try {
+      // Ensure notes is a string (handle undefined/null)
+      const notes = data.notes || '';
+      
       console.log('🔄 Saving test to library:', {
         id: data.id,
         userId: data.userId,
         title: data.title,
         questionCount: data.questionCount,
         hasQuestions: data.questions?.length > 0,
-        notesLength: data.notes?.length || 0
+        notesLength: notes.length,
+        notesPreview: notes.substring(0, 100) + (notes.length > 100 ? '...' : '')
       });
 
-      // Fallback: If no notes are provided, try to construct notes from the questions' sourceText
-      const notesFromQuestions = (data.questions || [])
-        .map((q: any) => q?.sourceText)
-        .filter(Boolean)
-        .join('\n\n')
-        .trim();
-
-      const notesToSave = (data.notes || '').trim() || notesFromQuestions || '';
+      // Validate that we have notes (warn if empty but don't fail)
+      if (!notes || notes.trim().length === 0) {
+        console.warn('⚠️ Warning: Saving test with empty notes. This may cause issues when viewing in library.');
+      }
 
       const { error } = await supabase
         .from('tests')
@@ -164,7 +164,7 @@ export class DatabaseService {
           id: data.id,
           user_id: data.userId,
           title: data.title,
-          description: notesToSave || 'Generated test',
+          description: notes || 'Generated test', // Use notes for description, not default text
           subject: data.config?.topics || 'General',
           difficulty: data.config?.difficulty || 'medium',
           question_count: data.questionCount,
@@ -172,7 +172,7 @@ export class DatabaseService {
           metadata: {
             config: data.config,
             questions: data.questions,
-            notes: notesToSave
+            notes: notes // Always save notes in metadata, even if empty
           },
           updated_at: new Date().toISOString()
         });
@@ -182,7 +182,7 @@ export class DatabaseService {
         throw error;
       }
 
-      console.log('✅ Test saved to library successfully:', data.id);
+      console.log('✅ Test saved to library successfully:', data.id, 'with notes length:', notes.length);
       return { success: true };
     } catch (error) {
       console.error('❌ Database service error:', error);
