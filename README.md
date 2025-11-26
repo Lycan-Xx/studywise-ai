@@ -90,7 +90,7 @@ studywise-ai/
 
 6. **Configure API endpoint**
    - For local development: `VITE_API_URL=http://localhost:5000` in `.env`
-   - For production: `VITE_API_URL=https://yourb-backend-API.com` in `.env`
+   - For production: `VITE_API_URL=https://your-backend-API.com` in `.env`
 
 ## Available Scripts
 
