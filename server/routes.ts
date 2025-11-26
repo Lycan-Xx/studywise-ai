@@ -243,9 +243,7 @@ router.put('/library/tests/:testId', async (req, res) => {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
-    console.log('🔄 API Route: Updating test:', testId, 'with notes length:', notes?.length || 0);
-
-    // First fetch existing test to preserve other metadata
+    // First, get the existing test to preserve metadata
     const { data: existingTest, error: fetchError } = await supabase
       .from('tests')
       .select('metadata')
@@ -254,22 +252,22 @@ router.put('/library/tests/:testId', async (req, res) => {
       .single();
 
     if (fetchError) {
-      console.error('❌ API Route: Error fetching existing test:', fetchError);
-      return res.status(404).json({ error: 'Test not found' });
+      throw fetchError;
     }
 
-    // Merge existing metadata with new notes
+    // Merge the existing metadata with the new notes (preserve config and questions)
+    const existingMetadata = existingTest?.metadata || {};
     const updatedMetadata = {
-      ...existingTest?.metadata,
-      notes: notes
+      ...existingMetadata,
+      notes: notes || existingMetadata.notes
     };
 
     // Update the test in the database
     const { error } = await supabase
       .from('tests')
       .update({
-        description: notes,
-        title: title,
+        description: notes || existingTest?.description,
+        title: title || existingTest?.title,
         metadata: updatedMetadata,
         updated_at: new Date().toISOString()
       })
@@ -281,7 +279,7 @@ router.put('/library/tests/:testId', async (req, res) => {
       throw error;
     }
 
-    console.log('✅ API Route: Test updated successfully');
+    console.log('✅ Test updated successfully:', testId, 'Notes length:', notes?.length || 0);
 
     res.json({
       success: true,

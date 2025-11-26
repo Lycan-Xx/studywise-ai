@@ -1,5 +1,40 @@
-import { QuestionType, Difficulty, GeneratedQuestion, FlashcardSet, TestInsights } from '@/types'
 import apiConfig from '@/config/api' 
+
+// Type definitions matching server-side AIService
+export interface GenerateQuestionsOptions {
+  content: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  questionCount: number;
+  questionTypes: string[];
+  subject?: string;
+  focus?: string;
+}
+
+export interface GeneratedQuestion {
+  id: string;
+  type: 'multiple-choice' | 'true-false' | 'short-answer' | 'essay';
+  question: string;
+  options?: string[];
+  correctAnswer: string | string[];
+  explanation: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  points: number;
+  sourceText: string;
+  sourceOffset?: number;
+  sourceLength?: number;
+  confidence?: number;
+}
+
+export interface AIResponse {
+  questions: GeneratedQuestion[];
+  metadata: {
+    totalQuestions: number;
+    estimatedTime: number;
+    difficulty: string;
+    subject?: string;
+    contentHash: string;
+  };
+}
 
 class AIService {
   private baseUrl: string; 
@@ -123,4 +158,3 @@ async submitTestResults(testId: string, results: any): Promise<any> {
 } 
 
 export const aiService = new AIService();
-export type { GenerateQuestionsOptions, GeneratedQuestion, AIResponse };

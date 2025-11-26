@@ -231,7 +231,54 @@ export default function Library() {
 
   // Helper function to get notes from test data (prioritize metadata.notes, fallback to description)
   const getTestNotes = (test: any) => {
-    return test.metadata?.notes || test.description || "";
+    if (!test) {
+      console.warn('getTestNotes: test is null or undefined');
+      return "";
+    }
+    
+    // Try to get notes from metadata (handle both object and string cases)
+    let metadata = test.metadata;
+    if (typeof metadata === 'string') {
+      try {
+        metadata = JSON.parse(metadata);
+      } catch (e) {
+        console.warn('Failed to parse metadata as JSON:', e, 'Raw metadata:', metadata);
+        metadata = null;
+      }
+    }
+    
+    // Priority: metadata.notes > description (but only if description is not the default)
+    const metadataNotes = metadata?.notes;
+    const description = test.description;
+    
+    // If description is the default "Generated test", ignore it
+    const isDefaultDescription = description === 'Generated test' || description === 'Generated content';
+    
+    // Debug logging (only in development)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📝 getTestNotes for test:', test.id, {
+        hasMetadata: !!metadata,
+        metadataType: typeof test.metadata,
+        metadataNotesLength: metadataNotes?.length || 0,
+        descriptionLength: description?.length || 0,
+        isDefaultDescription,
+        result: metadataNotes && metadataNotes.trim().length > 0 
+          ? 'metadata.notes' 
+          : (description && !isDefaultDescription && description.trim().length > 0 
+            ? 'description' 
+            : 'empty')
+      });
+    }
+    
+    if (metadataNotes && metadataNotes.trim().length > 0) {
+      return metadataNotes;
+    }
+    
+    if (description && !isDefaultDescription && description.trim().length > 0) {
+      return description;
+    }
+    
+    return "";
   };
 
   const handleSaveNotes = async (testId: string, notes: string) => {
@@ -242,6 +289,9 @@ export default function Library() {
         notes: notes
       });
       console.log("Notes saved successfully for test:", testId);
+      
+      // Refresh the test in the local state to show updated notes
+      await loadTests();
     } catch (error) {
       console.error("Failed to update test notes:", error);
       throw error;
