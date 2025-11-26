@@ -8,30 +8,30 @@ export default function Landing() {
   const { user } = useAuth();
 
   return (
-    <div className="min-h-screen bg-studywise-bg">
+    <div className="min-h-screen bg-studywise-bg overflow-x-hidden">
       {/* Floating Pill Navbar */}
-      <nav className="fixed top-3 left-4 right-4 z-50">
-        <div className="max-w-6xl mx-auto floating-navbar border border-studywise-gray-200 rounded-2xl px-4 sm:px-8 py-3 shadow-lg">
-          <div className="flex items-center justify-between">
+      <nav className="fixed top-3 left-2 right-2 sm:left-4 sm:right-4 z-50">
+        <div className="max-w-6xl mx-auto floating-navbar border border-studywise-gray-200 rounded-2xl px-3 sm:px-8 py-3 shadow-lg w-full">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
             {/* Left spacer for balance - hidden on mobile */}
-            <div className="hidden sm:flex flex-1"></div>
+            <div className="hidden sm:flex flex-1 min-w-0"></div>
 
             {/* Logo - Center on desktop, left on mobile */}
-            <div className="flex-1 sm:flex-1 flex sm:justify-center justify-start">
-              <Link href="/" className="flex items-center">
-                <Brain className="w-5 h-5 sm:w-6 sm:h-6 text-primary mr-2" />
-                <span className="text-base sm:text-lg font-semibold text-studywise-gray-900">StudyWise AI</span>
+            <div className="flex-shrink-0 sm:flex-1 flex sm:justify-center justify-start min-w-0">
+              <Link href="/" className="flex items-center flex-shrink-0">
+                <Brain className="w-5 h-5 sm:w-6 sm:h-6 text-primary mr-2 flex-shrink-0" />
+                <span className="text-base sm:text-lg font-semibold text-studywise-gray-900 whitespace-nowrap">StudyWise AI</span>
               </Link>
             </div>
 
             {/* Login/Dashboard Button - Right */}
-            <div className="flex-1 sm:flex-1 flex justify-end">
+            <div className="flex-shrink-0 sm:flex-1 flex justify-end min-w-0">
               {user ? (
                 <Link href="/dashboard">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="rounded-2xl border-studywise-gray-400 hover:bg-studywise-gray-50 px-4 sm:px-6 text-sm"
+                    className="rounded-2xl border-studywise-gray-400 hover:bg-studywise-gray-50 px-3 sm:px-6 text-xs sm:text-sm whitespace-nowrap"
                   >
                     Dashboard
                   </Button>
@@ -41,7 +41,7 @@ export default function Landing() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="rounded-2xl border-studywise-gray-400 hover:bg-studywise-gray-50 px-4 sm:px-6 text-sm"
+                    className="rounded-2xl border-studywise-gray-400 hover:bg-studywise-gray-50 px-3 sm:px-6 text-xs sm:text-sm whitespace-nowrap"
                   >
                     Log In
                   </Button>
@@ -72,7 +72,7 @@ export default function Landing() {
 
           <div className="max-w-3xl mx-auto mb-12 space-y-6">
             <p className="text-xl md:text-2xl text-studywise-gray-600 font-light leading-relaxed" data-testid="text-hero-description">
-              <span className="text-nowrap">You've spent hours reading your notes. Highlighting every line. </span> Re-reading pages until your eyes blur.
+              <span className="sm:text-nowrap">You've spent hours reading your notes. Highlighting every line. </span> Re-reading pages until your eyes blur.
               But when it's time for the test, you still feel lost.
             </p>
             <p className="text-lg md:text-xl font-medium text-studywise-gray-800 bg-studywise-gray-50 rounded-2xl px-8 py-4 inline-block">
