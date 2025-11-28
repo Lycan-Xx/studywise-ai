@@ -76,6 +76,173 @@ export class ApiService {
       headers,
     });
   }
+
+  // ==================== COURSE ENDPOINTS ====================
+
+  /**
+   * Generate a new course from uploaded content
+   */
+  static async generateCourse(data: {
+    content: string;
+    userContext: string;
+    fileType: 'pdf' | 'docx' | 'txt' | 'md';
+  }): Promise<any> {
+    const response = await this.post('/api/courses/generate', data);
+    if (!response.ok) throw new Error('Failed to generate course');
+    return response.json();
+  }
+
+  /**
+   * Fetch a specific course with all its modules
+   */
+  static async fetchCourse(courseId: string): Promise<any> {
+    const response = await this.get(`/api/courses/${courseId}`);
+    if (!response.ok) throw new Error('Failed to fetch course');
+    return response.json();
+  }
+
+  /**
+   * Get all courses for the current user
+   */
+  static async getUserCourses(): Promise<any[]> {
+    const response = await this.get('/api/courses');
+    if (!response.ok) throw new Error('Failed to fetch user courses');
+    return response.json();
+  }
+
+  /**
+   * Delete a course and all associated data
+   */
+  static async deleteCourse(courseId: string): Promise<void> {
+    const response = await this.delete(`/api/courses/${courseId}`);
+    if (!response.ok) throw new Error('Failed to delete course');
+  }
+
+  // ==================== MODULE TEST ENDPOINTS ====================
+
+  /**
+   * Generate a test for a specific module
+   */
+  static async generateModuleTest(data: {
+    courseId: string;
+    moduleId: string;
+    numberOfQuestions?: number;
+    questionType?: 'mcq' | 'truefalse' | 'mixed';
+    difficulty?: 'easy' | 'medium' | 'hard';
+  }): Promise<any> {
+    const response = await this.post('/api/tests/module/generate', data);
+    if (!response.ok) throw new Error('Failed to generate module test');
+    return response.json();
+  }
+
+  /**
+   * Fetch a specific test
+   */
+  static async fetchTest(testId: string): Promise<any> {
+    const response = await this.get(`/api/tests/${testId}`);
+    if (!response.ok) throw new Error('Failed to fetch test');
+    return response.json();
+  }
+
+  /**
+   * Get all tests for a module
+   */
+  static async getModuleTests(courseId: string, moduleId: string): Promise<any[]> {
+    const response = await this.get(
+      `/api/courses/${courseId}/modules/${moduleId}/tests`
+    );
+    if (!response.ok) throw new Error('Failed to fetch module tests');
+    return response.json();
+  }
+
+  /**
+   * Delete a test
+   */
+  static async deleteTest(testId: string): Promise<void> {
+    const response = await this.delete(`/api/tests/${testId}`);
+    if (!response.ok) throw new Error('Failed to delete test');
+  }
+
+  // ==================== TEST SUBMISSION & RESULTS ====================
+
+  /**
+   * Submit a completed test
+   */
+  static async submitTest(data: {
+    testId: string;
+    answers: Array<{
+      questionId: string;
+      selectedAnswer: string;
+      timeSpent: number;
+    }>;
+    totalTime: number;
+  }): Promise<any> {
+    const response = await this.post('/api/tests/submit', data);
+    if (!response.ok) throw new Error('Failed to submit test');
+    return response.json();
+  }
+
+  /**
+   * Fetch test result
+   */
+  static async fetchTestResult(resultId: string): Promise<any> {
+    const response = await this.get(`/api/results/${resultId}`);
+    if (!response.ok) throw new Error('Failed to fetch test result');
+    return response.json();
+  }
+
+  /**
+   * Get all results for a module
+   */
+  static async getModuleResults(courseId: string, moduleId: string): Promise<any[]> {
+    const response = await this.get(
+      `/api/courses/${courseId}/modules/${moduleId}/results`
+    );
+    if (!response.ok) throw new Error('Failed to fetch module results');
+    return response.json();
+  }
+
+  /**
+   * Get aggregated statistics for a course
+   */
+  static async getCourseStatistics(courseId: string): Promise<any> {
+    const response = await this.get(`/api/courses/${courseId}/statistics`);
+    if (!response.ok) throw new Error('Failed to fetch course statistics');
+    return response.json();
+  }
+
+  /**
+   * Request AI analysis for a test result
+   */
+  static async requestAIAnalysis(resultId: string): Promise<any> {
+    const response = await this.post(`/api/results/${resultId}/analyze`, {});
+    if (!response.ok) throw new Error('Failed to request AI analysis');
+    return response.json();
+  }
+
+  // ==================== USER PREFERENCES ====================
+
+  /**
+   * Update user test preferences
+   */
+  static async updateUserPreferences(data: {
+    questionDifficulty?: 'easy' | 'medium' | 'hard';
+    questionTypes?: ('mcq' | 'truefalse')[];
+    defaultQuestionsPerModule?: number;
+  }): Promise<any> {
+    const response = await this.put('/api/user/preferences', data);
+    if (!response.ok) throw new Error('Failed to update preferences');
+    return response.json();
+  }
+
+  /**
+   * Get user test preferences
+   */
+  static async getUserPreferences(): Promise<any> {
+    const response = await this.get('/api/user/preferences');
+    if (!response.ok) throw new Error('Failed to fetch preferences');
+    return response.json();
+  }
 }
 
 export default ApiService;

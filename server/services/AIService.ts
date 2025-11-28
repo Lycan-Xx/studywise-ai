@@ -260,14 +260,16 @@ class MultiProviderAIService {
   private async makeGeminiRequest(model: string, prompt: string): Promise<string> {
     if (!this.geminiAI) throw new Error("Gemini not initialized");
 
-    // Try current known Gemini model names
+    // Use the correct Gemini model names (without -latest suffix for v1beta)
     const modelMapping: Record<string, string> = {
       'gemini-flash': 'gemini-1.5-flash',
       'gemini-pro': 'gemini-1.5-pro'
     };
 
+    const modelName = model === 'gemini-flash' ? 'gemini-1.5-flash' : 'gemini-1.5-pro';
+    
     const aiModel = this.geminiAI.getGenerativeModel({
-      model: model === 'gemini-flash' ? 'gemini-1.5-flash' : 'gemini-1.5-pro',
+      model: modelName,
       // Increase timeout for network issues
       generationConfig: {
         temperature: 0.3,
@@ -1094,6 +1096,74 @@ Provide insights in JSON format:
     }
     
     return results;
+  }
+
+  /**
+   * Parse content into structured modules
+   */
+  async parseContentIntoModules(options: {
+    content: string;
+    context?: string;
+    courseId: string;
+  }): Promise<Array<{
+    course_id: string;
+    title: string;
+    content: string;
+    module_order: number;
+    word_count: number;
+    estimated_read_time: number;
+  }>> {
+    const prompt = `You are an expert educational content organizer. Analyze the following content and break it down into logical study modules/chapters.
+
+${options.context ? `Context: ${options.context}\n\n` : ''}
+
+Content to analyze:
+${options.content.substring(0, 5000)}${options.content.length > 5000 ? '...' : ''}
+
+Instructions:
+1. Identify natural divisions in the content (chapters, sections, topics)
+2. Create 3-8 modules (unless content is very short or very long)
+3. Each module should be a complete, self-contained learning unit
+4. Provide a clear, descriptive title for each module
+5. Include the full text content for each module
+
+Return a JSON array of modules in this exact format:
+[
+  {
+    "title": "Module Title",
+    "content": "Full module text content here...",
+    "order": 1
+  }
+]
+
+IMPORTANT: Return ONLY the JSON array, no additional text.`;
+
+    try {
+      const providerId = this.getAvailableProvider();
+      if (!providerId) {
+        throw new Error('No AI providers available');
+      }
+
+      const response = await this.makeProviderRequest(providerId, prompt);
+      const parsed = this.parseAIResponse(response);
+
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        throw new Error('Invalid module structure returned');
+      }
+
+      // Transform to database format
+      return parsed.map((module: any, index: number) => ({
+        course_id: options.courseId,
+        title: module.title || `Module ${index + 1}`,
+        content: module.content || '',
+        module_order: module.order || index + 1,
+        word_count: (module.content || '').split(/\s+/).length,
+        estimated_read_time: Math.ceil((module.content || '').split(/\s+/).length / 200),
+      }));
+    } catch (error) {
+      console.error('Module parsing error:', error);
+      throw error;
+    }
   }
 }
 

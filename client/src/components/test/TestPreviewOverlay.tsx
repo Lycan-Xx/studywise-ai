@@ -220,7 +220,7 @@ export function TestPreviewOverlay({
               <div className="flex items-center gap-2">
                 <span className="font-medium text-slate-600">Preview:</span>
                 <span className="font-semibold text-slate-900">
-                  {Math.min(3, questions.length)}/{questions.length} shown
+                  {Math.min(1, questions.length)}/{questions.length} shown
                 </span>
               </div>
             </div>
@@ -228,7 +228,7 @@ export function TestPreviewOverlay({
           <div className="w-full bg-slate-200 rounded-full h-2">
             <div
               className="bg-primary h-2 rounded-full transition-all duration-300"
-              style={{ width: `${Math.min(3, questions.length) / questions.length * 100}%` }}
+              style={{ width: `${Math.min(1, questions.length) / questions.length * 100}%` }}
             ></div>
           </div>
         </div>
@@ -237,7 +237,7 @@ export function TestPreviewOverlay({
         <div>
           <h3 className="text-lg font-semibold text-slate-900 mb-4">Question Preview</h3>
           <div className="space-y-4 max-h-96 overflow-y-auto">
-            {questions.slice(0, 3).map((question, index) => (
+            {questions.slice(0, 1).map((question, index) => (
               <Card key={question.id} className="border-slate-200">
                 <CardContent className="p-4">
                   <div className="space-y-3">
@@ -285,9 +285,9 @@ export function TestPreviewOverlay({
                 </CardContent>
               </Card>
             ))}
-            {questions.length > 3 && (
+            {questions.length > 1 && (
               <div className="text-center text-slate-500 text-sm py-2">
-                ... and {questions.length - 3} more questions
+                ... and {questions.length - 1} more questions
               </div>
             )}
           </div>

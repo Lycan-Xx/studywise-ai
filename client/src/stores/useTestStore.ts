@@ -2,9 +2,58 @@ import { create } from 'zustand';
 import { devtools, persist, createJSONStorage } from 'zustand/middleware';
 import type { TestConfig, Question } from '@/types';
 import { aiService, type GenerateQuestionsOptions } from '@/services/aiService';
+import ApiService from '@/services/apiService';
+
+// New interfaces for course-based testing
+export interface TestSession {
+  id: string;
+  testId: string;
+  courseId: string;
+  moduleId: string;
+  moduleTitle: string;
+  questions: Question[];
+  answers: Record<string, string>;
+  startTime: number;
+  endTime: number | null;
+  totalTime: number | null;
+  questionsCount: number;
+}
+
+export interface TestResult {
+  id: string;
+  testId: string;
+  courseId: string;
+  moduleId: string;
+  moduleTitle: string;
+  userId: string;
+  score: number;
+  maxScore: number;
+  percentage: number;
+  correctAnswers: number;
+  totalQuestions: number;
+  timeSpent: number;
+  questionResults: Array<{
+    questionId: string;
+    question: string;
+    selectedAnswer: string;
+    correctAnswer: string;
+    isCorrect: boolean;
+    questionType: 'mcq' | 'truefalse';
+  }>;
+  aiAnalysis?: {
+    id: string;
+    strengths: string[];
+    weaknesses: string[];
+    recommendations: string[];
+    nextFocusAreas: string[];
+    generatedAt: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface TestStore {
-  // State
+  // Legacy state (kept for backward compatibility)
   currentConfig: TestConfig | null;
   notes: string;
   generatedQuestions: Question[];
@@ -12,7 +61,14 @@ interface TestStore {
   error: string | null;
   questionCache: Record<string, { questions: Question[]; timestamp: number }>;
 
-  // Actions
+  // New course-based test state
+  currentTest: TestSession | null;
+  currentQuestion: Question | null;
+  currentQuestionIndex: number;
+  testResult: TestResult | null;
+  isSubmitting: boolean;
+
+  // Legacy actions
   updateConfig: (config: Partial<TestConfig>) => void;
   setConfig: (config: TestConfig) => void;
   setNotes: (notes: string) => void;
@@ -21,6 +77,17 @@ interface TestStore {
   clearTest: () => void;
   setError: (error: string | null) => void;
   clearCache: () => void;
+
+  // New test actions
+  initializeTest: (courseId: string, moduleId: string, moduleTitle: string, questions: Question[]) => void;
+  setAnswer: (questionId: string, answer: string) => void;
+  nextQuestion: () => void;
+  previousQuestion: () => void;
+  goToQuestion: (index: number) => void;
+  submitTest: (testId: string, totalTime: number) => Promise<TestResult>;
+  setTestResult: (result: TestResult) => void;
+  requestAIAnalysis: (resultId: string) => Promise<void>;
+  resetNewTest: () => void;
 }
 
 // Helper function to generate cache key
@@ -213,6 +280,158 @@ export const useTestStore = create<TestStore>()(
 
         clearCache: () => {
           set({ questionCache: {} }, false, 'clearCache');
+        },
+
+        // New course-based test actions
+        initializeTest: (courseId, moduleId, moduleTitle, questions) => {
+          const testSession: TestSession = {
+            id: `test-${Date.now()}`,
+            testId: `test-${Date.now()}`,
+            courseId,
+            moduleId,
+            moduleTitle,
+            questions,
+            answers: {},
+            startTime: Date.now(),
+            endTime: null,
+            totalTime: null,
+            questionsCount: questions.length,
+          };
+
+          set({
+            currentTest: testSession,
+            currentQuestion: questions[0] || null,
+            currentQuestionIndex: 0,
+            error: null,
+          }, false, 'initializeTest');
+        },
+
+        setAnswer: (questionId, answer) => {
+          set((state) => {
+            if (!state.currentTest) return state;
+
+            return {
+              currentTest: {
+                ...state.currentTest,
+                answers: {
+                  ...state.currentTest.answers,
+                  [questionId]: answer,
+                },
+              },
+            };
+          }, false, 'setAnswer');
+        },
+
+        nextQuestion: () => {
+          set((state) => {
+            if (!state.currentTest) return state;
+
+            const nextIndex = state.currentQuestionIndex + 1;
+            if (nextIndex < state.currentTest.questions.length) {
+              return {
+                currentQuestionIndex: nextIndex,
+                currentQuestion: state.currentTest.questions[nextIndex],
+              };
+            }
+
+            return state;
+          }, false, 'nextQuestion');
+        },
+
+        previousQuestion: () => {
+          set((state) => {
+            const prevIndex = state.currentQuestionIndex - 1;
+            if (prevIndex >= 0 && state.currentTest) {
+              return {
+                currentQuestionIndex: prevIndex,
+                currentQuestion: state.currentTest.questions[prevIndex],
+              };
+            }
+
+            return state;
+          }, false, 'previousQuestion');
+        },
+
+        goToQuestion: (index) => {
+          set((state) => {
+            if (!state.currentTest || index < 0 || index >= state.currentTest.questions.length) {
+              return state;
+            }
+
+            return {
+              currentQuestionIndex: index,
+              currentQuestion: state.currentTest.questions[index],
+            };
+          }, false, 'goToQuestion');
+        },
+
+        submitTest: async (testId, totalTime) => {
+          set({ isSubmitting: true, error: null });
+
+          try {
+            const { currentTest } = get();
+            if (!currentTest) throw new Error('No active test session');
+
+            const answers = Object.entries(currentTest.answers).map(([questionId, selectedAnswer]) => ({
+              questionId,
+              selectedAnswer,
+              timeSpent: Math.floor(totalTime / currentTest.questions.length),
+            }));
+
+            const result = await ApiService.submitTest({
+              testId,
+              answers,
+              totalTime,
+            });
+
+            set({
+              testResult: result,
+              isSubmitting: false,
+            }, false, 'submitTest');
+
+            return result;
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to submit test';
+            set({ error: errorMessage, isSubmitting: false });
+            throw error;
+          }
+        },
+
+        setTestResult: (result) => {
+          set({ testResult: result }, false, 'setTestResult');
+        },
+
+        requestAIAnalysis: async (resultId) => {
+          set({ isGenerating: true, error: null });
+
+          try {
+            const analysis = await ApiService.requestAIAnalysis(resultId);
+            set((state) => {
+              if (!state.testResult || state.testResult.id !== resultId) return state;
+
+              return {
+                testResult: {
+                  ...state.testResult,
+                  aiAnalysis: analysis,
+                },
+                isGenerating: false,
+              };
+            }, false, 'requestAIAnalysis');
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to request analysis';
+            set({ error: errorMessage, isGenerating: false });
+            throw error;
+          }
+        },
+
+        resetNewTest: () => {
+          set({
+            currentTest: null,
+            currentQuestion: null,
+            currentQuestionIndex: 0,
+            testResult: null,
+            error: null,
+          }, false, 'resetNewTest');
         }
       }),
       {
