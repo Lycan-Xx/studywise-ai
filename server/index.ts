@@ -29,6 +29,40 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Database check endpoint
+app.get('/api/db-check', async (req, res) => {
+  try {
+    const { supabase } = await import('./lib/supabase.js');
+    
+    // Check if courses table exists
+    const { data, error } = await supabase
+      .from('courses')
+      .select('id')
+      .limit(1);
+    
+    if (error) {
+      return res.json({
+        status: 'error',
+        message: 'Database tables not found or not accessible',
+        error: error.message,
+        hint: 'Please deploy the schema from docs/new_course_centric_schema.sql'
+      });
+    }
+    
+    return res.json({
+      status: 'ok',
+      message: 'Database tables exist and are accessible',
+      tablesChecked: ['courses']
+    });
+  } catch (error) {
+    return res.json({
+      status: 'error',
+      message: 'Failed to check database',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://0.0.0.0:${PORT}`);
   console.log(`Health check available at http://0.0.0.0:${PORT}/health`);

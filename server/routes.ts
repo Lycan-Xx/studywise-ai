@@ -1,9 +1,82 @@
 import { Router } from 'express';
 import TestController from './controllers/TestController.js';
+import { CourseController } from './controllers/CourseController.js';
+import { ModuleTestController } from './controllers/ModuleTestController.js';
+import { ResultsController } from './controllers/ResultsController.js';
 import { aiService } from './services/AIService.js';
 import { DatabaseService, supabase } from './lib/supabase.js';
 
 const router = Router();
+
+// Simple auth middleware (replace with proper auth in production)
+const authMiddleware = (req: any, res: any, next: any) => {
+  const userId = req.headers['user-id'] as string;
+  if (!userId) {
+    return res.status(401).json({ error: 'User not authenticated' });
+  }
+  req.user = { id: userId };
+  next();
+};
+
+// ============================================================================
+// NEW COURSE-CENTRIC ROUTES
+// ============================================================================
+
+// Course routes
+router.post('/courses/generate', authMiddleware, CourseController.generateCourse);
+router.get('/courses', authMiddleware, CourseController.getUserCourses);
+router.get('/courses/:courseId', authMiddleware, CourseController.getCourse);
+router.get('/courses/:courseId/modules', authMiddleware, CourseController.getCourseModules);
+router.delete('/courses/:courseId', authMiddleware, CourseController.deleteCourse);
+
+// Module test routes
+router.post('/courses/:courseId/modules/:moduleId/test/generate', authMiddleware, ModuleTestController.generateModuleTest);
+router.post('/tests/:testId/submit', authMiddleware, ModuleTestController.submitTest);
+router.post('/tests/:testId/insights/request', authMiddleware, ModuleTestController.requestInsights);
+
+// Results routes
+router.get('/results/courses', authMiddleware, ResultsController.getCourseResults);
+router.get('/results/courses/:courseId/modules', authMiddleware, ResultsController.getModuleResults);
+router.get('/tests/:testId/result', authMiddleware, ResultsController.getTestResult);
+router.get('/tests/:testId/questions', authMiddleware, ResultsController.getTestQuestions);
+router.get('/tests/:testId/answers', authMiddleware, ResultsController.getTestAnswers);
+router.get('/tests/:testId/stats', authMiddleware, ResultsController.getTestStats);
+
+// User profile routes
+router.get('/user/profile', authMiddleware, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', req.user.id)
+      .single();
+    
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch profile' });
+  }
+});
+
+router.put('/user/profile', authMiddleware, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .update(req.body)
+      .eq('id', req.user.id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update profile' });
+  }
+});
+
+// ============================================================================
+// LEGACY ROUTES (Keep for backward compatibility)
+// ============================================================================
 
 // Test generation routes
 router.post('/tests/generate', TestController.generateQuestions);
