@@ -61,6 +61,8 @@ class MultiProviderAIService {
     this.initializeProviders();
     setInterval(() => this.cleanupCache(), 60 * 60 * 1000);
     setInterval(() => this.resetProviderLimits(), 60 * 1000);
+    // List available models on startup
+    this.listAvailableGeminiModels();
   }
 
   private initializeProviders() {
@@ -258,35 +260,54 @@ class MultiProviderAIService {
   }
 
   private async makeGeminiRequest(model: string, prompt: string): Promise<string> {
-    if (!this.geminiAI) throw new Error("Gemini not initialized");
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    if (!geminiKey) throw new Error("Gemini API key not configured");
 
-    // Use the correct Gemini model names (without -latest suffix for v1beta)
-    const modelMapping: Record<string, string> = {
-      'gemini-flash': 'gemini-1.5-flash',
-      'gemini-pro': 'gemini-1.5-pro'
-    };
-
-    const modelName = model === 'gemini-flash' ? 'gemini-1.5-flash' : 'gemini-1.5-pro';
-    
-    const aiModel = this.geminiAI.getGenerativeModel({
-      model: modelName,
-      // Increase timeout for network issues
-      generationConfig: {
-        temperature: 0.3,
-      }
-    });
+    // Use the current Gemini model names (Google API v1)
+    const modelName = model === 'gemini-flash' ? 'gemini-2.0-flash' : 'gemini-2.5-pro';
 
     // Use AbortController for timeout handling
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
     try {
-      const result = await aiModel.generateContent(prompt);
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${geminiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.3,
+          }
+        }),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Gemini API error (${response.status}):`, errorText);
+        throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content || !data.candidates[0].content.parts || !data.candidates[0].content.parts[0]) {
+        throw new Error('Invalid response format from Gemini API');
+      }
+
       clearTimeout(timeoutId);
-      const response = await result.response;
-      return response.text();
+      return data.candidates[0].content.parts[0].text;
     } catch (error) {
       clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Request timeout: Connection to Gemini API timed out after 30 seconds');
+      }
       throw error;
     }
   }
@@ -572,6 +593,7 @@ class MultiProviderAIService {
     const attemptedProviders = new Set<string>();
     let consecutiveFailures = 0;
     let providerIndex = 0;
+    let mockAITried = false;
     const maxAttempts = allProviderIds.length * 2; // Allow retries
     
     // Try each provider at least once before retrying
@@ -673,6 +695,7 @@ class MultiProviderAIService {
     // Final attempt: try mock AI if not already tried
     if (!mockAITried && this.providers.get('mock-ai')?.available) {
       console.log("🔄 Final attempt: Using Mock AI fallback...");
+      mockAITried = true;
       const mockProvider = this.providers.get('mock-ai');
       if (mockProvider) {
         mockProvider.requestCount++;
@@ -1079,7 +1102,7 @@ Provide insights in JSON format:
 
   public async healthCheck(): Promise<Record<string, boolean>> {
     const results: Record<string, boolean> = {};
-    
+
     for (const [key, provider] of this.providers) {
       try {
         // Simple test request to check if provider is working
@@ -1090,13 +1113,50 @@ Provide insights in JSON format:
         results[key] = false;
         console.log(`❌ Health check failed for ${provider.name}:`, error instanceof Error ? error.message : 'Unknown error');
       }
-      
+
       // Small delay between health checks
       await this.sleep(1000);
     }
-    
+
     return results;
   }
+
+  public async listAvailableGeminiModels(): Promise<void> {
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    if (!geminiKey) {
+      console.log('❌ No Gemini API key found');
+      return;
+    }
+
+    try {
+      // Try v1 API first (current API)
+      console.log('🔍 Checking available Gemini models...');
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${geminiKey}`);
+      if (!response.ok) {
+        console.log(`❌ v1 API failed: ${response.status} - ${response.statusText}`);
+        // Try v1beta API as fallback
+        const betaResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`);
+        if (!betaResponse.ok) {
+          console.log(`❌ v1beta API also failed: ${betaResponse.status} - ${betaResponse.statusText}`);
+          return;
+        }
+        const betaData = await betaResponse.json();
+        console.log('📋 Available models in v1beta API:');
+        betaData.models?.forEach((model: any) => {
+          console.log(`  - ${model.name} (supports: ${model.supportedGenerationMethods?.join(', ') || 'unknown'})`);
+        });
+        return;
+      }
+      const data = await response.json();
+      console.log('📋 Available models in v1 API:');
+      data.models?.forEach((model: any) => {
+        console.log(`  - ${model.name} (supports: ${model.supportedGenerationMethods?.join(', ') || 'unknown'})`);
+      });
+    } catch (error) {
+      console.error('❌ Failed to list models:', error);
+    }
+  }
+
 
   /**
    * Parse content into structured modules

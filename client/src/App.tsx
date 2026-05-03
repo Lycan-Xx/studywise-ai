@@ -11,6 +11,7 @@ import LibraryNew from "@/pages/library-new";
 import ResultsNew from "@/pages/results-new";
 import SettingsNew from "@/pages/settings-new";
 import CourseView from "@/pages/course-view";
+import ModuleTest from "@/pages/module-test";
 import TestSummary from "@/pages/test-summary";
 import PrivacyPolicy from "@/pages/privacy-policy";
 import TermsOfService from "@/pages/terms-of-service";
@@ -35,6 +36,11 @@ function Router() {
       {/* Course View - Documentation-style layout */}
       <Route path="/courses/:courseId">
         <ProtectedRoute><CourseView /></ProtectedRoute>
+      </Route>
+      
+      {/* Module Test - Test-taking page */}
+      <Route path="/courses/:courseId/modules/:moduleId/test">
+        <ProtectedRoute><ModuleTest /></ProtectedRoute>
       </Route>
       
       {/* Test Summary - Results with on-demand insights */}

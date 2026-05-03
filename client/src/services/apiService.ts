@@ -130,7 +130,11 @@ export class ApiService {
     questionType?: 'mcq' | 'truefalse' | 'mixed';
     difficulty?: 'easy' | 'medium' | 'hard';
   }): Promise<any> {
-    const response = await this.post('/api/tests/module/generate', data);
+    const { courseId, moduleId } = data;
+    const response = await this.post(
+      `/api/courses/${courseId}/modules/${moduleId}/test/generate`,
+      data
+    );
     if (!response.ok) throw new Error('Failed to generate module test');
     return response.json();
   }
