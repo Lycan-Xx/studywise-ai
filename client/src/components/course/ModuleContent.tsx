@@ -14,8 +14,14 @@ export function ModuleContent({ course, module, moduleIndex, totalModules }: Mod
   const [, setLocation] = useLocation();
   const { modules, selectModule } = useCourseStore();
 
-  const handleTakeTest = () => {
-    setLocation(`/courses/${course.id}/modules/${module.id}/test`);
+  const handleTakeTest = async () => {
+    try {
+      // This will trigger test generation via the API before navigation
+      // Navigate to test page - the test generation will happen server-side
+      setLocation(`/courses/${course.id}/modules/${module.id}/test`);
+    } catch (error) {
+      console.error('Error initiating test:', error);
+    }
   };
 
   const handlePrevious = () => {
