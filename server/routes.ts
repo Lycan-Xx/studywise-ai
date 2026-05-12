@@ -28,6 +28,7 @@ router.get('/courses', authMiddleware, CourseController.getUserCourses);
 router.get('/courses/:courseId', authMiddleware, CourseController.getCourse);
 router.get('/courses/:courseId/modules', authMiddleware, CourseController.getCourseModules);
 router.delete('/courses/:courseId', authMiddleware, CourseController.deleteCourse);
+router.post('/courses/:courseId/retry', authMiddleware, CourseController.retryGeneration);
 
 // Module test routes
 router.post('/courses/:courseId/modules/:moduleId/test/generate', authMiddleware, ModuleTestController.generateModuleTest);

@@ -1,4 +1,5 @@
-import { BookOpen, CheckCircle2 } from 'lucide-react';
+import { BookOpen, CheckCircle2, ChevronLeft } from 'lucide-react';
+import { useLocation } from 'wouter';
 import { useCourseStore, type Course, type Module } from '../../stores/useCourseStore';
 
 interface ModuleSidebarProps {
@@ -9,9 +10,21 @@ interface ModuleSidebarProps {
 
 export function ModuleSidebar({ course, modules, currentModule }: ModuleSidebarProps) {
   const { selectModule } = useCourseStore();
+  const [, setLocation] = useLocation();
 
   return (
     <div className="w-80 bg-white border-r border-studywise-gray-200 flex flex-col h-full">
+      {/* Navigation Back */}
+      <div className="p-4 border-b border-studywise-gray-100">
+        <button 
+          onClick={() => setLocation('/library')}
+          className="flex items-center gap-2 text-sm text-studywise-gray-500 hover:text-primary transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          Back to Library
+        </button>
+      </div>
+
       {/* Course Header */}
       <div className="p-6 border-b border-studywise-gray-200">
         <div className="flex items-start gap-3">

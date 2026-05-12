@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
-import { BookOpen, Clock, FileText, AlertTriangle, Trash2 } from 'lucide-react';
+import { BookOpen, Clock, FileText, AlertTriangle, Trash2, RefreshCw } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { ApiService } from '../services/apiService';
+import { useCourseStore } from '../stores/useCourseStore';
 
 interface Course {
   id: string;
@@ -20,6 +21,7 @@ export default function Library() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { retryCourse } = useCourseStore();
 
   useEffect(() => {
     loadCourses();
@@ -52,6 +54,17 @@ export default function Library() {
       console.error('Failed to delete course:', error);
     }
     setDeletingId(null);
+  };
+
+  const handleRetry = async (courseId: string) => {
+    try {
+      await retryCourse(courseId);
+      // Reload courses to update statuses
+      loadCourses();
+    } catch (error) {
+      console.error('Failed to retry course generation:', error);
+      alert('Failed to regenerate course. Please try again later.');
+    }
   };
 
   if (loading) {
@@ -136,9 +149,23 @@ export default function Library() {
                 </div>
 
                 {course.used_fallback && (
-                  <div className="mt-4 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 px-3 py-2 rounded">
-                    <AlertTriangle className="w-3 h-3" />
-                    <span>Fallback mode</span>
+                  <div className="mt-4 flex flex-col gap-2">
+                    <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 px-3 py-2 rounded">
+                      <AlertTriangle className="w-3 h-3" />
+                      <span>Fallback mode</span>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="w-full text-xs gap-2 border-amber-200 text-amber-700 hover:bg-amber-50"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRetry(course.id);
+                      }}
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      Regenerate
+                    </Button>
                   </div>
                 )}
               </div>

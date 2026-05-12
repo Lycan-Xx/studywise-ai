@@ -53,6 +53,7 @@ interface CourseState {
   // API actions
   generateCourse: (file: File, context?: string) => Promise<Course>;
   loadCourse: (courseId: string) => Promise<void>;
+  retryCourse: (courseId: string) => Promise<Course>;
   selectModule: (moduleId: string) => void;
   
   // Computed
@@ -131,6 +132,31 @@ export const useCourseStore = create<CourseState>()(
           });
         } catch (error) {
           set({ isLoadingCourse: false });
+          throw error;
+        }
+      },
+
+      retryCourse: async (courseId: string) => {
+        set({ isGenerating: true, generationError: null });
+        
+        try {
+          const course = await ApiService.retryCourseGeneration(courseId);
+          
+          // After retry, we also need to fetch the newly generated modules
+          const modulesResponse = await ApiService.get(`/api/courses/${courseId}/modules`);
+          if (!modulesResponse.ok) throw new Error('Failed to load modules after retry');
+          const modules: Module[] = await modulesResponse.json();
+          
+          set({ 
+            currentCourse: course, 
+            modules,
+            currentModule: modules[0] || null,
+            isGenerating: false 
+          });
+          return course;
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          set({ generationError: errorMessage, isGenerating: false });
           throw error;
         }
       },

@@ -125,6 +125,15 @@ export class ApiService {
     if (!response.ok) throw new Error('Failed to delete course');
   }
 
+  /**
+   * Retry/Regenerate a failed course
+   */
+  static async retryCourseGeneration(courseId: string): Promise<any> {
+    const response = await this.post(`/api/courses/${courseId}/retry`);
+    if (!response.ok) throw new Error('Failed to retry course generation');
+    return response.json();
+  }
+
   // ==================== MODULE TEST ENDPOINTS ====================
 
   /**
