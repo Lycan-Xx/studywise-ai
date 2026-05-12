@@ -6,7 +6,6 @@ interface UserProfile {
   default_question_type: 'mcq' | 'true_false' | 'mixed';
   default_difficulty: 'easy' | 'medium' | 'hard';
   default_questions_per_module: number;
-  show_test_preview_modal: boolean;
 }
 
 export default function Settings() {
@@ -14,7 +13,6 @@ export default function Settings() {
     default_question_type: 'mixed',
     default_difficulty: 'medium',
     default_questions_per_module: 10,
-    show_test_preview_modal: true,
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -149,26 +147,6 @@ export default function Settings() {
                 <p className="text-sm text-studywise-gray-600 mt-2">
                   Recommended: 10-15 questions for optimal learning
                 </p>
-              </div>
-
-              {/* Show Preview Modal */}
-              <div>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={profile.show_test_preview_modal}
-                    onChange={(e) => setProfile({ ...profile, show_test_preview_modal: e.target.checked })}
-                    className="w-5 h-5"
-                  />
-                  <div>
-                    <div className="font-medium text-studywise-gray-900">
-                      Show test preview before first test
-                    </div>
-                    <div className="text-sm text-studywise-gray-600">
-                      Display a preview modal with sample question before starting your first test
-                    </div>
-                  </div>
-                </label>
               </div>
             </div>
           </section>

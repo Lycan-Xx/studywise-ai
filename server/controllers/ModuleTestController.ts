@@ -105,6 +105,107 @@ export class ModuleTestController {
   }
 
   /**
+   * Generate an exam for an entire course
+   * POST /api/courses/:courseId/exam/generate
+   */
+  static async generateCourseExam(req: Request, res: Response) {
+    try {
+      const { courseId } = req.params;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      // Get user preferences
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('default_question_type, default_difficulty')
+        .eq('id', userId)
+        .single();
+
+      if (!profile) {
+        return res.status(404).json({ message: 'User profile not found' });
+      }
+
+      // Get course content
+      const { data: course } = await supabase
+        .from('courses')
+        .select('source_content, title')
+        .eq('id', courseId)
+        .single();
+
+      if (!course) {
+        return res.status(404).json({ message: 'Course not found' });
+      }
+
+      // Generate questions using AI (20 questions for a full exam)
+      const questionTypes = profile.default_question_type === 'mixed' 
+        ? ['multiple-choice', 'true-false']
+        : profile.default_question_type === 'mcq'
+        ? ['multiple-choice']
+        : ['true-false'];
+
+      const aiResponse = await aiService.generateQuestions({
+        content: course.source_content,
+        difficulty: profile.default_difficulty,
+        questionCount: 20,
+        questionTypes,
+      });
+
+      // Create test record
+      const { data: test, error: testError } = await supabase
+        .from('tests')
+        .insert({
+          course_id: courseId,
+          user_id: userId,
+          question_count: aiResponse.questions.length,
+          question_type: profile.default_question_type,
+          difficulty: profile.default_difficulty,
+          status: 'generated',
+        })
+        .select()
+        .single();
+
+      if (testError || !test) {
+        throw new Error('Failed to create exam');
+      }
+
+      // Insert questions
+      const questionsToInsert = aiResponse.questions.map((q, index) => ({
+        test_id: test.id,
+        question_text: q.question,
+        question_type: q.type === 'multiple-choice' ? 'mcq' : 'true_false',
+        question_order: index + 1,
+        options: q.options ? JSON.stringify(q.options) : null,
+        correct_answer: q.correctAnswer,
+        source_text: q.sourceText,
+        source_offset: q.sourceOffset,
+        explanation: q.explanation,
+      }));
+
+      const { error: questionsError } = await supabase
+        .from('questions')
+        .insert(questionsToInsert);
+
+      if (questionsError) {
+        throw questionsError;
+      }
+
+      return res.json({
+        test,
+        questions: aiResponse.questions,
+        sampleQuestion: aiResponse.questions[0],
+      });
+    } catch (error) {
+      console.error('Generate course exam error:', error);
+      return res.status(500).json({
+        message: error instanceof Error ? error.message : 'Failed to generate exam'
+      });
+    }
+  }
+
+  /**
    * Submit test answers and create result
    * POST /api/tests/:testId/submit
    */

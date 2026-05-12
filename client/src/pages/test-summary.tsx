@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { Button } from '../components/ui/button';
 import { ArrowLeft, RotateCcw, Sparkles, CheckCircle2, XCircle } from 'lucide-react';
+import { ApiService } from '../services/apiService';
 
 interface TestResult {
   id: string;
@@ -52,22 +53,18 @@ export default function TestSummary() {
   const loadTestSummary = async () => {
     try {
       // Load test result
-      const resultRes = await fetch(`/api/tests/${testId}/result`);
-      const resultData = await resultRes.json();
+      const resultData = await ApiService.getTestResult(testId!);
       setResult(resultData);
 
       // Load questions and answers
-      const questionsRes = await fetch(`/api/tests/${testId}/questions`);
-      const questionsData = await questionsRes.json();
+      const questionsData = await ApiService.getTestQuestions(testId!);
       setQuestions(questionsData);
 
-      const answersRes = await fetch(`/api/tests/${testId}/answers`);
-      const answersData = await answersRes.json();
+      const answersData = await ApiService.getTestAnswers(testId!);
       setUserAnswers(answersData);
 
       // Load module and course stats
-      const statsRes = await fetch(`/api/tests/${testId}/stats`);
-      const statsData = await statsRes.json();
+      const statsData = await ApiService.getTestStats(testId!);
       setModuleStats(statsData.module);
       setCourseStats(statsData.course);
 
@@ -81,10 +78,7 @@ export default function TestSummary() {
   const handleRequestInsights = async () => {
     setRequestingInsights(true);
     try {
-      const response = await fetch(`/api/tests/${testId}/insights/request`, {
-        method: 'POST',
-      });
-      const data = await response.json();
+      const data = await ApiService.requestAIAnalysis(testId!);
       setResult(prev => prev ? { ...prev, ...data } : null);
     } catch (error) {
       console.error('Failed to request insights:', error);

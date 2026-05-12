@@ -83,11 +83,18 @@ export class ApiService {
    * Generate a new course from uploaded content
    */
   static async generateCourse(data: {
+    filename: string;
     content: string;
-    userContext: string;
+    userContext?: string;
     fileType: 'pdf' | 'docx' | 'txt' | 'md';
   }): Promise<any> {
-    const response = await this.post('/api/courses/generate', data);
+    const payload = {
+      filename: data.filename,
+      file_type: data.fileType,
+      content: data.content,
+      user_context: data.userContext
+    };
+    const response = await this.post('/api/courses/generate', payload);
     if (!response.ok) throw new Error('Failed to generate course');
     return response.json();
   }
@@ -140,6 +147,15 @@ export class ApiService {
   }
 
   /**
+   * Generate an exam for the entire course
+   */
+  static async generateCourseExam(courseId: string): Promise<any> {
+    const response = await this.post(`/api/courses/${courseId}/exam/generate`, {});
+    if (!response.ok) throw new Error('Failed to generate course exam');
+    return response.json();
+  }
+
+  /**
    * Fetch a specific test
    */
   static async fetchTest(testId: string): Promise<any> {
@@ -181,7 +197,7 @@ export class ApiService {
     }>;
     totalTime: number;
   }): Promise<any> {
-    const response = await this.post('/api/tests/submit', data);
+    const response = await this.post(`/api/tests/${data.testId}/submit`, data);
     if (!response.ok) throw new Error('Failed to submit test');
     return response.json();
   }
@@ -218,9 +234,63 @@ export class ApiService {
   /**
    * Request AI analysis for a test result
    */
-  static async requestAIAnalysis(resultId: string): Promise<any> {
-    const response = await this.post(`/api/results/${resultId}/analyze`, {});
+  static async requestAIAnalysis(testId: string): Promise<any> {
+    const response = await this.post(`/api/tests/${testId}/insights/request`, {});
     if (!response.ok) throw new Error('Failed to request AI analysis');
+    return response.json();
+  }
+
+  /**
+   * Get all course-level performance results
+   */
+  static async getCoursePerformance(): Promise<any[]> {
+    const response = await this.get('/api/results/courses');
+    if (!response.ok) return [];
+    return response.json();
+  }
+
+  /**
+   * Get all module-level performance results for a course
+   */
+  static async getModulePerformance(courseId: string): Promise<any[]> {
+    const response = await this.get(`/api/results/courses/${courseId}/modules`);
+    if (!response.ok) return [];
+    return response.json();
+  }
+
+  /**
+   * Get specific test result
+   */
+  static async getTestResult(testId: string): Promise<any> {
+    const response = await this.get(`/api/tests/${testId}/result`);
+    if (!response.ok) throw new Error('Failed to fetch test result');
+    return response.json();
+  }
+
+  /**
+   * Get questions for a test
+   */
+  static async getTestQuestions(testId: string): Promise<any[]> {
+    const response = await this.get(`/api/tests/${testId}/questions`);
+    if (!response.ok) return [];
+    return response.json();
+  }
+
+  /**
+   * Get user answers for a test
+   */
+  static async getTestAnswers(testId: string): Promise<any[]> {
+    const response = await this.get(`/api/tests/${testId}/answers`);
+    if (!response.ok) return [];
+    return response.json();
+  }
+
+  /**
+   * Get combined stats for a test (module + course averages)
+   */
+  static async getTestStats(testId: string): Promise<any> {
+    const response = await this.get(`/api/tests/${testId}/stats`);
+    if (!response.ok) throw new Error('Failed to fetch test stats');
     return response.json();
   }
 

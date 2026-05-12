@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+import { ApiService } from '../services/apiService';
 
 export interface Module {
   id: string;
@@ -91,32 +92,15 @@ export const useCourseStore = create<CourseState>()(
           // Extract file content
           const content = await extractFileContent(file);
           
-          // Get user ID from auth context (temporary - replace with proper auth)
-          const userId = localStorage.getItem('userId') || 'temp-user-id';
-          
-          // Call backend API
-          const response = await fetch('/api/courses/generate', {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'user-id': userId
-            },
-            body: JSON.stringify({
-              filename: file.name,
-              file_type: getFileType(file.name),
-              content,
-              user_context: context,
-            }),
+          // Call backend API via ApiService
+          const course = await ApiService.generateCourse({
+            filename: file.name,
+            content,
+            userContext: context || '',
+            fileType: getFileType(file.name)
           });
 
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Failed to generate course');
-          }
-
-          const course: Course = await response.json();
           set({ currentCourse: course, isGenerating: false });
-          
           return course;
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -129,19 +113,13 @@ export const useCourseStore = create<CourseState>()(
         set({ isLoadingCourse: true });
         
         try {
-          const userId = localStorage.getItem('userId') || 'temp-user-id';
+          // Load course and modules via ApiService
+          const course = await ApiService.fetchCourse(courseId);
+          // Wait, ApiService.fetchCourse needs to return modules or we fetch them separately?
+          // Let's check how ApiService is implemented, actually ApiService.fetchCourse doesn't fetch modules.
           
-          // Load course
-          const courseResponse = await fetch(`/api/courses/${courseId}`, {
-            headers: { 'user-id': userId }
-          });
-          if (!courseResponse.ok) throw new Error('Failed to load course');
-          const course: Course = await courseResponse.json();
-          
-          // Load modules
-          const modulesResponse = await fetch(`/api/courses/${courseId}/modules`, {
-            headers: { 'user-id': userId }
-          });
+          // ApiService doesn't have a specific getCourseModules, so we'll add a fetch call via ApiService.get
+          const modulesResponse = await ApiService.get(`/api/courses/${courseId}/modules`);
           if (!modulesResponse.ok) throw new Error('Failed to load modules');
           const modules: Module[] = await modulesResponse.json();
           

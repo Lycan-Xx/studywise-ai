@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { BookOpen, Clock, FileText, AlertTriangle, Trash2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { ApiService } from '../services/apiService';
 
 interface Course {
   id: string;
@@ -26,16 +27,7 @@ export default function Library() {
 
   const loadCourses = async () => {
     try {
-      const userId = localStorage.getItem('userId') || '00000000-0000-0000-0000-000000000001';
-      const response = await fetch('/api/courses', {
-        headers: { 'user-id': userId }
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to load courses');
-      }
-      
-      const data = await response.json();
+      const data = await ApiService.getUserCourses();
       setCourses(Array.isArray(data) ? data : []);
       setLoading(false);
     } catch (error) {
@@ -54,11 +46,7 @@ export default function Library() {
 
     setDeletingId(courseId);
     try {
-      const userId = localStorage.getItem('userId') || '00000000-0000-0000-0000-000000000001';
-      await fetch(`/api/courses/${courseId}`, { 
-        method: 'DELETE',
-        headers: { 'user-id': userId }
-      });
+      await ApiService.deleteCourse(courseId);
       setCourses(courses.filter(c => c.id !== courseId));
     } catch (error) {
       console.error('Failed to delete course:', error);

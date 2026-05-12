@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { ChevronDown, ChevronRight, BookOpen, TrendingUp, Clock } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { ApiService } from '../services/apiService';
 
 interface CourseResult {
   id: string;
@@ -36,12 +37,12 @@ export default function Results() {
 
   const loadCourseResults = async () => {
     try {
-      const response = await fetch('/api/results/courses');
-      const data = await response.json();
-      setCourses(data);
+      const data = await ApiService.getCoursePerformance();
+      setCourses(Array.isArray(data) ? data : []);
       setLoading(false);
     } catch (error) {
       console.error('Failed to load course results:', error);
+      setCourses([]);
       setLoading(false);
     }
   };
@@ -50,9 +51,8 @@ export default function Results() {
     if (moduleResults[courseId]) return; // Already loaded
 
     try {
-      const response = await fetch(`/api/results/courses/${courseId}/modules`);
-      const data = await response.json();
-      setModuleResults(prev => ({ ...prev, [courseId]: data }));
+      const data = await ApiService.getModulePerformance(courseId);
+      setModuleResults(prev => ({ ...prev, [courseId]: Array.isArray(data) ? data : [] }));
     } catch (error) {
       console.error('Failed to load module results:', error);
     }

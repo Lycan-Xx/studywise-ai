@@ -36,6 +36,10 @@ export function ModuleContent({ course, module, moduleIndex, totalModules }: Mod
     }
   };
 
+  const handleTakeExam = () => {
+    setLocation(`/courses/${course.id}/exam`);
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
       {/* Progress Indicator */}
@@ -105,6 +109,24 @@ export function ModuleContent({ course, module, moduleIndex, totalModules }: Mod
           <ChevronRight className="w-4 h-4" />
         </Button>
       </div>
+
+      {/* Take Exam Section (Last Module Only) */}
+      {moduleIndex === totalModules - 1 && (
+        <div className="mt-12 bg-indigo-50 border border-indigo-100 rounded-xl p-8 text-center">
+          <h2 className="text-2xl font-bold text-indigo-900 mb-3">Course Completed!</h2>
+          <p className="text-indigo-700 mb-6 max-w-lg mx-auto">
+            You've reached the end of the course. Take a comprehensive exam covering all modules to test your overall understanding.
+          </p>
+          <Button 
+            onClick={handleTakeExam}
+            size="lg"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-8 py-6 rounded-xl shadow-md transition-all hover:shadow-lg gap-2 text-lg"
+          >
+            <PlayCircle className="w-6 h-6" />
+            Take Final Exam
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

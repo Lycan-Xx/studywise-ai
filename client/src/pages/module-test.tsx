@@ -17,7 +17,11 @@ interface Question {
   explanation: string;
 }
 
-export default function ModuleTest() {
+interface ModuleTestProps {
+  isExam?: boolean;
+}
+
+export default function ModuleTest({ isExam }: ModuleTestProps) {
   const { courseId, moduleId } = useParams();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -31,38 +35,34 @@ export default function ModuleTest() {
   const [showTestTaking, setShowTestTaking] = useState(false);
 
   useEffect(() => {
-    if (!courseId || !moduleId) {
+    if (!courseId || (!moduleId && !isExam)) {
       setError('Invalid course or module ID');
       setLoading(false);
       return;
     }
 
     generateTest();
-  }, [courseId, moduleId]);
+  }, [courseId, moduleId, isExam]);
 
   const generateTest = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await ApiService.generateModuleTest({
-        courseId: courseId!,
-        moduleId: moduleId!,
-      });
+      let response;
+      if (isExam) {
+        response = await ApiService.generateCourseExam(courseId!);
+      } else {
+        response = await ApiService.generateModuleTest({
+          courseId: courseId!,
+          moduleId: moduleId!,
+        });
+      }
 
       if (response.test && response.questions) {
         setTest(response.test);
         setQuestions(response.questions);
-
-        // Show preview modal on first test attempt
-        const hasSeenPreview = localStorage.getItem(`preview-shown-${moduleId}`);
-        if (!hasSeenPreview) {
-          setShowPreviewModal(true);
-          localStorage.setItem(`preview-shown-${moduleId}`, 'true');
-        } else {
-          // Skip preview and go straight to test-taking
-          setShowTestTaking(true);
-        }
+        setShowTestTaking(true);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to generate test';
@@ -138,23 +138,6 @@ export default function ModuleTest() {
           </div>
         </div>
       </div>
-    );
-  }
-
-  // Show preview modal for first test
-  if (showPreviewModal && questions.length > 0) {
-    const moduleName = modules.find(m => m.id === moduleId)?.title || 'Module';
-    
-    return (
-      <TestPreviewModal
-        isOpen={true}
-        onClose={handleBackFromPreview}
-        onStart={handleStartTest}
-        moduleName={moduleName}
-        questionCount={questions.length}
-        estimatedTime={Math.ceil(questions.length * 1.5)}
-        sampleQuestion={questions[0]}
-      />
     );
   }
 

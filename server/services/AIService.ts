@@ -95,49 +95,91 @@ class MultiProviderAIService {
       console.log("✅ Gemini providers initialized");
     }
 
-    // Initialize OpenRouter (supports 200+ models)
-    const openrouterKey = process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY;
-    if (openrouterKey && openrouterKey !== 'your_openrouter_api_key') {
-      // GPT models via OpenRouter
+    // Initialize OpenAI
+    const openaiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
+    if (openaiKey && openaiKey !== 'your_openai_api_key') {
       this.providers.set('gpt-4o-mini', {
-        name: 'GPT-4o Mini (OpenRouter)',
+        name: 'GPT-4o Mini',
         available: true,
         requestCount: 0,
         lastReset: Date.now(),
-        maxRequests: 10,
+        maxRequests: 20,
         resetInterval: 60 * 1000,
         priority: 2,
         costPerToken: 0.00015,
         maxTokens: 128000
       });
+      console.log("✅ OpenAI providers initialized");
+    }
 
-      this.providers.set('gpt-3.5-turbo', {
-        name: 'GPT-3.5 Turbo (OpenRouter)',
+    // Initialize Anthropic
+    const anthropicKey = process.env.ANTHROPIC_API_KEY || process.env.VITE_ANTHROPIC_API_KEY;
+    if (anthropicKey && anthropicKey !== 'your_anthropic_api_key') {
+      this.providers.set('claude-3-haiku', {
+        name: 'Claude 3 Haiku',
+        available: true,
+        requestCount: 0,
+        lastReset: Date.now(),
+        maxRequests: 10,
+        resetInterval: 60 * 1000,
+        priority: 3,
+        costPerToken: 0.00025,
+        maxTokens: 200000
+      });
+      console.log("✅ Anthropic providers initialized");
+    }
+
+    // Initialize DeepSeek
+    const deepseekKey = process.env.DEEPSEEK_API_KEY || process.env.VITE_DEEPSEEK_API_KEY;
+    if (deepseekKey && deepseekKey !== 'your_deepseek_api_key') {
+      this.providers.set('deepseek-chat', {
+        name: 'DeepSeek Chat',
+        available: true,
+        requestCount: 0,
+        lastReset: Date.now(),
+        maxRequests: 30,
+        resetInterval: 60 * 1000,
+        priority: 1,
+        costPerToken: 0.00014,
+        maxTokens: 128000
+      });
+      console.log("✅ DeepSeek providers initialized");
+    }
+
+    // Initialize Kimi (Moonshot)
+    const kimiKey = process.env.MOONSHOT_API_KEY || process.env.VITE_MOONSHOT_API_KEY || process.env.KIMI_API_KEY;
+    if (kimiKey && kimiKey !== 'your_kimi_api_key') {
+      this.providers.set('moonshot-v1-8k', {
+        name: 'Kimi (Moonshot)',
+        available: true,
+        requestCount: 0,
+        lastReset: Date.now(),
+        maxRequests: 10,
+        resetInterval: 60 * 1000,
+        priority: 5,
+        costPerToken: 0.0006,
+        maxTokens: 8192
+      });
+      console.log("✅ Kimi providers initialized");
+    }
+
+    // Initialize OpenRouter (supports 200+ models)
+    const openrouterKey = process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY;
+    if (openrouterKey && openrouterKey !== 'your_openrouter_api_key') {
+      // Add a few balanced OpenRouter models as versatile fallbacks
+      this.providers.set('or-llama-3-8b', {
+        name: 'Llama 3 8B (OpenRouter)',
         available: true,
         requestCount: 0,
         lastReset: Date.now(),
         maxRequests: 15,
         resetInterval: 60 * 1000,
-        priority: 3,
-        costPerToken: 0.0005,
-        maxTokens: 16385
+        priority: 6,
+        costPerToken: 0.00002,
+        maxTokens: 32768
       });
 
-      // Claude models via OpenRouter
-      this.providers.set('claude-3-haiku', {
-        name: 'Claude 3 Haiku (OpenRouter)',
-        available: true,
-        requestCount: 0,
-        lastReset: Date.now(),
-        maxRequests: 8,
-        resetInterval: 60 * 1000,
-        priority: 5,
-        costPerToken: 0.00025,
-        maxTokens: 200000
-      });
-
-      // Add Mistral as backup
-      this.providers.set('mistral-7b', {
+      this.providers.set('or-mistral-7b', {
         name: 'Mistral 7B (OpenRouter)',
         available: true,
         requestCount: 0,
@@ -157,19 +199,7 @@ class MultiProviderAIService {
     // Initialize Hugging Face Inference API (free tier available)
     const hfToken = process.env.HUGGINGFACE_API_TOKEN || process.env.VITE_HUGGINGFACE_API_TOKEN;
     if (hfToken && hfToken !== 'hf_your_huggingface_api_token_here') {
-      this.providers.set('microsoft-dialoGPT', {
-        name: 'DialoGPT (Hugging Face)',
-        available: true,
-        requestCount: 0,
-        lastReset: Date.now(),
-        maxRequests: 30,
-        resetInterval: 60 * 1000,
-        priority: 8,
-        costPerToken: 0, // Free
-        maxTokens: 1000
-      });
-
-      this.providers.set('distilgpt2', {
+      this.providers.set('hf-distilgpt2', {
         name: 'DistilGPT-2 (Hugging Face)',
         available: true,
         requestCount: 0,
@@ -312,6 +342,108 @@ class MultiProviderAIService {
     }
   }
 
+  private async makeOpenAIRequest(model: string, prompt: string): Promise<string> {
+    const openaiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
+    if (!openaiKey) throw new Error("OpenAI API key not configured");
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openaiKey}`
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
+  }
+
+  private async makeAnthropicRequest(model: string, prompt: string): Promise<string> {
+    const anthropicKey = process.env.ANTHROPIC_API_KEY || process.env.VITE_ANTHROPIC_API_KEY;
+    if (!anthropicKey) throw new Error("Anthropic API key not configured");
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': anthropicKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 2000,
+        temperature: 0.3
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Anthropic API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.content[0].text;
+  }
+
+  private async makeDeepSeekRequest(model: string, prompt: string): Promise<string> {
+    const deepseekKey = process.env.DEEPSEEK_API_KEY || process.env.VITE_DEEPSEEK_API_KEY;
+    if (!deepseekKey) throw new Error("DeepSeek API key not configured");
+
+    const response = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${deepseekKey}`
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`DeepSeek API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
+  }
+
+  private async makeKimiRequest(model: string, prompt: string): Promise<string> {
+    const kimiKey = process.env.MOONSHOT_API_KEY || process.env.VITE_MOONSHOT_API_KEY || process.env.KIMI_API_KEY;
+    if (!kimiKey) throw new Error("Kimi API key not configured");
+
+    const response = await fetch('https://api.moonshot.cn/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${kimiKey}`
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Kimi API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
+  }
+
   private async makeOpenRouterRequest(model: string, prompt: string): Promise<string> {
     const openrouterKey = process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY;
 
@@ -320,28 +452,20 @@ class MultiProviderAIService {
       throw new Error('OpenRouter API key not configured');
     }
 
-    // Validate key format (basic check)
-    if (openrouterKey.length < 20) {
-      throw new Error('OpenRouter API key appears to be invalid (too short)');
-    }
-
     const siteUrl = process.env.SITE_URL || process.env.VITE_SITE_URL || "http://localhost:3000";
     const appName = process.env.APP_NAME || process.env.VITE_APP_NAME || "AI Test Generator";
 
     // Map internal model names to OpenRouter model IDs
     const modelMapping: Record<string, string> = {
-      'gpt-4o-mini': 'openai/gpt-4o-mini',
-      'gpt-3.5-turbo': 'openai/gpt-3.5-turbo',
-      'claude-3-haiku': 'anthropic/claude-3-haiku',
-      'llama-3.1-8b': 'meta-llama/llama-3.1-8b-instruct',
-      'mistral-7b': 'mistralai/mistral-7b-instruct'
+      'or-llama-3-8b': 'meta-llama/llama-3-8b-instruct',
+      'or-mistral-7b': 'mistralai/mistral-7b-instruct'
     };
 
     const openrouterModel = modelMapping[model] || model;
 
     // Use AbortController for timeout handling
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // Increased timeout to 60s for OR
 
     try {
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -364,32 +488,14 @@ class MultiProviderAIService {
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`OpenRouter API error (${response.status}):`, errorText);
-
-        // Handle specific error cases
-        if (response.status === 401) {
-          throw new Error('OpenRouter API key is invalid or expired. Please update your API key.');
-        } else if (response.status === 429) {
-          throw new Error('OpenRouter rate limit exceeded. Please try again later.');
-        } else if (response.status >= 500) {
-          throw new Error('OpenRouter service is temporarily unavailable. Please try again later.');
-        } else {
-          throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
-        }
+        throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-
-      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-        throw new Error('Invalid response format from OpenRouter');
-      }
-
       clearTimeout(timeoutId);
       return data.choices[0].message.content;
     } catch (error) {
       clearTimeout(timeoutId);
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Request timeout: Connection to OpenRouter timed out after 30 seconds. This might be a network connectivity issue.');
-      }
       throw error;
     }
   }
@@ -403,8 +509,7 @@ class MultiProviderAIService {
 
     // Map internal model names to Hugging Face model IDs
     const modelMapping: Record<string, string> = {
-      'microsoft-dialoGPT': 'microsoft/DialoGPT-medium',
-      'distilgpt2': 'distilgpt2'
+      'hf-distilgpt2': 'distilgpt2'
     };
 
     const hfModel = modelMapping[model] || model;
@@ -427,31 +532,11 @@ class MultiProviderAIService {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Hugging Face API error (${response.status}):`, errorText);
-
-      if (response.status === 401) {
-        throw new Error('Hugging Face API token is invalid. Please update your API token.');
-      } else if (response.status === 429) {
-        throw new Error('Hugging Face rate limit exceeded. Please try again later.');
-      } else if (response.status === 503) {
-        throw new Error('Hugging Face model is currently loading. Please try again in a few seconds.');
-      } else if (response.status >= 500) {
-        throw new Error('Hugging Face service is temporarily unavailable. Please try again later.');
-      } else {
-        throw new Error(`Hugging Face API error: ${response.status} ${response.statusText}`);
-      }
+      throw new Error(`Hugging Face API error: ${response.status}`);
     }
 
     const data = await response.json();
-
-    if (Array.isArray(data) && data.length > 0 && data[0].generated_text) {
-      return data[0].generated_text;
-    } else if (data.generated_text) {
-      return data.generated_text;
-    } else {
-      throw new Error('Invalid response format from Hugging Face');
-    }
+    return Array.isArray(data) ? data[0].generated_text : data.generated_text;
   }
 
   private async makeMockRequest(model: string, prompt: string): Promise<string> {
@@ -508,15 +593,22 @@ class MultiProviderAIService {
 
       if (providerId.startsWith('gemini')) {
         response = await this.makeGeminiRequest(providerId, prompt);
-      } else if (providerId.startsWith('microsoft') || providerId === 'distilgpt2') {
-        // Hugging Face models
+      } else if (providerId.startsWith('gpt')) {
+        response = await this.makeOpenAIRequest(providerId, prompt);
+      } else if (providerId.startsWith('claude')) {
+        response = await this.makeAnthropicRequest(providerId, prompt);
+      } else if (providerId.startsWith('deepseek')) {
+        response = await this.makeDeepSeekRequest(providerId, prompt);
+      } else if (providerId.startsWith('moonshot')) {
+        response = await this.makeKimiRequest(providerId, prompt);
+      } else if (providerId.startsWith('or-')) {
+        response = await this.makeOpenRouterRequest(providerId, prompt);
+      } else if (providerId.startsWith('hf-')) {
         response = await this.makeHuggingFaceRequest(providerId, prompt);
       } else if (providerId === 'mock-ai') {
-        // Mock AI fallback
         response = await this.makeMockRequest(providerId, prompt);
       } else {
-        // All other models go through OpenRouter
-        response = await this.makeOpenRouterRequest(providerId, prompt);
+        throw new Error(`Unhandled provider type for ${providerId}`);
       }
 
       console.log(`✅ Request successful with ${provider.name}`);
