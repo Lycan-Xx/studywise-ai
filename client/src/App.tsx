@@ -43,6 +43,11 @@ function Router() {
         <ProtectedRoute><ModuleTest /></ProtectedRoute>
       </Route>
       
+      {/* Course Exam - Test-taking page */}
+      <Route path="/courses/:courseId/exam">
+        <ProtectedRoute><ModuleTest isExam={true} /></ProtectedRoute>
+      </Route>
+      
       {/* Test Summary - Results with on-demand insights */}
       <Route path="/tests/:testId/summary">
         <ProtectedRoute><Layout><TestSummary /></Layout></ProtectedRoute>

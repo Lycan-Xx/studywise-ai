@@ -30,9 +30,10 @@ router.get('/courses/:courseId/modules', authMiddleware, CourseController.getCou
 router.delete('/courses/:courseId', authMiddleware, CourseController.deleteCourse);
 
 // Module test routes
-router.post('/api/courses/:courseId/modules/:moduleId/test/generate', authMiddleware, ModuleTestController.generateModuleTest);
-router.post('/api/tests/:testId/submit', authMiddleware, ModuleTestController.submitTest);
-router.post('/api/tests/:testId/insights/request', authMiddleware, ModuleTestController.requestInsights);
+router.post('/courses/:courseId/modules/:moduleId/test/generate', authMiddleware, ModuleTestController.generateModuleTest);
+router.post('/courses/:courseId/exam/generate', authMiddleware, ModuleTestController.generateCourseExam);
+router.post('/tests/:testId/submit', authMiddleware, ModuleTestController.submitTest);
+router.post('/tests/:testId/insights/request', authMiddleware, ModuleTestController.requestInsights);
 
 // Results routes
 router.get('/results/courses', authMiddleware, ResultsController.getCourseResults);
