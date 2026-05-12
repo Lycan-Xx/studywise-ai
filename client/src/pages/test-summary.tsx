@@ -200,7 +200,7 @@ export default function TestSummary() {
                     Areas to Focus On:
                   </h3>
                   <ul className="list-disc list-inside space-y-1">
-                    {result.weak_areas.map((area, index) => (
+                    {Array.isArray(result.weak_areas) && result.weak_areas.map((area, index) => (
                       <li key={index} className="text-studywise-gray-700">{area}</li>
                     ))}
                   </ul>
@@ -213,7 +213,7 @@ export default function TestSummary() {
                     Your Strengths:
                   </h3>
                   <ul className="list-disc list-inside space-y-1">
-                    {result.strong_areas.map((area, index) => (
+                    {Array.isArray(result.strong_areas) && result.strong_areas.map((area, index) => (
                       <li key={index} className="text-studywise-gray-700">{area}</li>
                     ))}
                   </ul>
@@ -261,7 +261,7 @@ export default function TestSummary() {
                         {index + 1}. {question.question_text}
                       </p>
 
-                      {question.options && (
+                      {Array.isArray(question.options) && (
                         <div className="space-y-2 mb-3">
                           {question.options.map((option, optIndex) => {
                             const isUserAnswer = userAnswer?.user_answer === option;

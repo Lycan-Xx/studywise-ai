@@ -9,7 +9,7 @@ import Landing from "@/pages/landing";
 import DashboardNew from "@/pages/dashboard-new";
 import LibraryNew from "@/pages/library-new";
 import ResultsNew from "@/pages/results-new";
-import SettingsNew from "@/pages/settings-new";
+import SettingsOld from "@/pages/settings-old";
 import CourseView from "@/pages/course-view";
 import ModuleTest from "@/pages/module-test";
 import TestSummary from "@/pages/test-summary";
@@ -65,7 +65,7 @@ function Router() {
       
       {/* Settings - Global question preferences */}
       <Route path="/settings">
-        <ProtectedRoute><Layout><SettingsNew /></Layout></ProtectedRoute>
+        <ProtectedRoute><Layout><SettingsOld /></Layout></ProtectedRoute>
       </Route>
       
       {/* 404 page */}

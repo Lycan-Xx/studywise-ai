@@ -93,9 +93,27 @@ export default function ModuleTest({ isExam }: ModuleTestProps) {
     setLocation(`/courses/${courseId}`);
   };
 
-  const handleTestSubmit = (results: any) => {
-    // Navigate to test summary with results
-    setLocation(`/tests/${test.id}/summary`);
+  const handleTestSubmit = async (answers: Record<string, string>) => {
+    try {
+      // Calculate time spent (this is a simplified version, you might want to use a real timer)
+      const timeSpent = 60; // Default to 60 seconds if not tracked precisely
+      
+      await ApiService.submitTest({
+        testId: test.id,
+        answers,
+        timeSpent
+      });
+
+      // Navigate to test summary
+      setLocation(`/tests/${test.id}/summary`);
+    } catch (err) {
+      console.error('Failed to submit test:', err);
+      toast({
+        title: 'Submission failed',
+        description: 'Failed to save your test results. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   if (loading) {

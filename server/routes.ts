@@ -62,14 +62,25 @@ router.get('/user/profile', authMiddleware, async (req, res) => {
 
 router.put('/user/profile', authMiddleware, async (req, res) => {
   try {
+    const userId = req.user.id;
+    console.log(`👤 Updating profile for user: ${userId}`, req.body);
+    
     const { data, error } = await supabase
       .from('user_profiles')
-      .update(req.body)
-      .eq('id', req.user.id)
+      .upsert({ 
+        id: userId,
+        ...req.body,
+        updated_at: new Date().toISOString()
+      })
       .select()
       .single();
     
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Profile update failed:', error);
+      throw error;
+    }
+    
+    console.log('✅ Profile updated successfully');
     res.json(data);
   } catch (error) {
     res.status(500).json({ message: 'Failed to update profile' });

@@ -295,8 +295,8 @@ class MultiProviderAIService {
     const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
     if (!geminiKey) throw new Error("Gemini API key not configured");
 
-    // Use the current Gemini model names (Google API v1)
-    const modelName = model === 'gemini-flash' ? 'gemini-2.0-flash' : 'gemini-2.5-pro';
+    // Use stable Gemini model names
+    const modelName = model === 'gemini-flash' ? 'gemini-1.5-flash' : 'gemini-1.5-pro';
 
     // Use AbortController for timeout handling
     const controller = new AbortController();
@@ -670,9 +670,12 @@ class MultiProviderAIService {
       const availableProviders = Array.from(this.providers.entries())
         .filter(([id, p]) => {
           const now = Date.now();
-          const isAvailable = p.available && p.requestCount < p.maxRequests;
-          const isCooldownOver = !p.cooldownUntil || now > p.cooldownUntil;
-          return isAvailable || isCooldownOver;
+          // A provider is eligible if it's available and not currently in cooldown
+          const isEnabled = p.available;
+          const isNotRateLimited = p.requestCount < p.maxRequests;
+          const isCooldownOver = !p.cooldownUntil || now >= p.cooldownUntil;
+          
+          return isEnabled && isNotRateLimited && isCooldownOver;
         })
         .sort(([_, a], [__, b]) => a.priority - b.priority);
 
@@ -803,11 +806,32 @@ Generate ${questionCount} questions now:`;
       jsonText = jsonText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
       jsonText = jsonText.replace(/^```\s*/, "").replace(/\s*```$/, "");
 
-      // Find JSON object or array
+      // Find JSON object or array - look for the largest matching block to avoid picking up partial matches in reasoning text
       let jsonMatch = jsonText.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
       
       if (!jsonMatch) {
         throw new Error("No valid JSON object or array found in response");
+      }
+
+      // If we found a match, try to find the outermost JSON structure if there are nested ones
+      const content = jsonMatch[0];
+      const firstBrace = content.indexOf('{');
+      const firstBracket = content.indexOf('[');
+      
+      let startIdx = -1;
+      let endIdx = -1;
+      
+      if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+        startIdx = jsonText.indexOf('{');
+        endIdx = jsonText.lastIndexOf('}') + 1;
+      } else if (firstBracket !== -1) {
+        startIdx = jsonText.indexOf('[');
+        endIdx = jsonText.lastIndexOf(']') + 1;
+      }
+      
+      if (startIdx !== -1 && endIdx !== -1) {
+        const cleanedJson = jsonText.substring(startIdx, endIdx);
+        return JSON.parse(cleanedJson);
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
