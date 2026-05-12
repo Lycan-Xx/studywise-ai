@@ -199,14 +199,13 @@ export class ApiService {
    */
   static async submitTest(data: {
     testId: string;
-    answers: Array<{
-      questionId: string;
-      selectedAnswer: string;
-      timeSpent: number;
-    }>;
-    totalTime: number;
+    answers: Record<string, string>;
+    timeSpent: number;
   }): Promise<any> {
-    const response = await this.post(`/api/tests/${data.testId}/submit`, data);
+    const response = await this.post(`/api/tests/${data.testId}/submit`, {
+      answers: data.answers,
+      timeSpent: data.timeSpent
+    });
     if (!response.ok) throw new Error('Failed to submit test');
     return response.json();
   }

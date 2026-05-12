@@ -70,7 +70,14 @@ export class ResultsController {
         return res.status(404).json({ message: 'Test result not found' });
       }
 
-      return res.json(data);
+      // Parse JSON fields if they are strings
+      const result = {
+        ...data,
+        weak_areas: typeof data.weak_areas === 'string' ? JSON.parse(data.weak_areas) : data.weak_areas,
+        strong_areas: typeof data.strong_areas === 'string' ? JSON.parse(data.strong_areas) : data.strong_areas,
+      };
+
+      return res.json(result);
     } catch (error) {
       console.error('Get test result error:', error);
       return res.status(500).json({ message: 'Failed to fetch test result' });
@@ -93,7 +100,13 @@ export class ResultsController {
 
       if (error) throw error;
 
-      return res.json(data || []);
+      // Parse options if they are strings
+      const questions = (data || []).map(q => ({
+        ...q,
+        options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options
+      }));
+
+      return res.json(questions);
     } catch (error) {
       console.error('Get test questions error:', error);
       return res.status(500).json({ message: 'Failed to fetch questions' });

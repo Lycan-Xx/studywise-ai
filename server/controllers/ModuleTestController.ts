@@ -16,39 +16,46 @@ export class ModuleTestController {
         return res.status(401).json({ message: 'Unauthorized' });
       }
 
-      // Get user preferences
-      const { data: profile } = await supabase
+      // Get user preferences (with fallback to defaults)
+      const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
         .select('default_question_type, default_difficulty, default_questions_per_module')
         .eq('id', userId)
         .single();
 
-      if (!profile) {
-        return res.status(404).json({ message: 'User profile not found' });
-      }
+      // Use defaults if profile is missing
+      const preferences = profile || {
+        default_question_type: 'mcq',
+        default_difficulty: 'medium',
+        default_questions_per_module: 5
+      };
 
       // Get module content
-      const { data: module } = await supabase
+      console.log(`🔍 Generating test for module: ${moduleId} (User: ${userId})`);
+      const { data: module, error: moduleError } = await supabase
         .from('modules')
         .select('content, title')
         .eq('id', moduleId)
         .single();
 
-      if (!module) {
+      if (moduleError || !module) {
+        console.error(`❌ Module not found: ${moduleId}`, moduleError);
         return res.status(404).json({ message: 'Module not found' });
       }
 
+      console.log(`✅ Module found: ${module.title}. Parsing preferences...`);
+
       // Generate questions using AI
-      const questionTypes = profile.default_question_type === 'mixed' 
+      const questionTypes = preferences.default_question_type === 'mixed' 
         ? ['multiple-choice', 'true-false']
-        : profile.default_question_type === 'mcq'
+        : preferences.default_question_type === 'mcq'
         ? ['multiple-choice']
         : ['true-false'];
 
       const aiResponse = await aiService.generateQuestions({
         content: module.content,
-        difficulty: profile.default_difficulty,
-        questionCount: profile.default_questions_per_module,
+        difficulty: preferences.default_difficulty,
+        questionCount: preferences.default_questions_per_module,
         questionTypes,
       });
 
@@ -59,8 +66,8 @@ export class ModuleTestController {
           module_id: moduleId,
           user_id: userId,
           question_count: aiResponse.questions.length,
-          question_type: profile.default_question_type,
-          difficulty: profile.default_difficulty,
+          question_type: preferences.default_question_type,
+          difficulty: preferences.default_difficulty,
           status: 'generated',
         })
         .select()
@@ -71,17 +78,25 @@ export class ModuleTestController {
       }
 
       // Insert questions
-      const questionsToInsert = aiResponse.questions.map((q, index) => ({
-        test_id: test.id,
-        question_text: q.question,
-        question_type: q.type === 'multiple-choice' ? 'mcq' : 'true_false',
-        question_order: index + 1,
-        options: q.options ? JSON.stringify(q.options) : null,
-        correct_answer: q.correctAnswer,
-        source_text: q.sourceText,
-        source_offset: q.sourceOffset,
-        explanation: q.explanation,
-      }));
+      const questionsToInsert = aiResponse.questions.map((q, index) => {
+        // Robust mapping for different AI response variations
+        const questionText = q.question || '';
+        const correctAnswer = q.correctAnswer || q.correct_answer || '';
+        const options = q.options || [];
+        const type = q.type || 'multiple-choice';
+        
+        return {
+          test_id: test.id,
+          question_text: questionText,
+          question_type: type === 'multiple-choice' ? 'mcq' : 'true_false',
+          question_order: index + 1,
+          options: options.length > 0 ? JSON.stringify(options) : null,
+          correct_answer: correctAnswer,
+          source_text: q.sourceText || q.source_text || '',
+          source_offset: q.sourceOffset || q.source_offset || 0,
+          explanation: q.explanation || '',
+        };
+      });
 
       const { error: questionsError } = await supabase
         .from('questions')
@@ -117,16 +132,17 @@ export class ModuleTestController {
         return res.status(401).json({ message: 'Unauthorized' });
       }
 
-      // Get user preferences
+      // Get user preferences (with fallback to defaults)
       const { data: profile } = await supabase
         .from('user_profiles')
         .select('default_question_type, default_difficulty')
         .eq('id', userId)
         .single();
 
-      if (!profile) {
-        return res.status(404).json({ message: 'User profile not found' });
-      }
+      const preferences = profile || {
+        default_question_type: 'mcq',
+        default_difficulty: 'medium'
+      };
 
       // Get course content
       const { data: course } = await supabase
@@ -140,15 +156,15 @@ export class ModuleTestController {
       }
 
       // Generate questions using AI (20 questions for a full exam)
-      const questionTypes = profile.default_question_type === 'mixed' 
+      const questionTypes = preferences.default_question_type === 'mixed' 
         ? ['multiple-choice', 'true-false']
-        : profile.default_question_type === 'mcq'
+        : preferences.default_question_type === 'mcq'
         ? ['multiple-choice']
         : ['true-false'];
 
       const aiResponse = await aiService.generateQuestions({
         content: course.source_content,
-        difficulty: profile.default_difficulty,
+        difficulty: preferences.default_difficulty,
         questionCount: 20,
         questionTypes,
       });
@@ -160,8 +176,8 @@ export class ModuleTestController {
           course_id: courseId,
           user_id: userId,
           question_count: aiResponse.questions.length,
-          question_type: profile.default_question_type,
-          difficulty: profile.default_difficulty,
+          question_type: preferences.default_question_type,
+          difficulty: preferences.default_difficulty,
           status: 'generated',
         })
         .select()
@@ -172,17 +188,24 @@ export class ModuleTestController {
       }
 
       // Insert questions
-      const questionsToInsert = aiResponse.questions.map((q, index) => ({
-        test_id: test.id,
-        question_text: q.question,
-        question_type: q.type === 'multiple-choice' ? 'mcq' : 'true_false',
-        question_order: index + 1,
-        options: q.options ? JSON.stringify(q.options) : null,
-        correct_answer: q.correctAnswer,
-        source_text: q.sourceText,
-        source_offset: q.sourceOffset,
-        explanation: q.explanation,
-      }));
+      const questionsToInsert = aiResponse.questions.map((q, index) => {
+        const questionText = q.question || '';
+        const correctAnswer = q.correctAnswer || q.correct_answer || '';
+        const options = q.options || [];
+        const type = q.type || 'multiple-choice';
+
+        return {
+          test_id: test.id,
+          question_text: questionText,
+          question_type: type === 'multiple-choice' ? 'mcq' : 'true_false',
+          question_order: index + 1,
+          options: options.length > 0 ? JSON.stringify(options) : null,
+          correct_answer: correctAnswer,
+          source_text: q.sourceText || q.source_text || '',
+          source_offset: q.sourceOffset || q.source_offset || 0,
+          explanation: q.explanation || '',
+        };
+      });
 
       const { error: questionsError } = await supabase
         .from('questions')
