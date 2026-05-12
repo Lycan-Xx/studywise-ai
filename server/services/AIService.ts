@@ -50,6 +50,7 @@ interface AIProvider {
   priority: number;
   costPerToken?: number;
   maxTokens?: number;
+  cooldownUntil?: number;
 }
 
 class MultiProviderAIService {
@@ -77,7 +78,7 @@ class MultiProviderAIService {
         lastReset: Date.now(),
         maxRequests: 15,
         resetInterval: 60 * 1000,
-        priority: 1,
+        priority: 2,
         costPerToken: 0.000125,
         maxTokens: 1000000
       });
@@ -230,6 +231,9 @@ class MultiProviderAIService {
     });
 
     console.log(`🤖 Multi-provider AI service initialized with ${this.providers.size} providers`);
+    
+    // Perform initial health check in background
+    setTimeout(() => this.healthCheck(), 1000);
   }
 
   private resetProviderLimits() {
@@ -248,8 +252,17 @@ class MultiProviderAIService {
     const availableProviders = Array.from(this.providers.entries())
       .filter(([_, provider]) => {
         // Check availability and rate limits
+        const now = Date.now();
         if (!provider.available || provider.requestCount >= provider.maxRequests) {
-          return false;
+          // Check if cooldown has expired
+          if (provider.cooldownUntil && now > provider.cooldownUntil) {
+            provider.available = true;
+            provider.cooldownUntil = undefined;
+            provider.requestCount = 0;
+            console.log(`✅ Provider ${provider.name} cooldown expired - back online`);
+          } else {
+            return false;
+          }
         }
         
         // Check if provider can handle content size
@@ -260,24 +273,13 @@ class MultiProviderAIService {
         return true;
       })
       .sort(([_, a], [__, b]) => {
-        // Always prioritize Gemini providers first (they're more reliable and don't require OpenRouter)
-        const aIsGemini = a.name.includes('Gemini');
-        const bIsGemini = b.name.includes('Gemini');
-        
-        if (aIsGemini && !bIsGemini) return -1; // Gemini first
-        if (!aIsGemini && bIsGemini) return 1;  // Gemini first
-        
-        // Smart provider selection based on request size
-        if (options && options.questionCount >= 15) {
-          // Large requests: prioritize cost-effectiveness
-          return (a.costPerToken || 0) - (b.costPerToken || 0);
-        } else if (options && options.questionCount <= 5) {
-          // Small requests: prioritize speed (lower priority number = higher priority)
-          return a.priority - b.priority;
-        } else {
-          // Medium requests: balance priority and cost
+        // Respect the priority property (lower number = higher priority)
+        if (a.priority !== b.priority) {
           return a.priority - b.priority;
         }
+        
+        // Otherwise use cost as tie-breaker
+        return (a.costPerToken || 0) - (b.costPerToken || 0);
       });
 
     if (availableProviders.length === 0) {
@@ -634,33 +636,82 @@ class MultiProviderAIService {
           }
         } else if (error.message.includes('429') || error.message.includes('rate limit')) {
           provider.available = false;
+          provider.cooldownUntil = Date.now() + 60000; // 60 second cooldown
           console.log(`⏳ Provider ${provider.name} rate limited, cooldown for 60 seconds`);
-          setTimeout(() => {
-            provider.available = true;
-            provider.requestCount = 0;
-            console.log(`✅ Provider ${provider.name} back online`);
-          }, 60000);
         } else if (error.message.includes('quota') || error.message.includes('insufficient')) {
           provider.available = false;
+          provider.cooldownUntil = Date.now() + 3600000; // 1 hour cooldown
           console.log(`💰 Provider ${provider.name} quota exceeded, disabling for 1 hour`);
-          setTimeout(() => {
-            provider.available = true;
-            provider.requestCount = 0;
-          }, 3600000); // 1 hour
         } else if (error.message.includes('temporarily unavailable') || error.message.includes('5')) {
           // Temporary server errors - retry after delay
           provider.available = false;
+          provider.cooldownUntil = Date.now() + 30000; // 30 second cooldown
           console.log(`🌐 Provider ${provider.name} temporarily unavailable, cooldown for 30 seconds`);
-          setTimeout(() => {
-            provider.available = true;
-            provider.requestCount = 0;
-            console.log(`✅ Provider ${provider.name} back online`);
-          }, 30000);
         }
       }
 
       throw error;
     }
+  }
+
+  /**
+   * Universal AI call with automatic failover and retries
+   */
+  private async executeWithFailover(prompt: string, options?: any): Promise<string> {
+    const allProviderIds = Array.from(this.providers.keys());
+    const attemptedProviders = new Set<string>();
+    let lastError: Error | null = null;
+    
+    // Allow up to 5 attempts across different providers
+    const maxAttempts = 5;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      // Find best available provider based on priority and availability
+      const availableProviders = Array.from(this.providers.entries())
+        .filter(([id, p]) => {
+          const now = Date.now();
+          const isAvailable = p.available && p.requestCount < p.maxRequests;
+          const isCooldownOver = !p.cooldownUntil || now > p.cooldownUntil;
+          return isAvailable || isCooldownOver;
+        })
+        .sort(([_, a], [__, b]) => a.priority - b.priority);
+
+      if (availableProviders.length === 0) {
+        console.warn("⚠️ No providers available for failover, waiting 2s...");
+        await this.sleep(2000);
+        continue;
+      }
+
+      // Log status of available providers
+      if (attempt === 0) {
+        console.log(`🔍 Available providers for this request: ${availableProviders.map(([_, p]) => p.name).join(', ')}`);
+      }
+
+      // Try to find a provider we haven't tried in this specific chain yet
+      let providerId = availableProviders.find(([id]) => !attemptedProviders.has(id))?.[0];
+      
+      // If all available have been tried at least once, just pick the top one
+      if (!providerId) {
+        providerId = availableProviders[0][0];
+      }
+
+      attemptedProviders.add(providerId);
+      const provider = this.providers.get(providerId)!;
+
+      try {
+        console.log(`🔄 [Failover Attempt ${attempt + 1}/${maxAttempts}] Using ${provider.name}`);
+        const response = await this.makeProviderRequest(providerId, prompt);
+        return response;
+      } catch (error) {
+        lastError = error as Error;
+        console.warn(`❌ Provider ${provider.name} failed:`, error instanceof Error ? error.message : error);
+        
+        // Wait a bit before next attempt to allow for transient issues or cooldowns
+        await this.sleep(1000);
+      }
+    }
+
+    throw lastError || new Error("All AI providers failed after multiple attempts");
   }
 
   async generateQuestions(options: GenerateQuestionsOptions): Promise<AIResponse> {
@@ -674,151 +725,29 @@ class MultiProviderAIService {
     }
 
     console.log(`🤖 Generating ${options.questionCount} questions using multi-provider system`);
-    this.logProviderStatus();
-
     const prompt = this.buildPrompt(options);
-    let lastError: Error | null = null;
 
-    // Try all available providers, but prioritize Gemini
-    // Get list of all available provider IDs upfront
-    const allProviderIds = Array.from(this.providers.keys());
-    const attemptedProviders = new Set<string>();
-    let consecutiveFailures = 0;
-    let providerIndex = 0;
-    let mockAITried = false;
-    const maxAttempts = allProviderIds.length * 2; // Allow retries
-    
-    // Try each provider at least once before retrying
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      // First, try to get next untried provider
-      let providerId: string | null = null;
+    try {
+      const response = await this.executeWithFailover(prompt, options);
+      const parsedResponse = this.parseAIResponse(response);
       
-      // Try to find a provider we haven't tried yet
-      for (let i = 0; i < allProviderIds.length; i++) {
-        const candidateId = allProviderIds[(providerIndex + i) % allProviderIds.length];
-        const candidate = this.providers.get(candidateId);
-        
-        if (candidate && candidate.available && candidate.requestCount < candidate.maxRequests) {
-          // Check content size
-          const contentLength = options?.content?.length || 0;
-          if (!candidate.maxTokens || contentLength <= candidate.maxTokens * 0.6) {
-            if (!attemptedProviders.has(candidateId) || attempt >= allProviderIds.length) {
-              providerId = candidateId;
-              providerIndex = (providerIndex + i + 1) % allProviderIds.length;
-              break;
-            }
-          }
-        }
-      }
+      // Validate specifically for questions
+      this.validateQuestionsResponse(parsedResponse);
+      
+      const processedResponse = this.processGeneratedQuestions(parsedResponse, options);
 
-      if (!providerId) {
-        // If we've tried all providers at least once, break
-        if (attemptedProviders.size >= allProviderIds.length) {
-          console.error("❌ All providers have been attempted and failed");
-          break;
-        }
-        // If we've had too many consecutive failures, wait longer
-        if (consecutiveFailures >= 3) {
-          console.log("⏳ Multiple consecutive failures, waiting 5 seconds before retry...");
-          await this.sleep(5000);
-          consecutiveFailures = 0; // Reset counter
-        } else {
-          console.log("⏳ No suitable providers available, waiting 2 seconds before retry...");
-          await this.sleep(2000);
-        }
-        continue;
-      }
+      // Cache the successful response
+      this.setCachedQuestions(contentHash, processedResponse);
 
-      // Add to attempted set
-      if (!attemptedProviders.has(providerId)) {
-        attemptedProviders.add(providerId);
-      }
-
-      try {
-        const totalAttempts = allProviderIds.length * 2;
-        console.log(`🔄 Attempt ${attempt + 1}/${totalAttempts}: Using ${this.providers.get(providerId)?.name}`);
-
-        const response = await this.makeProviderRequest(providerId, prompt);
-        const parsedResponse = this.parseAIResponse(response);
-        const processedResponse = this.processGeneratedQuestions(parsedResponse, options);
-
-        // Cache the successful response
-        this.setCachedQuestions(contentHash, processedResponse);
-
-        console.log(`✅ Successfully generated ${processedResponse.questions.length} questions with ${this.providers.get(providerId)?.name}`);
-        return processedResponse;
-
-      } catch (error) {
-        lastError = error as Error;
-        const providerName = this.providers.get(providerId)?.name || providerId;
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.log(`❌ Provider ${providerName} failed:`, errorMessage);
-        
-        consecutiveFailures++;
-
-        // Check if it's a network/connectivity error
-        const isNetworkError = errorMessage.includes('fetch failed') || 
-                               errorMessage.includes('timeout') || 
-                               errorMessage.includes('ECONNREFUSED') ||
-                               errorMessage.includes('ENOTFOUND') ||
-                               (error instanceof Error && 'code' in error && error.code === 'UND_ERR_CONNECT_TIMEOUT');
-        
-        if (isNetworkError) {
-          console.warn(`🌐 Network connectivity issue detected. This might be a firewall, proxy, or internet connection problem.`);
-          // For network errors, try other providers immediately without long delays
-          const totalAttempts = allProviderIds.length * 2;
-          if (attempt < totalAttempts - 1) {
-            const delay = 500; // Short delay for network errors
-            console.log(`⏳ Waiting ${delay}ms before trying next provider...`);
-            await this.sleep(delay);
-          }
-        } else {
-          // For other errors, use normal delay
-          const totalAttempts = allProviderIds.length * 2;
-          if (attempt < totalAttempts - 1) {
-            const delay = Math.min(1000 * (attempt + 1), 3000); // Max 3 seconds
-            console.log(`⏳ Waiting ${delay}ms before trying next provider...`);
-            await this.sleep(delay);
-          }
-        }
-      }
+      return processedResponse;
+    } catch (error) {
+      console.error("Critical AI Failure in generateQuestions, falling back to Mock AI:", error);
+      
+      // Ultimate fallback to Mock AI
+      const response = await this.makeMockRequest('mock-ai', prompt);
+      const parsedResponse = this.parseAIResponse(response);
+      return this.processGeneratedQuestions(parsedResponse, options);
     }
-
-    // Final attempt: try mock AI if not already tried
-    if (!mockAITried && this.providers.get('mock-ai')?.available) {
-      console.log("🔄 Final attempt: Using Mock AI fallback...");
-      mockAITried = true;
-      const mockProvider = this.providers.get('mock-ai');
-      if (mockProvider) {
-        mockProvider.requestCount++;
-        try {
-          const response = await this.makeMockRequest('mock-ai', prompt);
-          const parsedResponse = this.parseAIResponse(response);
-          const processedResponse = this.processGeneratedQuestions(parsedResponse, options);
-
-          // Cache the successful response
-          this.setCachedQuestions(contentHash, processedResponse);
-
-          console.log(`✅ Successfully generated ${processedResponse.questions.length} questions with ${mockProvider.name}`);
-          return processedResponse;
-        } catch (error) {
-          lastError = error as Error;
-          console.log(`❌ Mock AI fallback failed:`, error instanceof Error ? error.message : 'Unknown error');
-        }
-      }
-    }
-
-    // If all attempts failed, provide helpful error message
-    console.error("❌ All providers failed to generate questions");
-    this.logProviderStatus();
-    
-    // Check if Gemini is configured
-    const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-    if (!geminiKey) {
-      throw new Error(`Question generation failed: No AI providers configured. Please set GEMINI_API_KEY environment variable. Last error: ${lastError?.message || "Unknown"}`);
-    }
-    
-    throw new Error(`Question generation failed: All providers exhausted. Last error: ${lastError?.message || "Unknown"}`);
   }
 
   private buildPrompt(options: GenerateQuestionsOptions): string {
@@ -868,61 +797,44 @@ Generate ${questionCount} questions now:`;
         throw new Error("Response is too short or empty");
       }
 
-      // Check for common gibberish patterns
-      const gibberishPatterns = [
-        /^[^\w\s]*$/, // Only symbols/no alphanumeric
-        /(\w{20,})/, // Very long words (likely gibberish)
-        /^.{0,50}$/, // Too short for valid JSON response
-        /(.)\1{10,}/, // Repeated characters
-      ];
-
-      if (gibberishPatterns.some(pattern => pattern.test(text))) {
-        throw new Error("Response appears to be gibberish or malformed");
-      }
-
       let jsonText = text.trim();
 
       // Remove markdown code blocks
       jsonText = jsonText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
       jsonText = jsonText.replace(/^```\s*/, "").replace(/\s*```$/, "");
 
-      // Find JSON object - try multiple patterns
-      let jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+      // Find JSON object or array
+      let jsonMatch = jsonText.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+      
       if (!jsonMatch) {
-        // Try to find JSON in a larger context
-        jsonMatch = jsonText.match(/\{[\s\S]{50,}\}/);
-      }
-
-      if (!jsonMatch) {
-        throw new Error("No valid JSON object found in response");
+        throw new Error("No valid JSON object or array found in response");
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
-
-      // Validate structure
-      if (!parsed.questions || !Array.isArray(parsed.questions)) {
-        throw new Error("Invalid response format - questions array missing");
-      }
-
-      if (parsed.questions.length === 0) {
-        throw new Error("No questions generated");
-      }
-
-      // Validate each question has required fields
-      for (const question of parsed.questions) {
-        if (!question.question || typeof question.question !== 'string') {
-          throw new Error("Invalid question format - missing or invalid question text");
-        }
-        if (!question.correctAnswer || typeof question.correctAnswer !== 'string') {
-          throw new Error("Invalid question format - missing or invalid correct answer");
-        }
-      }
-
       return parsed;
     } catch (error) {
       console.error("Failed to parse AI response:", error);
       console.error("Response preview:", text.substring(0, 300) + "...");
       throw new Error(`Invalid JSON response from AI: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private validateQuestionsResponse(parsed: any): void {
+    if (!parsed.questions || !Array.isArray(parsed.questions)) {
+      throw new Error("Invalid response format - questions array missing");
+    }
+
+    if (parsed.questions.length === 0) {
+      throw new Error("No questions generated");
+    }
+
+    for (const question of parsed.questions) {
+      if (!question.question || typeof question.question !== 'string') {
+        throw new Error("Invalid question format - missing or invalid question text");
+      }
+      if (!question.correctAnswer && !question.correct_answer) {
+        throw new Error("Invalid question format - missing correct answer");
+      }
     }
   }
 
@@ -1062,17 +974,11 @@ Provide insights in JSON format:
 }`;
 
     try {
-      const providerId = this.getAvailableProvider();
-      if (!providerId) {
-        return this.generateBasicInsights(testResult);
-      }
-
-      const response = await this.makeProviderRequest(providerId, prompt);
+      const response = await this.executeWithFailover(prompt);
       const jsonMatch = response.match(/\{[\s\S]*\}/);
 
       if (jsonMatch) {
         const insights = JSON.parse(jsonMatch[0]);
-        console.log(`✅ Generated insights using ${this.providers.get(providerId)?.name}`);
         return insights;
       }
 
@@ -1291,12 +1197,7 @@ Return a JSON array of modules in this exact format:
 IMPORTANT: Return ONLY the JSON array, no additional text.`;
 
     try {
-      const providerId = this.getAvailableProvider();
-      if (!providerId) {
-        throw new Error('No AI providers available');
-      }
-
-      const response = await this.makeProviderRequest(providerId, prompt);
+      const response = await this.executeWithFailover(prompt);
       const parsed = this.parseAIResponse(response);
 
       if (!Array.isArray(parsed) || parsed.length === 0) {

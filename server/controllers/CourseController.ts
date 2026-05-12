@@ -199,6 +199,12 @@ export class CourseController {
   static async getUserCourses(req: Request, res: Response) {
     try {
       const userId = req.user?.id;
+      console.log(`🔍 Fetching courses for user: ${userId}`);
+      
+      if (!userId) {
+        console.warn('⚠️ No user ID found in request');
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
 
       const { data: courses, error } = await supabase
         .from('courses')
@@ -206,10 +212,15 @@ export class CourseController {
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Supabase error fetching courses:', error);
+        throw error;
+      }
 
+      console.log(`✅ Found ${courses?.length || 0} courses for user ${userId}`);
       return res.json(courses || []);
     } catch (error) {
+      console.error('❌ getUserCourses error:', error);
       return res.status(500).json({ message: 'Failed to fetch courses' });
     }
   }
@@ -234,6 +245,115 @@ export class CourseController {
       return res.json({ message: 'Course deleted successfully' });
     } catch (error) {
       return res.status(500).json({ message: 'Failed to delete course' });
+    }
+  }
+
+  /**
+   * Retry/Regenerate course generation
+   * POST /api/courses/:courseId/retry
+   */
+  static async retryGeneration(req: Request, res: Response) {
+    try {
+      const { courseId } = req.params;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      // 1. Fetch existing course to get source content
+      const { data: course, error: fetchError } = await supabase
+        .from('courses')
+        .select()
+        .eq('id', courseId)
+        .eq('user_id', userId)
+        .single();
+
+      if (fetchError || !course) {
+        return res.status(404).json({ message: 'Course not found' });
+      }
+
+      console.log(`🔄 Retrying generation for course: ${courseId} (${course.title})`);
+
+      // 2. Clean up existing modules
+      await supabase
+        .from('modules')
+        .delete()
+        .eq('course_id', courseId);
+
+      // 3. Reset course status to processing
+      await supabase
+        .from('courses')
+        .update({
+          parsing_status: 'processing',
+          parsing_error: null,
+          used_fallback: false
+        })
+        .eq('id', courseId);
+
+      // 4. Run generation logic (same as generateCourse but without creating the record)
+      try {
+        const modules = await aiService.parseContentIntoModules({
+          content: course.source_content,
+          context: course.user_context,
+          courseId: course.id,
+        });
+
+        // Insert modules
+        const { error: modulesError } = await supabase
+          .from('modules')
+          .insert(modules);
+
+        if (modulesError) throw modulesError;
+
+        // Update course status
+        const { data: updatedCourse } = await supabase
+          .from('courses')
+          .update({
+            parsing_status: 'completed',
+            total_modules: modules.length,
+            used_fallback: false,
+          })
+          .eq('id', course.id)
+          .select()
+          .single();
+
+        return res.json(updatedCourse);
+      } catch (aiError) {
+        console.error('Retry AI parsing error, using fallback:', aiError);
+        
+        // Fallback: Create single module with full content
+        const fallbackModule = {
+          course_id: course.id,
+          title: 'Full Content',
+          content: course.source_content,
+          module_order: 1,
+          word_count: (course.source_content || '').split(/\s+/).length,
+          estimated_read_time: Math.ceil((course.source_content || '').split(/\s+/).length / 200),
+        };
+
+        await supabase.from('modules').insert(fallbackModule);
+
+        // Update course with fallback status
+        const { data: updatedCourse } = await supabase
+          .from('courses')
+          .update({
+            parsing_status: 'completed',
+            total_modules: 1,
+            used_fallback: true,
+            parsing_error: aiError instanceof Error ? aiError.message : 'AI parsing failed during retry',
+          })
+          .eq('id', course.id)
+          .select()
+          .single();
+
+        return res.json(updatedCourse);
+      }
+    } catch (error) {
+      console.error('Retry generation error:', error);
+      return res.status(500).json({ 
+        message: error instanceof Error ? error.message : 'Failed to retry course generation' 
+      });
     }
   }
 }

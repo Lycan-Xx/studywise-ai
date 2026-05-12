@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useParams, useLocation } from 'wouter';
-import { AlertTriangle, BookOpen } from 'lucide-react';
+import { AlertTriangle, BookOpen, RefreshCw } from 'lucide-react';
 import { useCourseStore } from '../stores/useCourseStore';
 import { ModuleSidebar } from '../components/course/ModuleSidebar';
 import { ModuleContent } from '../components/course/ModuleContent';
@@ -14,7 +14,8 @@ export default function CourseView() {
     currentModule, 
     modules, 
     isLoadingCourse,
-    loadCourse 
+    loadCourse,
+    retryCourse 
   } = useCourseStore();
 
   useEffect(() => {
@@ -72,6 +73,15 @@ export default function CourseView() {
                 <p className="text-sm text-amber-700 mt-1">
                   AI parsing encountered an issue. Showing full content as a single module.
                 </p>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="mt-3 text-xs gap-2 border-amber-200 text-amber-700 hover:bg-amber-50"
+                  onClick={() => retryCourse(currentCourse.id)}
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  Try Regenerating Chapters
+                </Button>
               </div>
             </div>
           </div>
