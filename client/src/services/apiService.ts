@@ -24,12 +24,12 @@ export class ApiService {
     };
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.id) {
-        headers['user-id'] = user.id;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
       }
     } catch (error) {
-      console.warn('Failed to get user for auth headers:', error);
+      console.warn('Failed to get session for auth headers:', error);
     }
 
     return headers;

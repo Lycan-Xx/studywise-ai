@@ -125,7 +125,7 @@ const createErrorQuestions = (config: TestConfig, errorMessage: string): Questio
 
   for (let i = 1; i <= config.numberOfQuestions; i++) {
     questions.push({
-      id: i,
+      id: String(i),
       type: config.questionType,
       question: `Unable to generate question ${i}. ${errorMessage}`,
       options: config.questionType === 'mcq' ? ['Option A', 'Option B', 'Option C', 'Option D'] : ['True', 'False'],
@@ -150,6 +150,11 @@ export const useTestStore = create<TestStore>()(
         isGenerating: false,
         error: null,
         questionCache: {},
+        currentTest: null,
+        currentQuestion: null,
+        currentQuestionIndex: 0,
+        testResult: null,
+        isSubmitting: false,
 
         // Actions
         updateConfig: (updates) => {
@@ -211,7 +216,7 @@ export const useTestStore = create<TestStore>()(
               }
 
               return {
-                id: index + 1, // Use sequential IDs for internal use
+                id: String(index + 1), // Use sequential IDs for internal use
                 type: config.questionType, // Use the config type (mcq or true-false)
                 question: q.question,
                 options: options,
@@ -372,16 +377,12 @@ export const useTestStore = create<TestStore>()(
             const { currentTest } = get();
             if (!currentTest) throw new Error('No active test session');
 
-            const answers = Object.entries(currentTest.answers).map(([questionId, selectedAnswer]) => ({
-              questionId,
-              selectedAnswer,
-              timeSpent: Math.floor(totalTime / currentTest.questions.length),
-            }));
+            const answers = currentTest.answers;
 
             const result = await ApiService.submitTest({
               testId,
               answers,
-              totalTime,
+              timeSpent: totalTime,
             });
 
             set({

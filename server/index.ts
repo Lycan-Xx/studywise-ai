@@ -63,6 +63,15 @@ app.get('/api/db-check', async (req, res) => {
   }
 });
 
+// Global error handling middleware
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('Unhandled server error:', err);
+  res.status(500).json({
+    error: 'Internal Server Error',
+    message: err instanceof Error ? err.message : 'Unknown error occurred'
+  });
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://0.0.0.0:${PORT}`);
   console.log(`Health check available at http://0.0.0.0:${PORT}/health`);

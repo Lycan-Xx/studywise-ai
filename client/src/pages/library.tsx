@@ -14,6 +14,9 @@ interface Course {
   used_fallback: boolean;
   created_at: string;
   last_studied_at?: string;
+  modules_tested?: number;
+  overall_average_score?: number;
+  parsing_status?: string;
 }
 
 export default function Library() {
@@ -29,8 +32,22 @@ export default function Library() {
 
   const loadCourses = async () => {
     try {
-      const data = await ApiService.getUserCourses();
-      setCourses(Array.isArray(data) ? data : []);
+      const [coursesData, perfData] = await Promise.all([
+        ApiService.getUserCourses(),
+        ApiService.getCoursePerformance().catch(() => [])
+      ]);
+      
+      const merged = Array.isArray(coursesData) ? coursesData.map((course: any) => {
+        const perf = Array.isArray(perfData) ? perfData.find((p: any) => p.course_id === course.id) : null;
+        return {
+          ...course,
+          modules_tested: perf?.modules_tested || 0,
+          overall_average_score: perf?.overall_average_score || 0,
+          last_studied_at: perf?.last_studied_at || course.created_at
+        };
+      }) : [];
+      
+      setCourses(merged);
       setLoading(false);
     } catch (error) {
       console.error('Failed to load courses:', error);
@@ -147,6 +164,28 @@ export default function Library() {
                     </span>
                   </div>
                 </div>
+
+                {course.total_modules > 0 && course.parsing_status === 'completed' && (
+                  <div className="mt-4">
+                    <div className="flex justify-between text-xs text-studywise-gray-500 mb-1">
+                      <span>Progress</span>
+                      <span>{course.modules_tested || 0} / {course.total_modules}</span>
+                    </div>
+                    <div className="w-full bg-studywise-gray-200 rounded-full h-1.5">
+                      <div
+                        className="bg-primary h-1.5 rounded-full transition-all"
+                        style={{ width: `${Math.min(100, Math.max(0, ((course.modules_tested || 0) / course.total_modules) * 100))}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+                
+                {course.parsing_status === 'processing' && (
+                  <div className="mt-4 flex items-center gap-2 text-xs text-blue-600 bg-blue-50 px-3 py-2 rounded">
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    <span>Processing course...</span>
+                  </div>
+                )}
 
                 {course.used_fallback && (
                   <div className="mt-4 flex flex-col gap-2">

@@ -81,7 +81,7 @@ export class ModuleTestController {
       const questionsToInsert = aiResponse.questions.map((q, index) => {
         // Robust mapping for different AI response variations
         const questionText = q.question || '';
-        const correctAnswer = q.correctAnswer || q.correct_answer || '';
+        const correctAnswer = q.correctAnswer || '';
         const options = q.options || [];
         const type = q.type || 'multiple-choice';
         
@@ -92,8 +92,8 @@ export class ModuleTestController {
           question_order: index + 1,
           options: options.length > 0 ? JSON.stringify(options) : null,
           correct_answer: correctAnswer,
-          source_text: q.sourceText || q.source_text || '',
-          source_offset: q.sourceOffset || q.source_offset || 0,
+          source_text: q.sourceText || '',
+          source_offset: q.sourceOffset || 0,
           explanation: q.explanation || '',
         };
       });
@@ -190,7 +190,7 @@ export class ModuleTestController {
       // Insert questions
       const questionsToInsert = aiResponse.questions.map((q, index) => {
         const questionText = q.question || '';
-        const correctAnswer = q.correctAnswer || q.correct_answer || '';
+        const correctAnswer = q.correctAnswer || '';
         const options = q.options || [];
         const type = q.type || 'multiple-choice';
 
@@ -201,8 +201,8 @@ export class ModuleTestController {
           question_order: index + 1,
           options: options.length > 0 ? JSON.stringify(options) : null,
           correct_answer: correctAnswer,
-          source_text: q.sourceText || q.source_text || '',
-          source_offset: q.sourceOffset || q.source_offset || 0,
+          source_text: q.sourceText || '',
+          source_offset: q.sourceOffset || 0,
           explanation: q.explanation || '',
         };
       });

@@ -156,9 +156,10 @@ export default function Dashboard() {
             
             <textarea
               value={context}
-              onChange={(e) => setContext(e.target.value.slice(0, maxCharacters))}
+              onChange={(e) => setContext(e.target.value)}
               placeholder="e.g., This is a biology textbook chapter about cell structure..."
               disabled={isGenerating}
+              maxLength={maxCharacters}
               className="w-full px-4 py-3 border border-studywise-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50"
               rows={4}
             />
