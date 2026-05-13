@@ -2,16 +2,15 @@
 
 A modern full-stack application that uses multi-provider AI to generate personalized tests and study materials from any text content, with advanced analytics and learning insights.
 
-## 📚 Documentation
+## Documentation
 
 For comprehensive project documentation, see:
 - **[Project Documentation](docs/PROJECT_DOCUMENTATION.md)** - Technical overview, architecture, and implementation details
 - **[Context & Vision](docs/CONTEXT.md)** - Project vision, learning science foundation, and future roadmap
 - **[Architecture Analysis](docs/ARCHITECTURE_ANALYSIS.md)** - Frontend/backend architecture and component analysis
 - **[AI Integration Plan](docs/ai-plan.md)** - Multi-provider AI system design and implementation
-- **[Backend Documentation](docs/backend_documentation_2025-09-12.md)** - Complete backend API and service documentation
-- **[State Management](docs/zustant-state-management-setup.md)** - Zustand store architecture and implementation
 - **[Deployment Guide](docs/RENDER_DEPLOYMENT.md)** - Production deployment instructions
+- **[Database Schema](docs/studywise_complete_schema.sql)** - Complete PostgreSQL schema and views
 
 ## Project Structure
 
@@ -127,18 +126,16 @@ Create a `.env` file in the project root:
 ```env
 # AI Configuration
 GEMINI_API_KEY=your_gemini_api_key
-VITE_GEMINI_API_KEY=your_gemini_api_key
+DEEPSEEK_API_KEY=your_deepseek_api_key
 OPENROUTER_API_KEY=your_openrouter_api_key
-VITE_OPENROUTER_API_KEY=your_openrouter_api_key
+HUGGING_FACE_API_KEY=your_hugging_face_api_key
 
 # Database & Auth
 VITE_SUPABASE_URL=your_supabase_project_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-GOOGLE_OAUTH_CLIENT_ID=your_google_oauth_client_id
-GOOGLE_OAUTH_CLIENT_SECRET=your_google_oauth_client_secret
 
 # API Configuration
-VITE_API_URL=https://your-deployed-backend.com
+VITE_API_URL=http://localhost:5000
 
 # Server
 NODE_ENV=development
@@ -147,11 +144,13 @@ PORT=5000
 
 ### API Endpoints
 
-- `POST /api/tests/generate` - Generate questions from content
-- `POST /api/tests/flashcards` - Generate flashcards
-- `POST /api/tests/:testId/results` - Save test results with user answers
-- `POST /api/tests/:testId/insights` - Generate AI-powered performance insights
-- `GET /api/library` - Retrieve user's saved tests and materials
+- `POST /api/courses/generate` - Generate a course from a topic or text
+- `POST /api/courses/:courseId/modules/:moduleId/test/generate` - Generate a module-specific test
+- `POST /api/tests/:testId/submit` - Submit test answers and calculate results
+- `GET /api/tests/:testId/result` - Retrieve detailed test performance
+- `POST /api/tests/:testId/insights/request` - Generate AI-powered performance analysis
+- `GET /api/results/courses` - Retrieve course-level performance metrics
+- `GET /api/results/courses/:courseId/modules` - Retrieve module-level breakdown
 - `GET /health` - Health check endpoint
 
 ## Architecture
@@ -167,22 +166,21 @@ PORT=5000
 ### Backend (Server)
 - **Runtime**: Node.js with TypeScript
 - **Framework**: Express.js
-- **AI Integration**: Multi-provider AI system (Google Gemini, OpenRouter, Claude, GPT)
-- **Authentication**: Supabase Auth with OAuth support
-- **Database**: Supabase (PostgreSQL) with Row-Level Security
-- **Deployment**: Render with automatic scaling
+- **AI Integration**: Multi-provider failover system (Gemini 2.0 Flash, DeepSeek, OpenRouter, Hugging Face)
+- **Authentication**: Supabase Auth
+- **Database**: Supabase (PostgreSQL) with Row-Level Security (RLS)
+- **Deployment**: Render (Backend) & Netlify/Vercel (Frontend)
 - **Caching**: In-memory caching for AI responses
 - **Rate Limiting**: Intelligent throttling across AI providers
 
 ### Key Features
-- Multi-Provider AI System: Intelligent failover between Gemini, GPT, Claude, and other models
-- Advanced Document Processing: Support for PDF, DOCX, TXT, and Markdown files
-- Source-Linked Questions: Every question traces back to its origin in the source material
-- AI-Powered Insights: Automated performance analysis and study recommendations
-- Comprehensive Analytics: Detailed progress tracking and learning patterns
-- Mobile-First Design: Fully responsive interface optimized for all devices
-- Real-Time Test Taking: Live progress tracking with auto-save functionality
-- Secure Authentication: Supabase Auth with OAuth support
+- Multi-Provider AI System: Intelligent failover between Gemini 2.0 Flash, DeepSeek V3, OpenRouter, and Hugging Face models
+- Intelligent Failover: Automatic retry logic that switches providers if one fails or hits rate limits
+- Source-Linked Context: Every question is generated with deep context from the provided source material
+- AI-Powered Insights: Automated performance analysis identifying strengths, weaknesses, and custom study plans
+- Progress Intelligence: Detailed course and module-level analytics with mastery tracking
+- Premium Test Experience: Real-time duration tracking, case-insensitive grading, and documentation-style reviews
+- Secure Architecture: Supabase Row-Level Security (RLS) protecting all user data
 
 ## Deployment
 
@@ -279,7 +277,7 @@ This project is licensed under the GNU GPL version 3 - see the [LICENSE](LICENSE
 ## Support
 
 - **Issues**: GitHub Issues
-- **Documentation**: See the [📚 Documentation](#-documentation) section above
+- **Documentation**: See the [ Documentation](#-documentation) section above
 - **Deployment**: [Render Deployment Guide](docs/RENDER_DEPLOYMENT.md)
 
 ---
