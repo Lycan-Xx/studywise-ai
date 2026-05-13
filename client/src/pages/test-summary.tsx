@@ -52,6 +52,7 @@ export default function TestSummary() {
 
   const loadTestSummary = async () => {
     try {
+      setLoading(true);
       // Load test result
       const resultData = await ApiService.getTestResult(testId!);
       setResult(resultData);
@@ -87,7 +88,7 @@ export default function TestSummary() {
   };
 
   const handleRetakeTest = () => {
-    if (result) {
+    if (result && courseStats) {
       setLocation(`/courses/${courseStats.course_id}/modules/${result.module_id}/test`);
     }
   };
@@ -128,7 +129,7 @@ export default function TestSummary() {
             <div className="text-center p-4 bg-primary/5 rounded-lg">
               <p className="text-sm text-studywise-gray-600 mb-1">Your Score</p>
               <p className="text-4xl font-bold text-primary">
-                {result.score_percentage}%
+                {Math.round(result.score_percentage)}%
               </p>
               <p className="text-sm text-studywise-gray-600 mt-1">
                 {result.correct_answers}/{result.total_questions} correct
@@ -139,7 +140,7 @@ export default function TestSummary() {
               <div className="text-center p-4 bg-studywise-gray-50 rounded-lg">
                 <p className="text-sm text-studywise-gray-600 mb-1">Module Average</p>
                 <p className="text-3xl font-bold text-studywise-gray-900">
-                  {moduleStats.average_score}%
+                  {Math.round(Number(moduleStats.average_score))}%
                 </p>
                 <p className="text-sm text-studywise-gray-600 mt-1">
                   {moduleStats.total_attempts} attempts
@@ -161,7 +162,7 @@ export default function TestSummary() {
               <div className="text-center p-4 bg-studywise-gray-50 rounded-lg">
                 <p className="text-sm text-studywise-gray-600 mb-1">Course Average</p>
                 <p className="text-3xl font-bold text-studywise-gray-900">
-                  {courseStats.average_score}%
+                  {Math.round(Number(courseStats.overall_average_score))}%
                 </p>
                 <p className="text-sm text-studywise-gray-600 mt-1">
                   All modules
@@ -200,10 +201,10 @@ export default function TestSummary() {
               <Sparkles className="w-5 h-5 text-primary" />
               AI Analysis
             </h2>
-            
+
             <div className="prose prose-studywise max-w-none">
               <p className="text-studywise-gray-700 mb-4">{result.insights_text}</p>
-              
+
               {result.weak_areas && result.weak_areas.length > 0 && (
                 <div className="mb-4">
                   <h3 className="text-sm font-semibold text-studywise-gray-900 mb-2">
@@ -216,7 +217,7 @@ export default function TestSummary() {
                   </ul>
                 </div>
               )}
-              
+
               {result.strong_areas && result.strong_areas.length > 0 && (
                 <div className="mb-4">
                   <h3 className="text-sm font-semibold text-studywise-gray-900 mb-2">
@@ -229,7 +230,7 @@ export default function TestSummary() {
                   </ul>
                 </div>
               )}
-              
+
               {result.recommendations && (
                 <div>
                   <h3 className="text-sm font-semibold text-studywise-gray-900 mb-2">
@@ -252,13 +253,16 @@ export default function TestSummary() {
             {questions.map((question, index) => {
               const userAnswer = userAnswers.find(a => a.question_id === question.id);
               const isCorrect = userAnswer?.is_correct ?? false;
+              
+              // Handle T/F questions with null options
+              const displayOptions = (question.question_type === 'true-false' || question.question_type === 'true_false') 
+                ? (question.options?.length ? question.options : ['True', 'False'])
+                : (question.options || []);
 
               return (
                 <div
                   key={question.id}
-                  className={`border-l-4 pl-4 ${
-                    isCorrect ? 'border-green-500' : 'border-red-500'
-                  }`}
+                  className={`border-l-4 pl-4 ${isCorrect ? 'border-green-500' : 'border-red-500'}`}
                 >
                   <div className="flex items-start gap-3 mb-3">
                     {isCorrect ? (
@@ -271,31 +275,28 @@ export default function TestSummary() {
                         {index + 1}. {question.question_text}
                       </p>
 
-                      {Array.isArray(question.options) && (
-                        <div className="space-y-2 mb-3">
-                          {question.options.map((option, optIndex) => {
-                            const isUserAnswer = userAnswer?.user_answer === option;
-                            const isCorrectAnswer = question.correct_answer === option;
+                      <div className="space-y-2 mb-3">
+                        {displayOptions.map((option, optIndex) => {
+                          const isUserAnswer = String(userAnswer?.user_answer).trim().toLowerCase() === String(option).trim().toLowerCase();
+                          const isCorrectAnswer = String(question.correct_answer).trim().toLowerCase() === String(option).trim().toLowerCase();
 
-                            return (
-                              <div
-                                key={optIndex}
-                                className={`px-3 py-2 rounded text-sm ${
-                                  isCorrectAnswer
-                                    ? 'bg-green-50 text-green-900 font-medium'
-                                    : isUserAnswer
+                          return (
+                            <div
+                              key={optIndex}
+                              className={`px-3 py-2 rounded text-sm ${isCorrectAnswer
+                                  ? 'bg-green-50 text-green-900 font-medium'
+                                  : isUserAnswer
                                     ? 'bg-red-50 text-red-900'
                                     : 'bg-studywise-gray-50 text-studywise-gray-700'
                                 }`}
-                              >
-                                {option}
-                                {isCorrectAnswer && ' ✓'}
-                                {isUserAnswer && !isCorrectAnswer && ' ✗'}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                            >
+                              {option}
+                              {isCorrectAnswer && ' ✓'}
+                              {isUserAnswer && !isCorrectAnswer && ' ✗'}
+                            </div>
+                          );
+                        })}
+                      </div>
 
                       {question.explanation && (
                         <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-900">

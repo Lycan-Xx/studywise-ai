@@ -5,8 +5,8 @@ import { Button } from '../components/ui/button';
 import { ApiService } from '../services/apiService';
 
 interface CourseResult {
-  id: string;
-  title: string;
+  course_id: string;
+  course_title: string;
   total_modules: number;
   modules_tested: number;
   overall_average_score: number;
@@ -16,8 +16,8 @@ interface CourseResult {
 }
 
 interface ModuleResult {
-  id: string;
-  title: string;
+  module_id: string;
+  module_title: string;
   total_attempts: number;
   average_score: number;
   best_score: number;
@@ -105,15 +105,15 @@ export default function Results() {
 
         <div className="space-y-4">
           {courses.map(course => {
-            const isExpanded = expandedCourses.has(course.id);
-            const modules = moduleResults[course.id] || [];
+            const isExpanded = expandedCourses.has(course.course_id);
+            const modules = moduleResults[course.course_id] || [];
             const progressPercentage = (course.modules_tested / course.total_modules) * 100;
 
             return (
-              <div key={course.id} className="bg-white rounded-lg shadow-sm overflow-hidden">
+              <div key={course.course_id} className="bg-white rounded-lg shadow-sm overflow-hidden">
                 {/* Course Header */}
                 <button
-                  onClick={() => toggleCourse(course.id)}
+                  onClick={() => toggleCourse(course.course_id)}
                   className="w-full px-6 py-5 flex items-center gap-4 hover:bg-studywise-gray-50 transition-colors"
                 >
                   <div className="flex-shrink-0">
@@ -126,7 +126,7 @@ export default function Results() {
 
                   <div className="flex-1 text-left">
                     <h3 className="text-lg font-semibold text-studywise-gray-900 mb-2">
-                      {course.title}
+                      {course.course_title}
                     </h3>
 
                     <div className="flex flex-wrap gap-6 text-sm text-studywise-gray-600">
@@ -138,12 +138,12 @@ export default function Results() {
                       </div>
                       <div className="flex items-center gap-2">
                         <TrendingUp className="w-4 h-4" />
-                        <span>Average: {course.overall_average_score}%</span>
+                        <span>Average: {Math.round(course.overall_average_score)}%</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4" />
                         <span>
-                          Last studied: {new Date(course.last_studied_at).toLocaleDateString()}
+                          Last studied: {course.last_studied_at ? new Date(course.last_studied_at).toLocaleDateString() : 'Never'}
                         </span>
                       </div>
                     </div>
@@ -161,7 +161,7 @@ export default function Results() {
 
                   <div className="text-right">
                     <div className="text-3xl font-bold text-primary">
-                      {course.overall_average_score}%
+                      {Math.round(course.overall_average_score)}%
                     </div>
                     <div className="text-sm text-studywise-gray-600">
                       {course.total_tests_taken} tests
@@ -179,16 +179,16 @@ export default function Results() {
                     ) : (
                       <div className="divide-y divide-studywise-gray-200">
                         {modules.map(module => (
-                          <div key={module.id} className="px-6 py-4 hover:bg-white transition-colors">
+                          <div key={module.module_id} className="px-6 py-4 hover:bg-white transition-colors">
                             <div className="flex items-center justify-between">
                               <div className="flex-1">
                                 <h4 className="font-medium text-studywise-gray-900 mb-2">
-                                  {module.title}
+                                  {module.module_title}
                                 </h4>
                                 <div className="flex gap-6 text-sm text-studywise-gray-600">
                                   <span>{module.total_attempts} attempts</span>
-                                  <span>Best: {module.best_score}%</span>
-                                  <span>Average: {module.average_score}%</span>
+                                  <span>Best: {Math.round(module.best_score)}%</span>
+                                  <span>Average: {Math.round(module.average_score)}%</span>
                                   <span>
                                     Last: {new Date(module.last_attempt_at).toLocaleDateString()}
                                   </span>
@@ -196,7 +196,7 @@ export default function Results() {
                               </div>
                               <div className="text-right">
                                 <div className="text-2xl font-bold text-studywise-gray-900">
-                                  {module.average_score}%
+                                  {Math.round(module.average_score)}%
                                 </div>
                               </div>
                             </div>

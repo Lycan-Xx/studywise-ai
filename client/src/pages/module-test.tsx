@@ -93,11 +93,8 @@ export default function ModuleTest({ isExam }: ModuleTestProps) {
     setLocation(`/courses/${courseId}`);
   };
 
-  const handleTestSubmit = async (answers: Record<string, string>) => {
+  const handleTestSubmit = async (answers: Record<string, string>, timeSpent: number) => {
     try {
-      // Calculate time spent (this is a simplified version, you might want to use a real timer)
-      const timeSpent = 60; // Default to 60 seconds if not tracked precisely
-      
       await ApiService.submitTest({
         testId: test.id,
         answers,

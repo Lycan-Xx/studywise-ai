@@ -12,8 +12,12 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 // Export a function to verify environment is loaded
 export function verifyEnvironment() {
-  console.log('Environment variables check:');
-  console.log('GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? 'Found' : 'Not found');
-  console.log('VITE_GEMINI_API_KEY:', process.env.VITE_GEMINI_API_KEY ? 'Found' : 'Not found');
-  console.log('NODE_ENV:', process.env.NODE_ENV);
+  const vars = ['GEMINI_API_KEY', 'VITE_GEMINI_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'];
+  const missing = vars.filter(v => !process.env[v]);
+  
+  if (missing.length > 0) {
+    console.log(`⚠️  Missing env vars: ${missing.join(', ')}`);
+  } else {
+    console.log('✅ Environment variables verified');
+  }
 }
