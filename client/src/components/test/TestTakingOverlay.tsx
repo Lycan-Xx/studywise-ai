@@ -34,7 +34,7 @@ interface TestTakingOverlayProps {
   testTitle: string;
   questions: Question[];
   timeLimit: number | null; // in minutes
-  onSubmit: (answers: Record<number, string>) => void;
+  onSubmit: (answers: Record<string, string>, timeSpent: number) => void;
   onBack: () => void;
   onInsightsReady?: (insights: any) => void; // Callback when insights are generated
 }
@@ -58,7 +58,7 @@ export function TestTakingOverlay({
   const [showQuestionList, setShowQuestionList] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showInsightsLoading, setShowInsightsLoading] = useState(false);
+  const [startTime] = useState(Date.now());
 
   // Initialize userAnswers from session if available
   useEffect(() => {
@@ -76,7 +76,8 @@ export function TestTakingOverlay({
         const newTime = prev ? prev - 1 : null;
         if (prev && prev <= 1) {
           // Auto-submit when time runs out
-          onSubmit(userAnswers);
+          const timeSpent = Math.floor((Date.now() - startTime) / 1000);
+          onSubmit(userAnswers, timeSpent);
           return 0;
         }
         // Sync with session store
@@ -169,73 +170,11 @@ export function TestTakingOverlay({
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      // Submit the test first
-      await onSubmit(userAnswers);
-
-      // Show insights loading modal
-      setShowInsightsLoading(true);
-
-      // Generate insights in background
-      generateInsightsForSubmission();
+      const timeSpent = Math.floor((Date.now() - startTime) / 1000);
+      await onSubmit(userAnswers, timeSpent);
     } catch (error) {
       console.error('Submit failed:', error);
       setIsSubmitting(false);
-    }
-  };
-
-  const generateInsightsForSubmission = async () => {
-    try {
-      console.log('🔍 Generating insights for test submission...');
-
-      // Reconstruct source content from questions
-      const sourceContent = questions?.map(q => q.sourceText).join(' ') || '';
-
-      // Create the test result payload for insights
-      const testResultPayload = {
-        score: Math.round((Object.keys(userAnswers).filter(id => userAnswers[id] === questions.find(q => q.id === id)?.correctAnswer).length / questions.length) * 100),
-        totalQuestions: questions.length,
-        questions: questions || [],
-        userAnswers: userAnswers || {},
-        correctAnswers: questions.reduce((acc, q) => ({ ...acc, [q.id]: q.correctAnswer }), {}),
-        testTitle: testTitle,
-        sourceContent
-      };
-
-      console.log('📤 Sending insights request payload:', testResultPayload);
-
-      const response = await ApiService.post(`/api/tests/temp-test-id/insights`, testResultPayload);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Insights API error:', response.status, errorText);
-        throw new Error(`Failed to generate insights: ${response.statusText}`);
-      }
-
-      const insightsData = await response.json();
-      console.log('✅ Insights generated:', insightsData);
-
-      // Call the callback to notify parent component
-      if (onInsightsReady) {
-        // Mark these insights as temporary (generated using a temp id)
-        onInsightsReady({ ...insightsData, isTemp: true });
-      }
-
-    } catch (error) {
-      console.error('❌ Error generating insights:', error);
-      // Provide fallback insights if API fails
-      const fallbackInsights = {
-        overallPerformance: "Test completed successfully",
-        strengths: ["Completed the test"],
-        weaknesses: [],
-        studyRecommendations: ["Review your answers"],
-        focusAreas: ["Key concepts from the material"]
-      };
-
-      if (onInsightsReady) {
-        onInsightsReady({ ...fallbackInsights, isTemp: true });
-      }
-    } finally {
-      setShowInsightsLoading(false);
     }
   };
 
@@ -257,17 +196,7 @@ export function TestTakingOverlay({
 
   const answeredCount = questions.filter(q => userAnswers[q.id]).length;
 
-  // Show insights loading modal when generating insights
-  if (showInsightsLoading) {
-    return (
-      <div className="fixed inset-0 z-50 bg-white flex items-center justify-center">
-        <LoadingModal
-          message="Analyzing Your Test"
-          subMessage="AI is generating personalized insights and performance analysis..."
-        />
-      </div>
-    );
-  }
+  // Loading state handled globally usually
 
   return (
     <div className="fixed inset-0 z-50 bg-white flex flex-col">
@@ -628,10 +557,9 @@ export function TestTakingOverlay({
               Cancel and Return
             </Button>
             <Button
-              onClick={() => {
+              onClick={async () => {
                 setShowExitModal(false);
-                handleSubmit(); // Submit the test first
-                onBack(); // Then exit
+                await handleSubmit(); // Submit the test first, which will navigate to the summary
               }}
               className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white"
             >

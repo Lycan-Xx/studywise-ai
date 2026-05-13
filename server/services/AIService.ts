@@ -62,8 +62,6 @@ class MultiProviderAIService {
     this.initializeProviders();
     setInterval(() => this.cleanupCache(), 60 * 60 * 1000);
     setInterval(() => this.resetProviderLimits(), 60 * 1000);
-    // List available models on startup
-    this.listAvailableGeminiModels();
   }
 
   private initializeProviders() {
@@ -93,7 +91,7 @@ class MultiProviderAIService {
         costPerToken: 0.00025,
         maxTokens: 30720
       });
-      console.log("✅ Gemini providers initialized");
+      console.log("✅ Gemini initialized");
     }
 
     // Initialize OpenAI
@@ -140,11 +138,11 @@ class MultiProviderAIService {
         lastReset: Date.now(),
         maxRequests: 30,
         resetInterval: 60 * 1000,
-        priority: 1,
+        priority: 3,
         costPerToken: 0.00014,
         maxTokens: 128000
       });
-      console.log("✅ DeepSeek providers initialized");
+      console.log("✅ DeepSeek initialized");
     }
 
     // Initialize Kimi (Moonshot)
@@ -175,7 +173,7 @@ class MultiProviderAIService {
         lastReset: Date.now(),
         maxRequests: 15,
         resetInterval: 60 * 1000,
-        priority: 6,
+        priority: 1,
         costPerToken: 0.00002,
         maxTokens: 32768
       });
@@ -187,12 +185,12 @@ class MultiProviderAIService {
         lastReset: Date.now(),
         maxRequests: 15,
         resetInterval: 60 * 1000,
-        priority: 7,
+        priority: 2,
         costPerToken: 0.00002,
         maxTokens: 32768
       });
 
-      console.log("✅ OpenRouter providers initialized");
+      console.log("✅ OpenRouter initialized");
     } else {
       console.log("ℹ️ OpenRouter API key not configured - OpenRouter providers disabled");
     }
@@ -212,7 +210,7 @@ class MultiProviderAIService {
         maxTokens: 1000
       });
 
-      console.log("✅ Hugging Face providers initialized");
+      console.log("✅ HuggingFace initialized");
     } else {
       console.log("ℹ️ Hugging Face API token not configured - Hugging Face providers disabled");
     }
@@ -296,7 +294,7 @@ class MultiProviderAIService {
     if (!geminiKey) throw new Error("Gemini API key not configured");
 
     // Use stable Gemini model names
-    const modelName = model === 'gemini-flash' ? 'gemini-1.5-flash' : 'gemini-1.5-pro';
+    const modelName = model === 'gemini-flash' ? 'gemini-2.0-flash' : 'gemini-2.5-pro';
 
     // Use AbortController for timeout handling
     const controller = new AbortController();
@@ -322,9 +320,7 @@ class MultiProviderAIService {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Gemini API error (${response.status}):`, errorText);
-        throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
+        throw new Error(`Gemini API error: ${response.status}`);
       }
 
       const data = await response.json();
@@ -617,7 +613,7 @@ class MultiProviderAIService {
       return response;
 
     } catch (error) {
-      console.error(`❌ Request failed with ${provider.name}:`, error);
+      console.error(`❌ Request failed with ${provider.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
 
       // Handle different types of errors
       if (error instanceof Error) {
@@ -756,10 +752,34 @@ class MultiProviderAIService {
   private buildPrompt(options: GenerateQuestionsOptions): string {
     const { content, difficulty, questionCount, questionTypes, focus } = options;
 
-    const maxContentLength = 3000; // Increased for better context
+    const maxContentLength = 3000;
     const optimizedContent = content.length > maxContentLength
       ? content.substring(0, maxContentLength) + "..."
       : content;
+
+    const isTrueFalseOnly = questionTypes.length === 1 && questionTypes[0] === 'true-false';
+    
+    const exampleQuestion = isTrueFalseOnly ? {
+      "id": "q1",
+      "type": "true-false",
+      "question": "The Earth is flat.",
+      "options": ["True", "False"],
+      "correctAnswer": "False",
+      "explanation": "Scientific evidence confirms Earth is an oblate spheroid.",
+      "difficulty": difficulty,
+      "points": difficulty === "easy" ? 1 : difficulty === "medium" ? 2 : 3,
+      "sourceText": "Evidence from satellite imagery confirms the Earth is round."
+    } : {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "What is the capital of France?",
+      "options": ["London", "Berlin", "Paris", "Madrid"],
+      "correctAnswer": "Paris",
+      "explanation": "Paris is the capital and largest city of France.",
+      "difficulty": difficulty,
+      "points": difficulty === "easy" ? 1 : difficulty === "medium" ? 2 : 3,
+      "sourceText": "The capital of France is Paris."
+    };
 
     return `Generate exactly ${questionCount} high-quality ${difficulty} test questions from this content:
 
@@ -776,19 +796,11 @@ ${focus ? `- Focus areas: ${focus}` : ""}
 RESPONSE FORMAT - Return valid JSON only:
 {
   "questions": [
-    {
-      "id": "q1",
-      "type": "multiple-choice",
-      "question": "Clear, specific question text",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correctAnswer": "Option A",
-      "explanation": "Brief explanation referencing the source",
-      "difficulty": "${difficulty}",
-      "points": ${difficulty === "easy" ? 1 : difficulty === "medium" ? 2 : 3},
-      "sourceText": "Exact text from content that supports this question and answer"
-    }
+    ${JSON.stringify(exampleQuestion, null, 2)}
   ]
 }
+
+IMPORTANT: If multiple question types were requested, provide a balanced mix. If only true-false was requested, ONLY provide true-false questions with ["True", "False"] as options.
 
 Generate ${questionCount} questions now:`;
   }
@@ -982,10 +994,10 @@ PERFORMANCE SUMMARY:
 
 INCORRECT QUESTIONS (showing up to 3):
 ${wrongQuestions.slice(0, 3).map((q, i) => `
-${i + 1}. Question: ${q.question}
+${i + 1}. Question: ${q.question || q.question_text || "Unknown question"}
    Correct Answer: ${testResult.correctAnswers[q.id]}
    User Answer: ${testResult.userAnswers[q.id] || "Not answered"}
-   Topic: ${q.sourceText.substring(0, 100)}...
+   Topic: ${(q.sourceText || q.source_text || "")?.substring(0, 100)}...
 `).join("")}
 
 Provide insights in JSON format:
@@ -1124,16 +1136,17 @@ Provide insights in JSON format:
 
   public async healthCheck(): Promise<Record<string, boolean>> {
     const results: Record<string, boolean> = {};
+    console.log("🤖 Running AI Provider Health Checks...");
 
     for (const [key, provider] of this.providers) {
       try {
         // Simple test request to check if provider is working
-        await this.makeProviderRequest(key, "Test: Generate one simple question about mathematics. Respond with valid JSON containing a questions array with one question.");
+        await this.makeProviderRequest(key, "Respond with valid JSON: {\"questions\": []}");
         results[key] = true;
-        console.log(`✅ Health check passed for ${provider.name}`);
+        console.log(`  - ${provider.name}: ✅`);
       } catch (error) {
         results[key] = false;
-        console.log(`❌ Health check failed for ${provider.name}:`, error instanceof Error ? error.message : 'Unknown error');
+        console.log(`  - ${provider.name}: ❌ (${error instanceof Error ? error.message : 'Error'})`);
       }
 
       // Small delay between health checks

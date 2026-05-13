@@ -63,9 +63,24 @@ router.get('/user/profile', authMiddleware, async (req, res) => {
       .eq('id', req.user!.id)
       .single();
     
-    if (error) throw error;
+    if (error) {
+      // PGRST116 means no rows found for .single()
+      if (error.code === 'PGRST116') {
+        return res.json({
+          id: req.user!.id,
+          email: req.user!.email,
+          full_name: req.user!.user_metadata?.full_name || '',
+          default_question_type: 'mixed',
+          default_difficulty: 'medium',
+          default_questions_per_module: 10,
+          theme: 'system'
+        });
+      }
+      throw error;
+    }
     res.json(data);
   } catch (error) {
+    console.error('Fetch profile error:', error);
     res.status(500).json({ message: 'Failed to fetch profile' });
   }
 });
@@ -79,6 +94,7 @@ router.put('/user/profile', authMiddleware, async (req, res) => {
       .from('user_profiles')
       .upsert({ 
         id: userId,
+        email: req.user!.email,
         ...req.body,
         updated_at: new Date().toISOString()
       })

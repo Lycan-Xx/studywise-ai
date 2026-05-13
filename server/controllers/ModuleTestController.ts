@@ -106,10 +106,28 @@ export class ModuleTestController {
         throw questionsError;
       }
 
+      const { data: dbQuestions, error: fetchError } = await supabase
+        .from('questions')
+        .select('*')
+        .eq('test_id', test.id)
+        .order('question_order');
+
+      if (fetchError) throw fetchError;
+
+      // Map back to frontend Question format
+      const formattedQuestions = dbQuestions.map(q => ({
+        id: q.id,
+        question: q.question_text,
+        type: q.question_type === 'mcq' ? 'multiple-choice' : 'true-false',
+        options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options,
+        correctAnswer: q.correct_answer,
+        explanation: q.explanation,
+        sourceText: q.source_text
+      }));
+
       return res.json({
         test,
-        questions: aiResponse.questions,
-        sampleQuestion: aiResponse.questions[0],
+        questions: formattedQuestions
       });
     } catch (error) {
       console.error('Generate module test error:', error);
@@ -173,12 +191,12 @@ export class ModuleTestController {
       const { data: test, error: testError } = await supabase
         .from('tests')
         .insert({
-          course_id: courseId,
           user_id: userId,
           question_count: aiResponse.questions.length,
           question_type: preferences.default_question_type,
           difficulty: preferences.default_difficulty,
           status: 'generated',
+          is_exam: true
         })
         .select()
         .single();
@@ -215,10 +233,28 @@ export class ModuleTestController {
         throw questionsError;
       }
 
+      const { data: dbQuestions, error: fetchError } = await supabase
+        .from('questions')
+        .select('*')
+        .eq('test_id', test.id)
+        .order('question_order');
+
+      if (fetchError) throw fetchError;
+
+      // Map back to frontend Question format
+      const formattedQuestions = dbQuestions.map(q => ({
+        id: q.id,
+        question: q.question_text,
+        type: q.question_type === 'mcq' ? 'multiple-choice' : 'true-false',
+        options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options,
+        correctAnswer: q.correct_answer,
+        explanation: q.explanation,
+        sourceText: q.source_text
+      }));
+
       return res.json({
         test,
-        questions: aiResponse.questions,
-        sampleQuestion: aiResponse.questions[0],
+        questions: formattedQuestions
       });
     } catch (error) {
       console.error('Generate course exam error:', error);
@@ -266,7 +302,7 @@ export class ModuleTestController {
 
       for (const question of questions) {
         const userAnswer = answers[question.id];
-        const isCorrect = userAnswer === question.correct_answer;
+        const isCorrect = String(userAnswer || '').trim().toLowerCase() === String(question.correct_answer || '').trim().toLowerCase();
         
         if (isCorrect) correctCount++;
 
@@ -286,7 +322,7 @@ export class ModuleTestController {
       // Create test result
       const scorePercentage = (correctCount / questions.length) * 100;
       
-      const { data: result } = await supabase
+      const { data: result, error: resultError } = await supabase
         .from('test_results')
         .insert({
           test_id: testId,
@@ -300,6 +336,11 @@ export class ModuleTestController {
         })
         .select()
         .single();
+
+      if (resultError) {
+        console.error('Failed to insert test result:', resultError);
+        throw new Error('Failed to create test result');
+      }
 
       // Update test status
       await supabase
@@ -357,8 +398,7 @@ export class ModuleTestController {
         sourceContent: '',
       });
 
-      // Update result with insights
-      await supabase
+      const { data: updatedResult, error: updateError } = await supabase
         .from('test_results')
         .update({
           insights_requested: true,
@@ -368,9 +408,20 @@ export class ModuleTestController {
           strong_areas: JSON.stringify(insights.strengths),
           recommendations: insights.studyRecommendations.join('\n'),
         })
-        .eq('id', result.id);
+        .eq('id', result.id)
+        .select()
+        .single();
 
-      return res.json(insights);
+      if (updateError) throw updateError;
+
+      // Parse JSON fields
+      const finalResult = {
+        ...updatedResult,
+        weak_areas: typeof updatedResult.weak_areas === 'string' ? JSON.parse(updatedResult.weak_areas) : updatedResult.weak_areas,
+        strong_areas: typeof updatedResult.strong_areas === 'string' ? JSON.parse(updatedResult.strong_areas) : updatedResult.strong_areas,
+      };
+
+      return res.json(finalResult);
     } catch (error) {
       console.error('Request insights error:', error);
       return res.status(500).json({ message: 'Failed to generate insights' });
