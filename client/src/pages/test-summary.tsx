@@ -124,7 +124,7 @@ export default function TestSummary() {
           </h1>
 
           {/* Score Display */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             <div className="text-center p-4 bg-primary/5 rounded-lg">
               <p className="text-sm text-studywise-gray-600 mb-1">Your Score</p>
               <p className="text-4xl font-bold text-primary">
@@ -146,6 +146,16 @@ export default function TestSummary() {
                 </p>
               </div>
             )}
+
+            <div className="text-center p-4 bg-studywise-gray-50 rounded-lg">
+              <p className="text-sm text-studywise-gray-600 mb-1">Time Spent</p>
+              <p className="text-3xl font-bold text-studywise-gray-900">
+                {Math.floor(result.total_time_seconds / 60)}:{String(result.total_time_seconds % 60).padStart(2, '0')}
+              </p>
+              <p className="text-sm text-studywise-gray-600 mt-1">
+                mm:ss
+              </p>
+            </div>
 
             {courseStats && (
               <div className="text-center p-4 bg-studywise-gray-50 rounded-lg">

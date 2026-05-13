@@ -228,10 +228,9 @@ async function extractFileContent(file: File): Promise<string> {
   }
   
   if (fileType === 'docx') {
-    // Use Mammoth.js (assuming it's already set up)
     const mammoth = await import('mammoth');
     const arrayBuffer = await file.arrayBuffer();
-    const result = await mammoth.extractRawText({ arrayBuffer });
+    const result = await (mammoth as any).extractRawText({ arrayBuffer: arrayBuffer } as any);
     return result.value;
   }
   

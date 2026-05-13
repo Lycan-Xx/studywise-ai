@@ -113,10 +113,14 @@ export default function Settings() {
     confirmPassword: "",
   });
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
   const handleSaveProfile = async () => {
+    setIsUpdatingProfile(true);
     try {
-      // Profile updates would go here (Supabase doesn't directly update metadata after signup)
+      await ApiService.put('/api/user/profile', {
+        full_name: profileInfo.fullName
+      });
       toast({
         title: "Profile updated",
         description: "Your profile information has been saved.",
@@ -127,6 +131,8 @@ export default function Settings() {
         description: "Failed to update profile. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsUpdatingProfile(false);
     }
   };
 
@@ -354,7 +360,7 @@ ${profileInfo.fullName || 'StudyWise AI User'}`);
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProfileInfo({ ...profileInfo, fullName: e.target.value })}
                 className="mt-2"
                 placeholder="Enter your full name"
-                disabled
+                disabled={isUpdatingProfile}
               />
             </div>
             <div>
@@ -387,15 +393,21 @@ ${profileInfo.fullName || 'StudyWise AI User'}`);
             </div>
           </div>
           
-          {/* <div className="flex justify-end">
+          <div className="flex justify-end mt-6 pt-4 border-t border-studywise-gray-200">
             <Button 
               onClick={handleSaveProfile}
+              disabled={isUpdatingProfile || !profileInfo.fullName.trim()}
               size="sm"
-              className="bg-primary hover:bg-blue-600"
+              className="bg-primary hover:bg-blue-600 gap-2"
             >
+              {isUpdatingProfile ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
               Save Profile
             </Button>
-          </div> */}
+          </div>
         </CardContent>
       </Card>
 
