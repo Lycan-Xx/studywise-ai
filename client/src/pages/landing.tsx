@@ -65,8 +65,8 @@ export default function Landing() {
 
           {/* Improved typography hierarchy */}
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-studywise-gray-900 mb-8 tracking-tight leading-none" data-testid="text-hero-title">
-            Your Notes.<br/>
-            <span className="text-primary">Your Tests.</span><br/>
+            Your Notes.<br />
+            <span className="text-primary">Your Tests.</span><br />
             Your A's.
           </h1>
 
@@ -399,7 +399,7 @@ export default function Landing() {
           <div className="text-center space-y-4">
             <div className="flex justify-center space-x-6">
               <a
-                href="https://x.com/LycanXx2"
+                href="https://x.com/LycanXx0"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-studywise-gray-300 transition-colors"
@@ -408,7 +408,7 @@ export default function Landing() {
                 <Twitter className="w-5 h-5" />
               </a>
               <a
-                href="https://mohammad-bello.up.railway.app/"
+                href="https://msbello.pages.dev"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-studywise-gray-300 transition-colors"
@@ -421,7 +421,7 @@ export default function Landing() {
               StudyWise AI |
               <Link href="/privacy-policy" className="hover:text-studywise-gray-300 mx-2">Privacy Policy</Link> |
               <Link href="/terms-of-service" className="hover:text-studywise-gray-300 mx-2">Terms of Service</Link> |
-              © 2025 StudyWise Inc.
+              © 2026 StudyWise Inc.
             </p>
           </div>
         </div>
