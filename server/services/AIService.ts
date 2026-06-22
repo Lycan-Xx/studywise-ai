@@ -53,6 +53,42 @@ interface AIProvider {
   cooldownUntil?: number;
 }
 
+// ─── Provider directory (June 2026) ────────────────────────────────────────
+//
+// FREE TIER PROVIDERS — zero-cost, permanent:
+//
+//  Google AI Studio (api.google.dev / aistudio)
+//    gemini-2.5-flash        1 M context  1,500 RPD  10 RPM  FREE ✅
+//    gemini-2.5-flash-lite   1 M context  1,500 RPD  15 RPM  FREE ✅
+//    NOTE: gemini-2.0-flash was retired June 1 2026 — do not use.
+//          Pro models are now paid-only as of April 2026.
+//
+//  Groq (api.groq.com — OpenAI-compatible)
+//    llama-3.1-8b-instant    128 K context  14,400 RPD  30 RPM  FREE ✅  fastest/highest volume
+//    llama-3.3-70b-versatile 128 K context   1,000 RPD  30 RPM  FREE ✅  best quality open model
+//    llama-4-scout            10 M context   1,000 RPD  30 RPM  FREE ✅  massive context window
+//    NOTE: rate limits are per-organisation, not per-key.
+//
+//  Cerebras (api.cerebras.ai — OpenAI-compatible, world's fastest inference)
+//    llama-3.3-70b           128 K context  1 M tokens/day  30 RPM  FREE ✅
+//    NOTE: free tier context window starts at 8 K; request expansion via dashboard.
+//          1 M tokens/day is the daily budget (input+output combined).
+//
+//  OpenRouter free tier (:free suffix — 20 RPM, 200 RPD without credits)
+//    meta-llama/llama-4-scout:free        10 M context  large-doc champion  FREE ✅
+//    deepseek/deepseek-r1:free           128 K context  best free reasoning  FREE ✅
+//    qwen/qwen3-235b-a22b:free           128 K context  best free coding     FREE ✅
+//    openai/gpt-oss-120b:free            131 K context  strong general model FREE ✅
+//    meta-llama/llama-3.3-70b:free       128 K context  reliable fallback    FREE ✅
+//    NOTE: :free roster rotates — check openrouter.ai/models?order=top-weekly&supported_parameters=tools
+//
+// PAID (your account — lowest cost per token):
+//  DeepSeek (api.deepseek.com — OpenAI-compatible)
+//    deepseek-v4-flash     1 M context  $0.14/M in  $0.28/M out  YOUR KEY ✅
+//    NOTE: legacy aliases deepseek-chat / deepseek-reasoner deprecated 2026-07-24.
+//           Update to deepseek-v4-flash before then.
+// ──────────────────────────────────────────────────────────────────────────
+
 class MultiProviderAIService {
   private providers: Map<string, AIProvider> = new Map();
   private geminiAI: GoogleGenerativeAI | null = null;
@@ -65,178 +101,227 @@ class MultiProviderAIService {
   }
 
   private initializeProviders() {
-    // Initialize Gemini
+    // ── 1. Google Gemini (AI Studio free tier) ──────────────────────────────
+    // gemini-2.0-flash was shut down June 1 2026 — using 2.5 Flash now.
     const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
     if (geminiKey) {
       this.geminiAI = new GoogleGenerativeAI(geminiKey);
-      this.providers.set('gemini-flash', {
-        name: 'Gemini Flash',
+
+      // Primary: Gemini 2.5 Flash — 1M context, best balance, 1,500 RPD free
+      this.providers.set("gemini-2.5-flash", {
+        name: "Gemini 2.5 Flash (Google AI Studio)",
         available: true,
         requestCount: 0,
         lastReset: Date.now(),
-        maxRequests: 15,
+        maxRequests: 10,      // 10 RPM on free tier (conservative)
+        resetInterval: 60 * 1000,
+        priority: 1,
+        costPerToken: 0,
+        maxTokens: 1_000_000,
+      });
+
+      // Secondary: Gemini 2.5 Flash-Lite — cheaper/faster, same 1M context, 1,500 RPD free
+      this.providers.set("gemini-2.5-flash-lite", {
+        name: "Gemini 2.5 Flash-Lite (Google AI Studio)",
+        available: true,
+        requestCount: 0,
+        lastReset: Date.now(),
+        maxRequests: 15,      // 15 RPM on free tier
         resetInterval: 60 * 1000,
         priority: 2,
-        costPerToken: 0.000125,
-        maxTokens: 1000000
+        costPerToken: 0,
+        maxTokens: 1_000_000,
       });
-      this.providers.set('gemini-pro', {
-        name: 'Gemini Pro',
+
+      console.log("✅ Gemini 2.5 Flash + Flash-Lite initialized (free tier, 1M context)");
+    }
+
+    // ── 2. Groq (LPU inference — ultra fast, fully OpenAI-compatible) ───────
+    // Free tier: no credit card. Rate limits are per-organisation.
+    const groqKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY;
+    if (groqKey && groqKey !== "your_groq_api_key") {
+      // Llama 3.1 8B — 14,400 RPD free; best for high-volume, fast tasks
+      this.providers.set("groq-llama-3.1-8b", {
+        name: "Llama 3.1 8B Instant (Groq Free)",
         available: true,
         requestCount: 0,
         lastReset: Date.now(),
-        maxRequests: 5,
+        maxRequests: 30,      // 30 RPM
         resetInterval: 60 * 1000,
-        priority: 4,
-        costPerToken: 0.00025,
-        maxTokens: 30720
+        priority: 3,
+        costPerToken: 0,
+        maxTokens: 128_000,
       });
-      console.log("✅ Gemini initialized");
+
+      // Llama 3.3 70B — 1,000 RPD free; best quality open model on Groq
+      this.providers.set("groq-llama-3.3-70b", {
+        name: "Llama 3.3 70B Versatile (Groq Free)",
+        available: true,
+        requestCount: 0,
+        lastReset: Date.now(),
+        maxRequests: 30,      // 30 RPM
+        resetInterval: 60 * 1000,
+        priority: 2,
+        costPerToken: 0,
+        maxTokens: 128_000,
+      });
+
+      // Llama 4 Scout — 1,000 RPD free; 10M native context window (massive docs)
+      this.providers.set("groq-llama-4-scout", {
+        name: "Llama 4 Scout 17B (Groq Free, 10M ctx)",
+        available: true,
+        requestCount: 0,
+        lastReset: Date.now(),
+        maxRequests: 30,      // 30 RPM
+        resetInterval: 60 * 1000,
+        priority: 2,
+        costPerToken: 0,
+        maxTokens: 10_000_000, // 10M context window — perfect for 15-20 page docs
+      });
+
+      console.log("✅ Groq initialized: Llama 3.1 8B (14.4K RPD) + Llama 3.3 70B + Llama 4 Scout (10M ctx)");
+    } else {
+      console.log("ℹ️ GROQ_API_KEY not set — Groq providers disabled (free, worth enabling)");
     }
 
-    // Initialize OpenAI
-    const openaiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
-    if (openaiKey && openaiKey !== 'your_openai_api_key') {
-      this.providers.set('gpt-4o-mini', {
-        name: 'GPT-4o Mini',
+    // ── 3. Cerebras (wafer-scale WSE — fastest inference on the planet) ─────
+    // Free tier: 1M tokens/day, 30 RPM, no credit card.
+    // Sign up at cloud.cerebras.ai — takes < 5 min.
+    const cerebrasKey = process.env.CEREBRAS_API_KEY || process.env.VITE_CEREBRAS_API_KEY;
+    if (cerebrasKey && cerebrasKey !== "your_cerebras_api_key") {
+      this.providers.set("cerebras-llama-3.3-70b", {
+        name: "Llama 3.3 70B (Cerebras Free, 2300 tok/s)",
+        available: true,
+        requestCount: 0,
+        lastReset: Date.now(),
+        maxRequests: 30,      // 30 RPM free tier
+        resetInterval: 60 * 1000,
+        priority: 3,
+        costPerToken: 0,
+        maxTokens: 128_000,   // request 128K expansion in dashboard (default 8K)
+      });
+
+      console.log("✅ Cerebras initialized: Llama 3.3 70B @ ~2,300 tok/s (1M tokens/day free)");
+    } else {
+      console.log("ℹ️ CEREBRAS_API_KEY not set — Cerebras disabled (free, sign up at cloud.cerebras.ai)");
+    }
+
+    // ── 4. DeepSeek (your paid key — best value frontier model) ─────────────
+    // deepseek-chat alias maps to deepseek-v4-flash until 2026-07-24, then deprecated.
+    // Using explicit deepseek-v4-flash now to avoid breakage.
+    // 1M context window, $0.14/M input tokens.
+    const deepseekKey = process.env.DEEPSEEK_API_KEY || process.env.VITE_DEEPSEEK_API_KEY;
+    if (deepseekKey && deepseekKey !== "your_deepseek_api_key") {
+      this.providers.set("deepseek-v4-flash", {
+        name: "DeepSeek V4 Flash (1M ctx, your key)",
+        available: true,
+        requestCount: 0,
+        lastReset: Date.now(),
+        maxRequests: 60,
+        resetInterval: 60 * 1000,
+        priority: 2,
+        costPerToken: 0.00014,   // $0.14/M input tokens
+        maxTokens: 1_000_000,
+      });
+
+      console.log("✅ DeepSeek V4 Flash initialized (1M context, paid key)");
+    }
+
+    // ── 5. OpenRouter free tier (28+ free models via :free suffix) ──────────
+    // 20 RPM / 200 RPD without credits; $10 one-time credit → 1,000 RPD permanently.
+    // Free models include heavy hitters: Llama 4 Scout 10M ctx, DeepSeek R1, Qwen3 235B.
+    const openrouterKey = process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY;
+    if (openrouterKey && openrouterKey !== "your_openrouter_api_key") {
+      // Llama 4 Scout — 10M context, ideal for very long documents (15-20 pages = ~30K-50K tokens)
+      this.providers.set("or-llama-4-scout", {
+        name: "Llama 4 Scout 10M ctx (OpenRouter :free)",
+        available: true,
+        requestCount: 0,
+        lastReset: Date.now(),
+        maxRequests: 20,      // 20 RPM on OpenRouter free
+        resetInterval: 60 * 1000,
+        priority: 2,
+        costPerToken: 0,
+        maxTokens: 10_000_000,
+      });
+
+      // DeepSeek R1 free — best free reasoning model, 128K context
+      this.providers.set("or-deepseek-r1", {
+        name: "DeepSeek R1 (OpenRouter :free)",
         available: true,
         requestCount: 0,
         lastReset: Date.now(),
         maxRequests: 20,
         resetInterval: 60 * 1000,
-        priority: 2,
-        costPerToken: 0.00015,
-        maxTokens: 128000
+        priority: 3,
+        costPerToken: 0,
+        maxTokens: 128_000,
       });
-      console.log("✅ OpenAI providers initialized");
-    }
 
-    // Initialize Anthropic
-    const anthropicKey = process.env.ANTHROPIC_API_KEY || process.env.VITE_ANTHROPIC_API_KEY;
-    if (anthropicKey && anthropicKey !== 'your_anthropic_api_key') {
-      this.providers.set('claude-3-haiku', {
-        name: 'Claude 3 Haiku',
+      // Qwen3 235B — best free general/coding model, 128K context
+      this.providers.set("or-qwen3-235b", {
+        name: "Qwen3 235B (OpenRouter :free)",
         available: true,
         requestCount: 0,
         lastReset: Date.now(),
-        maxRequests: 10,
+        maxRequests: 20,
         resetInterval: 60 * 1000,
         priority: 3,
-        costPerToken: 0.00025,
-        maxTokens: 200000
+        costPerToken: 0,
+        maxTokens: 128_000,
       });
-      console.log("✅ Anthropic providers initialized");
-    }
 
-    // Initialize DeepSeek
-    const deepseekKey = process.env.DEEPSEEK_API_KEY || process.env.VITE_DEEPSEEK_API_KEY;
-    if (deepseekKey && deepseekKey !== 'your_deepseek_api_key') {
-      this.providers.set('deepseek-chat', {
-        name: 'DeepSeek Chat',
+      // GPT-OSS 120B — OpenAI's open-weight model, 131K context, strong general capability
+      this.providers.set("or-gpt-oss-120b", {
+        name: "GPT-OSS 120B (OpenRouter :free)",
         available: true,
         requestCount: 0,
         lastReset: Date.now(),
-        maxRequests: 30,
+        maxRequests: 20,
         resetInterval: 60 * 1000,
-        priority: 3,
-        costPerToken: 0.00014,
-        maxTokens: 128000
+        priority: 4,
+        costPerToken: 0,
+        maxTokens: 131_000,
       });
-      console.log("✅ DeepSeek initialized");
-    }
 
-    // Initialize Kimi (Moonshot)
-    const kimiKey = process.env.MOONSHOT_API_KEY || process.env.VITE_MOONSHOT_API_KEY || process.env.KIMI_API_KEY;
-    if (kimiKey && kimiKey !== 'your_kimi_api_key') {
-      this.providers.set('moonshot-v1-8k', {
-        name: 'Kimi (Moonshot)',
+      // Llama 3.3 70B — reliable fallback, widely available free
+      this.providers.set("or-llama-3.3-70b", {
+        name: "Llama 3.3 70B Instruct (OpenRouter :free)",
         available: true,
         requestCount: 0,
         lastReset: Date.now(),
-        maxRequests: 10,
+        maxRequests: 20,
         resetInterval: 60 * 1000,
         priority: 5,
-        costPerToken: 0.0006,
-        maxTokens: 8192
-      });
-      console.log("✅ Kimi providers initialized");
-    }
-
-    // Initialize OpenRouter (supports 200+ models)
-    const openrouterKey = process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY;
-    if (openrouterKey && openrouterKey !== 'your_openrouter_api_key') {
-      // Add a few balanced OpenRouter models as versatile fallbacks
-      this.providers.set('or-llama-3-8b', {
-        name: 'Llama 3 8B (OpenRouter)',
-        available: true,
-        requestCount: 0,
-        lastReset: Date.now(),
-        maxRequests: 15,
-        resetInterval: 60 * 1000,
-        priority: 1,
-        costPerToken: 0.00002,
-        maxTokens: 32768
+        costPerToken: 0,
+        maxTokens: 128_000,
       });
 
-      this.providers.set('or-mistral-7b', {
-        name: 'Mistral 7B (OpenRouter)',
-        available: true,
-        requestCount: 0,
-        lastReset: Date.now(),
-        maxRequests: 15,
-        resetInterval: 60 * 1000,
-        priority: 2,
-        costPerToken: 0.00002,
-        maxTokens: 32768
-      });
-
-      console.log("✅ OpenRouter initialized");
+      console.log("✅ OpenRouter initialized: 5 free models (Llama 4 Scout 10M + DeepSeek R1 + Qwen3 235B + GPT-OSS 120B + Llama 3.3 70B)");
     } else {
-      console.log("ℹ️ OpenRouter API key not configured - OpenRouter providers disabled");
+      console.log("ℹ️ OPENROUTER_API_KEY not set — OpenRouter free models disabled");
     }
 
-    // Initialize Hugging Face Inference API (free tier available)
-    const hfToken = process.env.HUGGINGFACE_API_TOKEN || process.env.VITE_HUGGINGFACE_API_TOKEN;
-    if (hfToken && hfToken !== 'hf_your_huggingface_api_token_here') {
-      this.providers.set('hf-distilgpt2', {
-        name: 'DistilGPT-2 (Hugging Face)',
-        available: true,
-        requestCount: 0,
-        lastReset: Date.now(),
-        maxRequests: 30,
-        resetInterval: 60 * 1000,
-        priority: 9,
-        costPerToken: 0, // Free
-        maxTokens: 1000
-      });
-
-      console.log("✅ HuggingFace initialized");
-    } else {
-      console.log("ℹ️ Hugging Face API token not configured - Hugging Face providers disabled");
-    }
-
-    // Always add a mock provider as fallback
-    this.providers.set('mock-ai', {
-      name: 'Mock AI (Fallback)',
+    // ── 6. Mock AI fallback (always available, zero quality — last resort) ───
+    this.providers.set("mock-ai", {
+      name: "Mock AI (Fallback — no real AI)",
       available: true,
       requestCount: 0,
       lastReset: Date.now(),
       maxRequests: 100,
       resetInterval: 60 * 1000,
-      priority: 10, // Lowest priority - only used when all others fail
+      priority: 99,
       costPerToken: 0,
-      maxTokens: 10000
+      maxTokens: 10_000,
     });
 
-    console.log(`🤖 Multi-provider AI service initialized with ${this.providers.size} providers`);
-    
-    // Perform initial health check in background
-    setTimeout(() => this.healthCheck(), 1000);
+    console.log(`🤖 Multi-provider AI service ready — ${this.providers.size} providers`);
+    setTimeout(() => this.healthCheck(), 1500);
   }
 
   private resetProviderLimits() {
     const now = Date.now();
-    for (const [key, provider] of this.providers) {
+    for (const [, provider] of this.providers) {
       if (now - provider.lastReset >= provider.resetInterval) {
         provider.requestCount = 0;
         provider.lastReset = now;
@@ -246,403 +331,303 @@ class MultiProviderAIService {
 
   private getAvailableProvider(options?: GenerateQuestionsOptions): string | null {
     const contentLength = options?.content?.length || 0;
-    
-    const availableProviders = Array.from(this.providers.entries())
-      .filter(([_, provider]) => {
-        // Check availability and rate limits
+
+    const available = Array.from(this.providers.entries())
+      .filter(([, p]) => {
         const now = Date.now();
-        if (!provider.available || provider.requestCount >= provider.maxRequests) {
-          // Check if cooldown has expired
-          if (provider.cooldownUntil && now > provider.cooldownUntil) {
-            provider.available = true;
-            provider.cooldownUntil = undefined;
-            provider.requestCount = 0;
-            console.log(`✅ Provider ${provider.name} cooldown expired - back online`);
-          } else {
-            return false;
-          }
+        if (p.cooldownUntil && now > p.cooldownUntil) {
+          p.available = true;
+          p.cooldownUntil = undefined;
+          p.requestCount = 0;
+          console.log(`✅ Provider ${p.name} cooldown expired — back online`);
         }
-        
-        // Check if provider can handle content size
-        if (provider.maxTokens && contentLength > provider.maxTokens * 0.6) { // 60% buffer
-          return false;
-        }
-        
+        if (!p.available || p.requestCount >= p.maxRequests) return false;
+        // Skip if content is too large for this provider
+        // Rule of thumb: 1 token ≈ 4 chars; apply 50% safety buffer
+        if (p.maxTokens && contentLength > p.maxTokens * 4 * 0.5) return false;
         return true;
       })
-      .sort(([_, a], [__, b]) => {
-        // Respect the priority property (lower number = higher priority)
-        if (a.priority !== b.priority) {
-          return a.priority - b.priority;
-        }
-        
-        // Otherwise use cost as tie-breaker
+      .sort(([, a], [, b]) => {
+        if (a.priority !== b.priority) return a.priority - b.priority;
         return (a.costPerToken || 0) - (b.costPerToken || 0);
       });
 
-    if (availableProviders.length === 0) {
-      console.warn('⚠️ No available providers found. Checking provider status...');
+    if (available.length === 0) {
+      console.warn("⚠️ No available providers. Current status:");
       this.logProviderStatus();
       return null;
     }
 
-    return availableProviders[0][0];
+    return available[0][0];
   }
+
+  // ── Request helpers ──────────────────────────────────────────────────────
 
   private async makeGeminiRequest(model: string, prompt: string): Promise<string> {
     const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
     if (!geminiKey) throw new Error("Gemini API key not configured");
 
-    // Use stable Gemini model names
-    const modelName = model === 'gemini-flash' ? 'gemini-2.0-flash' : 'gemini-2.5-pro';
+    // Map internal provider IDs to actual Gemini model names
+    const modelMap: Record<string, string> = {
+      "gemini-2.5-flash": "gemini-2.5-flash",
+      "gemini-2.5-flash-lite": "gemini-2.5-flash-lite",
+    };
+    const modelName = modelMap[model] ?? "gemini-2.5-flash";
 
-    // Use AbortController for timeout handling
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 30_000);
 
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${geminiKey}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }],
-          generationConfig: {
-            temperature: 0.3,
-          }
-        }),
-        signal: controller.signal
-      });
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.3 },
+          }),
+          signal: controller.signal,
+        }
+      );
 
       if (!response.ok) {
-        throw new Error(`Gemini API error: ${response.status}`);
+        const err = await response.text().catch(() => response.statusText);
+        throw new Error(`Gemini API error ${response.status}: ${err}`);
       }
 
       const data = await response.json();
-
-      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content || !data.candidates[0].content.parts || !data.candidates[0].content.parts[0]) {
-        throw new Error('Invalid response format from Gemini API');
-      }
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) throw new Error("Invalid response format from Gemini API");
 
       clearTimeout(timeoutId);
-      return data.candidates[0].content.parts[0].text;
+      return text;
     } catch (error) {
       clearTimeout(timeoutId);
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Request timeout: Connection to Gemini API timed out after 30 seconds');
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error("Request timeout: Gemini API did not respond within 30 s");
       }
       throw error;
     }
   }
 
-  private async makeOpenAIRequest(model: string, prompt: string): Promise<string> {
-    const openaiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
-    if (!openaiKey) throw new Error("OpenAI API key not configured");
+  /** Generic OpenAI-compatible request — used by Groq, Cerebras, DeepSeek, OpenRouter */
+  private async makeOpenAICompatibleRequest(
+    baseUrl: string,
+    apiKey: string,
+    model: string,
+    prompt: string,
+    extraHeaders: Record<string, string> = {},
+    timeoutMs = 45_000
+  ): Promise<string> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${openaiKey}`
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3
-      })
-    });
+    try {
+      const response = await fetch(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+          ...extraHeaders,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 2000,
+          temperature: 0.3,
+        }),
+        signal: controller.signal,
+      });
 
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+      if (!response.ok) {
+        const err = await response.text().catch(() => response.statusText);
+        throw new Error(`API error ${response.status}: ${err}`);
+      }
+
+      const data = await response.json();
+      clearTimeout(timeoutId);
+      return data.choices[0].message.content as string;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error(`Request timeout after ${timeoutMs / 1000}s`);
+      }
+      throw error;
     }
-
-    const data = await response.json();
-    return data.choices[0].message.content;
   }
 
-  private async makeAnthropicRequest(model: string, prompt: string): Promise<string> {
-    const anthropicKey = process.env.ANTHROPIC_API_KEY || process.env.VITE_ANTHROPIC_API_KEY;
-    if (!anthropicKey) throw new Error("Anthropic API key not configured");
+  private async makeGroqRequest(providerId: string, prompt: string): Promise<string> {
+    const groqKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY;
+    if (!groqKey) throw new Error("Groq API key not configured");
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 2000,
-        temperature: 0.3
-      })
-    });
+    const modelMap: Record<string, string> = {
+      "groq-llama-3.1-8b": "llama-3.1-8b-instant",
+      "groq-llama-3.3-70b": "llama-3.3-70b-versatile",
+      "groq-llama-4-scout": "meta-llama/llama-4-scout-17b-16e-instruct",
+    };
+    const model = modelMap[providerId];
+    if (!model) throw new Error(`Unknown Groq provider: ${providerId}`);
 
-    if (!response.ok) {
-      throw new Error(`Anthropic API error: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.content[0].text;
+    return this.makeOpenAICompatibleRequest(
+      "https://api.groq.com/openai/v1",
+      groqKey,
+      model,
+      prompt
+    );
   }
 
-  private async makeDeepSeekRequest(model: string, prompt: string): Promise<string> {
+  private async makeCerebrasRequest(providerId: string, prompt: string): Promise<string> {
+    const cerebrasKey = process.env.CEREBRAS_API_KEY || process.env.VITE_CEREBRAS_API_KEY;
+    if (!cerebrasKey) throw new Error("Cerebras API key not configured");
+
+    const modelMap: Record<string, string> = {
+      "cerebras-llama-3.3-70b": "llama-3.3-70b",
+    };
+    const model = modelMap[providerId];
+    if (!model) throw new Error(`Unknown Cerebras provider: ${providerId}`);
+
+    return this.makeOpenAICompatibleRequest(
+      "https://api.cerebras.ai/v1",
+      cerebrasKey,
+      model,
+      prompt
+    );
+  }
+
+  private async makeDeepSeekRequest(providerId: string, prompt: string): Promise<string> {
     const deepseekKey = process.env.DEEPSEEK_API_KEY || process.env.VITE_DEEPSEEK_API_KEY;
     if (!deepseekKey) throw new Error("DeepSeek API key not configured");
 
-    const response = await fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${deepseekKey}`
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3
-      })
-    });
+    const modelMap: Record<string, string> = {
+      // Legacy alias deepseek-chat maps to deepseek-v4-flash until 2026-07-24;
+      // using explicit name to avoid the deprecation cutover.
+      "deepseek-v4-flash": "deepseek-v4-flash",
+    };
+    const model = modelMap[providerId] ?? "deepseek-v4-flash";
 
-    if (!response.ok) {
-      throw new Error(`DeepSeek API error: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.choices[0].message.content;
+    return this.makeOpenAICompatibleRequest(
+      "https://api.deepseek.com",
+      deepseekKey,
+      model,
+      prompt
+    );
   }
 
-  private async makeKimiRequest(model: string, prompt: string): Promise<string> {
-    const kimiKey = process.env.MOONSHOT_API_KEY || process.env.VITE_MOONSHOT_API_KEY || process.env.KIMI_API_KEY;
-    if (!kimiKey) throw new Error("Kimi API key not configured");
-
-    const response = await fetch('https://api.moonshot.cn/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${kimiKey}`
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Kimi API error: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.choices[0].message.content;
-  }
-
-  private async makeOpenRouterRequest(model: string, prompt: string): Promise<string> {
+  private async makeOpenRouterRequest(providerId: string, prompt: string): Promise<string> {
     const openrouterKey = process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY;
-
-    // Check if OpenRouter key is configured
-    if (!openrouterKey || openrouterKey === 'your_openrouter_api_key') {
-      throw new Error('OpenRouter API key not configured');
+    if (!openrouterKey || openrouterKey === "your_openrouter_api_key") {
+      throw new Error("OpenRouter API key not configured");
     }
+
+    // Always append :free to get free-tier routing (vs paid passthrough same model ID)
+    const modelMap: Record<string, string> = {
+      "or-llama-4-scout": "meta-llama/llama-4-scout:free",
+      "or-deepseek-r1": "deepseek/deepseek-r1:free",
+      "or-qwen3-235b": "qwen/qwen3-235b-a22b:free",
+      "or-gpt-oss-120b": "openai/gpt-oss-120b:free",
+      "or-llama-3.3-70b": "meta-llama/llama-3.3-70b-instruct:free",
+    };
+    const model = modelMap[providerId];
+    if (!model) throw new Error(`Unknown OpenRouter provider: ${providerId}`);
 
     const siteUrl = process.env.SITE_URL || process.env.VITE_SITE_URL || "http://localhost:3000";
-    const appName = process.env.APP_NAME || process.env.VITE_APP_NAME || "AI Test Generator";
+    const appName = process.env.APP_NAME || process.env.VITE_APP_NAME || "StudyWise AI";
 
-    // Map internal model names to OpenRouter model IDs
-    const modelMapping: Record<string, string> = {
-      'or-llama-3-8b': 'meta-llama/llama-3-8b-instruct',
-      'or-mistral-7b': 'mistralai/mistral-7b-instruct'
-    };
-
-    const openrouterModel = modelMapping[model] || model;
-
-    // Use AbortController for timeout handling
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // Increased timeout to 60s for OR
-
-    try {
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${openrouterKey}`,
-          'HTTP-Referer': siteUrl,
-          'X-Title': appName
-        },
-        body: JSON.stringify({
-          model: openrouterModel,
-          messages: [{ role: 'user', content: prompt }],
-          max_tokens: 2000,
-          temperature: 0.3
-        }),
-        signal: controller.signal
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`OpenRouter API error (${response.status}):`, errorText);
-        throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      clearTimeout(timeoutId);
-      return data.choices[0].message.content;
-    } catch (error) {
-      clearTimeout(timeoutId);
-      throw error;
-    }
-  }
-
-  private async makeHuggingFaceRequest(model: string, prompt: string): Promise<string> {
-    const hfToken = process.env.HUGGINGFACE_API_TOKEN || process.env.VITE_HUGGINGFACE_API_TOKEN;
-
-    if (!hfToken) {
-      throw new Error('Hugging Face API token not configured');
-    }
-
-    // Map internal model names to Hugging Face model IDs
-    const modelMapping: Record<string, string> = {
-      'hf-distilgpt2': 'distilgpt2'
-    };
-
-    const hfModel = modelMapping[model] || model;
-
-    const response = await fetch(`https://router.huggingface.co/hf-inference/models/${hfModel}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${hfToken}`,
-        'Content-Type': 'application/json'
+    return this.makeOpenAICompatibleRequest(
+      "https://openrouter.ai/api/v1",
+      openrouterKey,
+      model,
+      prompt,
+      {
+        "HTTP-Referer": siteUrl,
+        "X-Title": appName,
       },
-      body: JSON.stringify({
-        inputs: prompt,
-        parameters: {
-          max_new_tokens: 500,
-          temperature: 0.3,
-          do_sample: true,
-          return_full_text: false
-        }
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Hugging Face API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return Array.isArray(data) ? data[0].generated_text : data.generated_text;
+      60_000  // OpenRouter free tier can be slower — 60 s timeout
+    );
   }
 
-  private async makeMockRequest(model: string, prompt: string): Promise<string> {
-    console.log(`🤖 Using Mock AI fallback for model: ${model}`);
+  private async makeMockRequest(_model: string, prompt: string): Promise<string> {
+    console.log("🤖 Using Mock AI fallback — all real providers exhausted or unavailable");
 
-    // Extract question requirements from the prompt
     const questionCountMatch = prompt.match(/Generate exactly (\d+) high-quality/);
     const questionCount = questionCountMatch ? parseInt(questionCountMatch[1]) : 5;
-
     const difficultyMatch = prompt.match(/high-quality (\w+) test questions/);
     const difficulty = difficultyMatch ? difficultyMatch[1] : "medium";
 
-    // Generate mock questions based on content analysis
-    const questions = [];
-    const mockQuestionTemplates = [
+    const templates = [
       "What is the main topic discussed in the content?",
       "Which of the following is mentioned as an important concept?",
-      "According to the content, what would be the result of...?",
-      "The content suggests that...",
-      "Which statement best describes the information provided?"
+      "According to the content, what would be the result of…?",
+      "The content suggests that…",
+      "Which statement best describes the information provided?",
     ];
 
-    for (let i = 0; i < questionCount; i++) {
-      const questionText = mockQuestionTemplates[i % mockQuestionTemplates.length];
-      const options = ["Option A", "Option B", "Option C", "Option D"];
+    const questions = Array.from({ length: questionCount }, (_, i) => ({
+      id: `q${i + 1}`,
+      type: "multiple-choice",
+      question: `${templates[i % templates.length]} (Question ${i + 1})`,
+      options: ["Option A", "Option B", "Option C", "Option D"],
+      correctAnswer: "Option A",
+      explanation: "This is a mock response generated as a fallback when AI services are unavailable.",
+      difficulty,
+      points: difficulty === "easy" ? 1 : difficulty === "medium" ? 2 : 3,
+      sourceText: "Generated from your content (mock response)",
+    }));
 
-      questions.push({
-        id: `q${i + 1}`,
-        type: "multiple-choice",
-        question: `${questionText} (Question ${i + 1})`,
-        options: options,
-        correctAnswer: options[0],
-        explanation: "This is a mock response generated as a fallback when AI services are unavailable.",
-        difficulty: difficulty,
-        points: difficulty === "easy" ? 1 : difficulty === "medium" ? 2 : 3,
-        sourceText: "Generated from your content (mock response)"
-      });
-    }
-
-    return JSON.stringify({
-      questions: questions
-    }, null, 2);
+    return JSON.stringify({ questions }, null, 2);
   }
+
+  // ── Provider dispatch ────────────────────────────────────────────────────
 
   private async makeProviderRequest(providerId: string, prompt: string): Promise<string> {
     const provider = this.providers.get(providerId);
     if (!provider) throw new Error(`Provider ${providerId} not found`);
 
-    // Increment request count
     provider.requestCount++;
 
     try {
       let response: string;
 
-      if (providerId.startsWith('gemini')) {
+      if (providerId.startsWith("gemini-")) {
         response = await this.makeGeminiRequest(providerId, prompt);
-      } else if (providerId.startsWith('gpt')) {
-        response = await this.makeOpenAIRequest(providerId, prompt);
-      } else if (providerId.startsWith('claude')) {
-        response = await this.makeAnthropicRequest(providerId, prompt);
-      } else if (providerId.startsWith('deepseek')) {
+      } else if (providerId.startsWith("groq-")) {
+        response = await this.makeGroqRequest(providerId, prompt);
+      } else if (providerId.startsWith("cerebras-")) {
+        response = await this.makeCerebrasRequest(providerId, prompt);
+      } else if (providerId.startsWith("deepseek-")) {
         response = await this.makeDeepSeekRequest(providerId, prompt);
-      } else if (providerId.startsWith('moonshot')) {
-        response = await this.makeKimiRequest(providerId, prompt);
-      } else if (providerId.startsWith('or-')) {
+      } else if (providerId.startsWith("or-")) {
         response = await this.makeOpenRouterRequest(providerId, prompt);
-      } else if (providerId.startsWith('hf-')) {
-        response = await this.makeHuggingFaceRequest(providerId, prompt);
-      } else if (providerId === 'mock-ai') {
+      } else if (providerId === "mock-ai") {
         response = await this.makeMockRequest(providerId, prompt);
       } else {
-        throw new Error(`Unhandled provider type for ${providerId}`);
+        throw new Error(`Unhandled provider type: ${providerId}`);
       }
 
-      console.log(`✅ Request successful with ${provider.name}`);
+      console.log(`✅ Request successful via ${provider.name}`);
       return response;
-
     } catch (error) {
-      console.error(`❌ Request failed with ${provider.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error(`❌ ${provider.name} failed: ${error instanceof Error ? error.message : error}`);
 
-      // Handle different types of errors
       if (error instanceof Error) {
-        if (error.message.includes('401') || error.message.includes('invalid') || error.message.includes('User not found') || error.message.includes('expired')) {
-          // Authentication/API key errors - disable provider permanently for this session
+        const msg = error.message;
+
+        if (msg.includes("401") || msg.includes("invalid") || msg.includes("expired") || msg.includes("Unauthorized")) {
           provider.available = false;
-          console.log(`🔐 Provider ${provider.name} authentication failed - disabled for session`);
-          // Also disable all other OpenRouter providers if one fails with auth error
-          if (providerId.includes('gpt') || providerId.includes('claude') || providerId.includes('mistral')) {
-            for (const [key, p] of this.providers.entries()) {
-              if (key !== providerId && (key.includes('gpt') || key.includes('claude') || key.includes('mistral'))) {
-                p.available = false;
-                console.log(`🔐 Disabling related OpenRouter provider: ${p.name}`);
-              }
-            }
-          }
-        } else if (error.message.includes('429') || error.message.includes('rate limit')) {
+          console.log(`🔐 ${provider.name} auth failed — disabled for session`);
+        } else if (msg.includes("429") || msg.toLowerCase().includes("rate limit")) {
           provider.available = false;
-          provider.cooldownUntil = Date.now() + 60000; // 60 second cooldown
-          console.log(`⏳ Provider ${provider.name} rate limited, cooldown for 60 seconds`);
-        } else if (error.message.includes('quota') || error.message.includes('insufficient')) {
+          provider.cooldownUntil = Date.now() + 60_000;
+          console.log(`⏳ ${provider.name} rate-limited — 60 s cooldown`);
+        } else if (msg.includes("quota") || msg.includes("insufficient") || msg.includes("billing")) {
           provider.available = false;
-          provider.cooldownUntil = Date.now() + 3600000; // 1 hour cooldown
-          console.log(`💰 Provider ${provider.name} quota exceeded, disabling for 1 hour`);
-        } else if (error.message.includes('temporarily unavailable') || error.message.includes('5')) {
-          // Temporary server errors - retry after delay
+          provider.cooldownUntil = Date.now() + 3_600_000;
+          console.log(`💰 ${provider.name} quota/billing issue — 1 h cooldown`);
+        } else if (msg.includes("503") || msg.includes("502") || msg.includes("unavailable") || msg.includes("timeout")) {
           provider.available = false;
-          provider.cooldownUntil = Date.now() + 30000; // 30 second cooldown
-          console.log(`🌐 Provider ${provider.name} temporarily unavailable, cooldown for 30 seconds`);
+          provider.cooldownUntil = Date.now() + 30_000;
+          console.log(`🌐 ${provider.name} temporarily unavailable — 30 s cooldown`);
         }
       }
 
@@ -650,136 +635,121 @@ class MultiProviderAIService {
     }
   }
 
-  /**
-   * Universal AI call with automatic failover and retries
-   */
-  private async executeWithFailover(prompt: string, options?: any): Promise<string> {
-    const allProviderIds = Array.from(this.providers.keys());
+  // ── Failover orchestration ───────────────────────────────────────────────
+
+  private async executeWithFailover(prompt: string, _options?: GenerateQuestionsOptions): Promise<string> {
     const attemptedProviders = new Set<string>();
     let lastError: Error | null = null;
-    
-    // Allow up to 5 attempts across different providers
-    const maxAttempts = 5;
+    const maxAttempts = 6;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      // Find best available provider based on priority and availability
-      const availableProviders = Array.from(this.providers.entries())
-        .filter(([id, p]) => {
-          const now = Date.now();
-          // A provider is eligible if it's available and not currently in cooldown
-          const isEnabled = p.available;
-          const isNotRateLimited = p.requestCount < p.maxRequests;
-          const isCooldownOver = !p.cooldownUntil || now >= p.cooldownUntil;
-          
-          return isEnabled && isNotRateLimited && isCooldownOver;
-        })
-        .sort(([_, a], [__, b]) => a.priority - b.priority);
+      const now = Date.now();
 
-      if (availableProviders.length === 0) {
-        console.warn("⚠️ No providers available for failover, waiting 2s...");
+      const available = Array.from(this.providers.entries())
+        .filter(([, p]) => {
+          const cooldownOk = !p.cooldownUntil || now >= p.cooldownUntil;
+          if (!cooldownOk && p.cooldownUntil && now >= p.cooldownUntil) {
+            p.available = true;
+            p.cooldownUntil = undefined;
+          }
+          return p.available && p.requestCount < p.maxRequests && cooldownOk;
+        })
+        .sort(([, a], [, b]) => a.priority - b.priority);
+
+      if (available.length === 0) {
+        console.warn("⚠️ No providers available — waiting 2 s…");
         await this.sleep(2000);
         continue;
       }
 
-      // Log status of available providers
       if (attempt === 0) {
-        console.log(`🔍 Available providers for this request: ${availableProviders.map(([_, p]) => p.name).join(', ')}`);
+        console.log(`🔍 Available providers: ${available.map(([, p]) => p.name).join(", ")}`);
       }
 
-      // Try to find a provider we haven't tried in this specific chain yet
-      let providerId = availableProviders.find(([id]) => !attemptedProviders.has(id))?.[0];
-      
-      // If all available have been tried at least once, just pick the top one
-      if (!providerId) {
-        providerId = availableProviders[0][0];
-      }
+      // Prefer untried providers; fall back to top available if all tried
+      const providerId =
+        available.find(([id]) => !attemptedProviders.has(id))?.[0] ?? available[0][0];
 
       attemptedProviders.add(providerId);
       const provider = this.providers.get(providerId)!;
 
       try {
-        console.log(`🔄 [Failover Attempt ${attempt + 1}/${maxAttempts}] Using ${provider.name}`);
-        const response = await this.makeProviderRequest(providerId, prompt);
-        return response;
+        console.log(`🔄 [Attempt ${attempt + 1}/${maxAttempts}] Trying ${provider.name}`);
+        return await this.makeProviderRequest(providerId, prompt);
       } catch (error) {
         lastError = error as Error;
-        console.warn(`❌ Provider ${provider.name} failed:`, error instanceof Error ? error.message : error);
-        
-        // Wait a bit before next attempt to allow for transient issues or cooldowns
+        console.warn(`❌ ${provider.name} failed: ${lastError.message}`);
         await this.sleep(1000);
       }
     }
 
-    throw lastError || new Error("All AI providers failed after multiple attempts");
+    throw lastError ?? new Error("All AI providers exhausted after multiple attempts");
   }
+
+  // ── Public API ───────────────────────────────────────────────────────────
 
   async generateQuestions(options: GenerateQuestionsOptions): Promise<AIResponse> {
     const contentHash = this.generateContentHash(options);
-
-    // Check cache first
     const cached = this.getCachedQuestions(contentHash);
     if (cached) {
       console.log("📋 Returning cached questions");
       return cached;
     }
 
-    console.log(`🤖 Generating ${options.questionCount} questions using multi-provider system`);
+    console.log(`🤖 Generating ${options.questionCount} questions — content length: ${options.content.length} chars`);
     const prompt = this.buildPrompt(options);
 
     try {
       const response = await this.executeWithFailover(prompt, options);
-      const parsedResponse = this.parseAIResponse(response);
-      
-      // Validate specifically for questions
-      this.validateQuestionsResponse(parsedResponse);
-      
-      const processedResponse = this.processGeneratedQuestions(parsedResponse, options);
-
-      // Cache the successful response
-      this.setCachedQuestions(contentHash, processedResponse);
-
-      return processedResponse;
+      const parsed = this.parseAIResponse(response);
+      this.validateQuestionsResponse(parsed);
+      const result = this.processGeneratedQuestions(parsed, options);
+      this.setCachedQuestions(contentHash, result);
+      return result;
     } catch (error) {
-      console.error("Critical AI Failure in generateQuestions, falling back to Mock AI:", error);
-      
-      // Ultimate fallback to Mock AI
-      const response = await this.makeMockRequest('mock-ai', prompt);
-      const parsedResponse = this.parseAIResponse(response);
-      return this.processGeneratedQuestions(parsedResponse, options);
+      console.error("Critical AI failure — falling back to Mock AI:", error);
+      const response = await this.makeMockRequest("mock-ai", prompt);
+      return this.processGeneratedQuestions(this.parseAIResponse(response), options);
     }
   }
 
   private buildPrompt(options: GenerateQuestionsOptions): string {
     const { content, difficulty, questionCount, questionTypes, focus } = options;
 
-    const maxContentLength = 3000;
-    const optimizedContent = content.length > maxContentLength
-      ? content.substring(0, maxContentLength) + "..."
-      : content;
+    // 15-20 pages ≈ 30K-50K chars; we pass full content and let the model handle it.
+    // Cap at 80K chars (well within every provider's context window) to keep prompts sane.
+    const MAX_CONTENT = 80_000;
+    const optimizedContent =
+      content.length > MAX_CONTENT
+        ? content.substring(0, MAX_CONTENT) + "\n\n[Content truncated — focus on the above section]"
+        : content;
 
-    const isTrueFalseOnly = questionTypes.length === 1 && questionTypes[0] === 'true-false';
-    
-    const exampleQuestion = isTrueFalseOnly ? {
-      "id": "q1",
-      "type": "true-false",
-      "question": "The Earth is flat.",
-      "options": ["True", "False"],
-      "correctAnswer": "False",
-      "explanation": "Scientific evidence confirms Earth is an oblate spheroid.",
-      "difficulty": difficulty,
-      "points": difficulty === "easy" ? 1 : difficulty === "medium" ? 2 : 3,
-      "sourceText": "Evidence from satellite imagery confirms the Earth is round."
-    } : {
-      "id": "q1",
-      "type": "multiple-choice",
-      "question": "What is the capital of France?",
-      "options": ["London", "Berlin", "Paris", "Madrid"],
-      "correctAnswer": "Paris",
-      "explanation": "Paris is the capital and largest city of France.",
-      "difficulty": difficulty,
-      "points": difficulty === "easy" ? 1 : difficulty === "medium" ? 2 : 3,
-      "sourceText": "The capital of France is Paris."
-    };
+    const isTrueFalseOnly =
+      questionTypes.length === 1 && questionTypes[0] === "true-false";
+
+    const exampleQuestion = isTrueFalseOnly
+      ? {
+          id: "q1",
+          type: "true-false",
+          question: "The Earth is flat.",
+          options: ["True", "False"],
+          correctAnswer: "False",
+          explanation: "Scientific evidence confirms Earth is an oblate spheroid.",
+          difficulty,
+          points: difficulty === "easy" ? 1 : difficulty === "medium" ? 2 : 3,
+          sourceText: "Evidence from satellite imagery confirms the Earth is round.",
+        }
+      : {
+          id: "q1",
+          type: "multiple-choice",
+          question: "What is the capital of France?",
+          options: ["London", "Berlin", "Paris", "Madrid"],
+          correctAnswer: "Paris",
+          explanation: "Paris is the capital and largest city of France.",
+          difficulty,
+          points: difficulty === "easy" ? 1 : difficulty === "medium" ? 2 : 3,
+          sourceText: "The capital of France is Paris.",
+        };
 
     return `Generate exactly ${questionCount} high-quality ${difficulty} test questions from this content:
 
@@ -791,85 +761,67 @@ REQUIREMENTS:
 - Difficulty: ${difficulty}
 - Each question must be directly answerable from the provided content
 - Include exact source text that supports each answer
+- Do NOT hallucinate facts — only use information present in the content above
 ${focus ? `- Focus areas: ${focus}` : ""}
 
-RESPONSE FORMAT - Return valid JSON only:
+RESPONSE FORMAT — Return valid JSON only (no markdown, no preamble):
 {
   "questions": [
     ${JSON.stringify(exampleQuestion, null, 2)}
   ]
 }
 
-IMPORTANT: If multiple question types were requested, provide a balanced mix. If only true-false was requested, ONLY provide true-false questions with ["True", "False"] as options.
+${
+  isTrueFalseOnly
+    ? 'IMPORTANT: ONLY provide true-false questions with ["True", "False"] as options.'
+    : "IMPORTANT: If multiple question types were requested, provide a balanced mix."
+}
 
 Generate ${questionCount} questions now:`;
   }
 
   private parseAIResponse(text: string): any {
+    if (!text || text.trim().length < 10) throw new Error("Response too short or empty");
+
+    let jsonText = text.trim()
+      .replace(/^```json\s*/i, "")
+      .replace(/\s*```$/,      "")
+      .replace(/^```\s*/,      "")
+      .replace(/\s*```$/,      "");
+
+    // Find the outermost JSON object or array
+    const objStart  = jsonText.indexOf("{");
+    const arrStart  = jsonText.indexOf("[");
+    let startIdx = -1, endIdx = -1;
+
+    if (objStart !== -1 && (arrStart === -1 || objStart < arrStart)) {
+      startIdx = objStart;
+      endIdx   = jsonText.lastIndexOf("}") + 1;
+    } else if (arrStart !== -1) {
+      startIdx = arrStart;
+      endIdx   = jsonText.lastIndexOf("]") + 1;
+    }
+
+    if (startIdx === -1) throw new Error("No JSON found in AI response");
+
     try {
-      // Check if response looks like gibberish or is too short
-      if (!text || text.trim().length < 10) {
-        throw new Error("Response is too short or empty");
-      }
-
-      let jsonText = text.trim();
-
-      // Remove markdown code blocks
-      jsonText = jsonText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
-      jsonText = jsonText.replace(/^```\s*/, "").replace(/\s*```$/, "");
-
-      // Find JSON object or array - look for the largest matching block to avoid picking up partial matches in reasoning text
-      let jsonMatch = jsonText.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
-      
-      if (!jsonMatch) {
-        throw new Error("No valid JSON object or array found in response");
-      }
-
-      // If we found a match, try to find the outermost JSON structure if there are nested ones
-      const content = jsonMatch[0];
-      const firstBrace = content.indexOf('{');
-      const firstBracket = content.indexOf('[');
-      
-      let startIdx = -1;
-      let endIdx = -1;
-      
-      if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
-        startIdx = jsonText.indexOf('{');
-        endIdx = jsonText.lastIndexOf('}') + 1;
-      } else if (firstBracket !== -1) {
-        startIdx = jsonText.indexOf('[');
-        endIdx = jsonText.lastIndexOf(']') + 1;
-      }
-      
-      if (startIdx !== -1 && endIdx !== -1) {
-        const cleanedJson = jsonText.substring(startIdx, endIdx);
-        return JSON.parse(cleanedJson);
-      }
-
-      const parsed = JSON.parse(jsonMatch[0]);
-      return parsed;
-    } catch (error) {
-      console.error("Failed to parse AI response:", error);
-      console.error("Response preview:", text.substring(0, 300) + "...");
-      throw new Error(`Invalid JSON response from AI: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return JSON.parse(jsonText.substring(startIdx, endIdx));
+    } catch (e) {
+      console.error("JSON parse failed. Preview:", jsonText.substring(startIdx, startIdx + 300));
+      throw new Error(`Invalid JSON from AI: ${e instanceof Error ? e.message : e}`);
     }
   }
 
   private validateQuestionsResponse(parsed: any): void {
-    if (!parsed.questions || !Array.isArray(parsed.questions)) {
-      throw new Error("Invalid response format - questions array missing");
+    if (!parsed.questions || !Array.isArray(parsed.questions) || parsed.questions.length === 0) {
+      throw new Error("Response missing questions array or empty");
     }
-
-    if (parsed.questions.length === 0) {
-      throw new Error("No questions generated");
-    }
-
-    for (const question of parsed.questions) {
-      if (!question.question || typeof question.question !== 'string') {
-        throw new Error("Invalid question format - missing or invalid question text");
+    for (const q of parsed.questions) {
+      if (!q.question || typeof q.question !== "string") {
+        throw new Error("Question missing or invalid question text");
       }
-      if (!question.correctAnswer && !question.correct_answer) {
-        throw new Error("Invalid question format - missing correct answer");
+      if (!q.correctAnswer && !q.correct_answer) {
+        throw new Error("Question missing correct answer");
       }
     }
   }
@@ -877,17 +829,16 @@ Generate ${questionCount} questions now:`;
   private processGeneratedQuestions(parsedResponse: any, options: GenerateQuestionsOptions): AIResponse {
     const questions = parsedResponse.questions || [];
 
-    const processedQuestions = questions.map((q: any, index: number) => {
-      // Enhanced source text matching
+    const processed: GeneratedQuestion[] = questions.map((q: any, index: number) => {
       let sourceText = q.sourceText || "Generated from your content";
       let sourceOffset = 0;
       let sourceLength = 0;
 
       if (q.sourceText && options.content && q.sourceText !== "Generated from your content") {
-        const { text, offset, length } = this.findBestSourceMatch(q.sourceText, options.content);
-        sourceText = text;
-        sourceOffset = offset;
-        sourceLength = length;
+        const match = this.findBestSourceMatch(q.sourceText, options.content);
+        sourceText   = match.text;
+        sourceOffset = match.offset;
+        sourceLength = match.length;
       }
 
       return {
@@ -895,75 +846,53 @@ Generate ${questionCount} questions now:`;
         type: q.type || "multiple-choice",
         question: q.question || `Generated question ${index + 1}`,
         options: q.options || ["Option A", "Option B", "Option C", "Option D"],
-        correctAnswer: q.correctAnswer || q.options?.[0] || "Option A",
+        correctAnswer: q.correctAnswer || q.correct_answer || q.options?.[0] || "Option A",
         explanation: q.explanation || "Explanation based on source content",
         difficulty: q.difficulty || options.difficulty,
         points: q.points || (options.difficulty === "easy" ? 1 : options.difficulty === "medium" ? 2 : 3),
         sourceText,
         sourceOffset,
         sourceLength,
-        confidence: 0.85
-      } as GeneratedQuestion;
+        confidence: 0.85,
+      };
     });
 
     return {
-      questions: processedQuestions,
+      questions: processed,
       metadata: {
-        totalQuestions: processedQuestions.length,
-        estimatedTime: processedQuestions.length * (options.difficulty === "easy" ? 1 : options.difficulty === "medium" ? 2 : 3),
+        totalQuestions: processed.length,
+        estimatedTime: processed.length * (options.difficulty === "easy" ? 1 : options.difficulty === "medium" ? 2 : 3),
         difficulty: options.difficulty,
         subject: options.subject,
-        contentHash: this.generateContentHash(options)
-      }
+        contentHash: this.generateContentHash(options),
+      },
     };
   }
 
-  private findBestSourceMatch(sourceText: string, content: string): { text: string; offset: number; length: number } {
+  private findBestSourceMatch(
+    sourceText: string,
+    content: string
+  ): { text: string; offset: number; length: number } {
     const contentLower = content.toLowerCase();
-    const sourceTextLower = sourceText.toLowerCase();
-    
-    // Try exact match first
-    let foundIndex = contentLower.indexOf(sourceTextLower);
-    if (foundIndex !== -1) {
-      return {
-        text: content.substring(foundIndex, foundIndex + sourceText.length),
-        offset: foundIndex,
-        length: sourceText.length
-      };
+    const sourceLower  = sourceText.toLowerCase();
+
+    const exactIdx = contentLower.indexOf(sourceLower);
+    if (exactIdx !== -1) {
+      return { text: content.substring(exactIdx, exactIdx + sourceText.length), offset: exactIdx, length: sourceText.length };
     }
 
-    // Try partial matching with key phrases
-    const phrases = sourceText.split(/[.!?;,]/).filter(p => p.trim().length > 10);
-    for (const phrase of phrases) {
-      const phraseIndex = contentLower.indexOf(phrase.toLowerCase().trim());
-      if (phraseIndex !== -1) {
-        // Expand to find sentence boundaries
-        let start = phraseIndex;
-        let end = phraseIndex + phrase.length;
-        
-        // Expand backwards to sentence start
-        while (start > 0 && !/[.!?\n]/.test(content[start - 1])) {
-          start--;
-        }
-        
-        // Expand forwards to sentence end
-        while (end < content.length && !/[.!?\n]/.test(content[end])) {
-          end++;
-        }
-        
-        if (end < content.length && /[.!?]/.test(content[end])) {
-          end++;
-        }
-        
-        return {
-          text: content.substring(start, end).trim(),
-          offset: start,
-          length: end - start
-        };
+    for (const phrase of sourceText.split(/[.!?;,]/).filter(p => p.trim().length > 10)) {
+      const phraseIdx = contentLower.indexOf(phrase.toLowerCase().trim());
+      if (phraseIdx !== -1) {
+        let start = phraseIdx;
+        let end   = phraseIdx + phrase.length;
+        while (start > 0 && !/[.!?\n]/.test(content[start - 1])) start--;
+        while (end < content.length && !/[.!?\n]/.test(content[end])) end++;
+        if (end < content.length && /[.!?]/.test(content[end])) end++;
+        return { text: content.substring(start, end).trim(), offset: start, length: end - start };
       }
     }
 
-    // Fallback: return original source text
     return { text: sourceText, offset: 0, length: 0 };
   }
 
@@ -983,7 +912,7 @@ Generate ${questionCount} questions now:`;
     focusAreas: string[];
   }> {
     const wrongQuestions = testResult.questions.filter(
-      (q) => testResult.userAnswers[q.id] !== testResult.correctAnswers[q.id]
+      q => testResult.userAnswers[q.id] !== testResult.correctAnswers[q.id]
     );
 
     const prompt = `Analyze this test performance and provide actionable insights:
@@ -992,18 +921,21 @@ PERFORMANCE SUMMARY:
 - Score: ${testResult.score}% (${testResult.totalQuestions - wrongQuestions.length}/${testResult.totalQuestions} correct)
 - Test: ${testResult.testTitle}
 
-INCORRECT QUESTIONS (showing up to 3):
-${wrongQuestions.slice(0, 3).map((q, i) => `
-${i + 1}. Question: ${q.question || q.question_text || "Unknown question"}
+INCORRECT QUESTIONS (up to 3):
+${wrongQuestions
+  .slice(0, 3)
+  .map(
+    (q, i) => `${i + 1}. Question: ${q.question}
    Correct Answer: ${testResult.correctAnswers[q.id]}
    User Answer: ${testResult.userAnswers[q.id] || "Not answered"}
-   Topic: ${(q.sourceText || q.source_text || "")?.substring(0, 100)}...
-`).join("")}
+   Topic: ${(q.sourceText ?? "").substring(0, 100)}…`
+  )
+  .join("\n\n")}
 
 Provide insights in JSON format:
 {
   "overallPerformance": "Clear assessment of performance level",
-  "strengths": ["2-3 specific strengths observed"],
+  "strengths": ["2-3 specific strengths"],
   "weaknesses": ["2-3 specific areas needing improvement"],
   "studyRecommendations": ["3-4 actionable study strategies"],
   "focusAreas": ["2-3 specific topics to review"]
@@ -1012,190 +944,45 @@ Provide insights in JSON format:
     try {
       const response = await this.executeWithFailover(prompt);
       const jsonMatch = response.match(/\{[\s\S]*\}/);
-
-      if (jsonMatch) {
-        const insights = JSON.parse(jsonMatch[0]);
-        return insights;
-      }
-
+      if (jsonMatch) return JSON.parse(jsonMatch[0]);
       return this.generateBasicInsights(testResult);
-    } catch (error) {
-      console.error("Insights generation failed:", error);
+    } catch {
       return this.generateBasicInsights(testResult);
     }
   }
 
   private generateBasicInsights(testResult: any) {
-    const score = testResult.score;
-    const totalQuestions = testResult.totalQuestions;
+    const { score, totalQuestions } = testResult;
     const wrongCount = totalQuestions - Math.floor((score / 100) * totalQuestions);
 
     return {
-      overallPerformance: score >= 90 ? "Excellent performance demonstrating strong mastery" :
-                         score >= 80 ? "Good performance with solid understanding" :
-                         score >= 70 ? "Satisfactory performance with room for improvement" :
-                         score >= 60 ? "Below average performance requiring focused study" :
-                         "Poor performance indicating need for comprehensive review",
-      strengths: score >= 70 ? [
-        "Demonstrated good comprehension of key concepts",
-        `Correctly answered ${totalQuestions - wrongCount} questions`,
-        "Showed engagement with the material"
-      ] : [
-        "Completed the full assessment",
-        "Identified areas needing improvement"
-      ],
-      weaknesses: wrongCount > 0 ? [
-        `Missed ${wrongCount} out of ${totalQuestions} questions`,
-        "Some key concepts need reinforcement",
-        score < 60 ? "Fundamental understanding needs strengthening" : "Minor knowledge gaps present"
-      ] : ["No significant weaknesses identified"],
+      overallPerformance:
+        score >= 90 ? "Excellent — strong mastery of the material" :
+        score >= 80 ? "Good — solid understanding with minor gaps" :
+        score >= 70 ? "Satisfactory — room for improvement in several areas" :
+        score >= 60 ? "Below average — focused study needed" :
+                      "Needs significant review — revisit core concepts",
+      strengths: score >= 70
+        ? ["Good comprehension of key concepts", `Correctly answered ${totalQuestions - wrongCount} questions`, "Showed engagement with the material"]
+        : ["Completed the full assessment", "Identified areas needing improvement"],
+      weaknesses: wrongCount > 0
+        ? [`Missed ${wrongCount}/${totalQuestions} questions`, "Some key concepts need reinforcement",
+           score < 60 ? "Fundamental understanding needs strengthening" : "Minor knowledge gaps remain"]
+        : ["No significant weaknesses identified"],
       studyRecommendations: [
         "Review explanations for all incorrect answers",
-        "Create summary notes of missed concepts",
-        "Practice with similar question types",
-        "Focus on understanding rather than memorization",
-        wrongCount > totalQuestions / 2 ? "Consider re-reading the source material" : "Target specific weak areas"
-      ].slice(0, 4),
+        "Summarise missed concepts in your own words",
+        "Practice similar question types",
+        wrongCount > totalQuestions / 2 ? "Re-read the source material" : "Target specific weak areas",
+      ],
       focusAreas: [
         "Topics from incorrectly answered questions",
         "Key concepts from the source material",
-        score < 70 ? "Fundamental principles and definitions" : "Advanced applications and details"
-      ]
+        score < 70 ? "Fundamental principles and definitions" : "Advanced applications and details",
+      ],
     };
   }
 
-  private generateContentHash(options: GenerateQuestionsOptions): string {
-    const hashInput = `${options.content.substring(0, 1000)}-${options.difficulty}-${options.questionCount}-${options.questionTypes.join(",")}`;
-    return createHash("md5").update(hashInput).digest("hex");
-  }
-
-  private getCachedQuestions(contentHash: string): AIResponse | null {
-    const cached = this.cache.get(contentHash);
-    if (cached && Date.now() < cached.expiresAt) {
-      return cached.data;
-    }
-    if (cached) {
-      this.cache.delete(contentHash);
-    }
-    return null;
-  }
-
-  private setCachedQuestions(contentHash: string, response: AIResponse): void {
-    const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
-    this.cache.set(contentHash, {
-      data: response,
-      timestamp: Date.now(),
-      expiresAt
-    });
-  }
-
-  private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  private cleanupCache(): void {
-    const now = Date.now();
-    let cleanedCount = 0;
-
-    for (const [key, value] of Array.from(this.cache.entries())) {
-      if (now > value.expiresAt) {
-        this.cache.delete(key);
-        cleanedCount++;
-      }
-    }
-
-    if (cleanedCount > 0) {
-      console.log(`🧹 Cleaned up ${cleanedCount} expired cache entries`);
-    }
-  }
-
-  private logProviderStatus(): void {
-    console.log("📊 Provider Status:");
-    for (const [key, provider] of this.providers) {
-      console.log(`  ${provider.name}: ${provider.available ? '✅' : '❌'} (${provider.requestCount}/${provider.maxRequests})`);
-    }
-  }
-
-  public getProviderStatus(): Record<string, any> {
-    const status: Record<string, any> = {};
-
-    for (const [key, provider] of this.providers) {
-      status[key] = {
-        name: provider.name,
-        available: provider.available,
-        requestsUsed: provider.requestCount,
-        maxRequests: provider.maxRequests,
-        priority: provider.priority,
-        costPerToken: provider.costPerToken,
-        maxTokens: provider.maxTokens
-      };
-    }
-
-    return status;
-  }
-
-  public async healthCheck(): Promise<Record<string, boolean>> {
-    const results: Record<string, boolean> = {};
-    console.log("🤖 Running AI Provider Health Checks...");
-
-    for (const [key, provider] of this.providers) {
-      try {
-        // Simple test request to check if provider is working
-        await this.makeProviderRequest(key, "Respond with valid JSON: {\"questions\": []}");
-        results[key] = true;
-        console.log(`  - ${provider.name}: ✅`);
-      } catch (error) {
-        results[key] = false;
-        console.log(`  - ${provider.name}: ❌ (${error instanceof Error ? error.message : 'Error'})`);
-      }
-
-      // Small delay between health checks
-      await this.sleep(1000);
-    }
-
-    return results;
-  }
-
-  public async listAvailableGeminiModels(): Promise<void> {
-    const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-    if (!geminiKey) {
-      console.log('❌ No Gemini API key found');
-      return;
-    }
-
-    try {
-      // Try v1 API first (current API)
-      console.log('🔍 Checking available Gemini models...');
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${geminiKey}`);
-      if (!response.ok) {
-        console.log(`❌ v1 API failed: ${response.status} - ${response.statusText}`);
-        // Try v1beta API as fallback
-        const betaResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`);
-        if (!betaResponse.ok) {
-          console.log(`❌ v1beta API also failed: ${betaResponse.status} - ${betaResponse.statusText}`);
-          return;
-        }
-        const betaData = await betaResponse.json();
-        console.log('📋 Available models in v1beta API:');
-        betaData.models?.forEach((model: any) => {
-          console.log(`  - ${model.name} (supports: ${model.supportedGenerationMethods?.join(', ') || 'unknown'})`);
-        });
-        return;
-      }
-      const data = await response.json();
-      console.log('📋 Available models in v1 API:');
-      data.models?.forEach((model: any) => {
-        console.log(`  - ${model.name} (supports: ${model.supportedGenerationMethods?.join(', ') || 'unknown'})`);
-      });
-    } catch (error) {
-      console.error('❌ Failed to list models:', error);
-    }
-  }
-
-
-  /**
-   * Parse content into structured modules
-   */
   async parseContentIntoModules(options: {
     content: string;
     context?: string;
@@ -1208,52 +995,122 @@ Provide insights in JSON format:
     word_count: number;
     estimated_read_time: number;
   }>> {
-    const prompt = `You are an expert educational content organizer. Analyze the following content and break it down into logical study modules/chapters.
+    const prompt = `You are an expert educational content organiser. Analyse the following content and break it into logical study modules.
 
-${options.context ? `Context: ${options.context}\n\n` : ''}
-
-Content to analyze:
-${options.content.substring(0, 5000)}${options.content.length > 5000 ? '...' : ''}
+${options.context ? `Context: ${options.context}\n\n` : ""}Content:
+${options.content.substring(0, 8000)}${options.content.length > 8000 ? "…" : ""}
 
 Instructions:
-1. Identify natural divisions in the content (chapters, sections, topics)
-2. Create 3-8 modules (unless content is very short or very long)
-3. Each module should be a complete, self-contained learning unit
-4. Provide a clear, descriptive title for each module
-5. Include the full text content for each module
+1. Identify natural divisions (chapters, sections, topics)
+2. Create 3-8 modules; each should be self-contained
+3. Give each a clear, descriptive title
+4. Include the full text for each module
 
-Return a JSON array of modules in this exact format:
+Return a JSON array only — no preamble, no markdown:
 [
-  {
-    "title": "Module Title",
-    "content": "Full module text content here...",
-    "order": 1
-  }
-]
-
-IMPORTANT: Return ONLY the JSON array, no additional text.`;
+  { "title": "Module Title", "content": "Full module text…", "order": 1 }
+]`;
 
     try {
       const response = await this.executeWithFailover(prompt);
       const parsed = this.parseAIResponse(response);
 
       if (!Array.isArray(parsed) || parsed.length === 0) {
-        throw new Error('Invalid module structure returned');
+        throw new Error("Invalid module structure returned");
       }
 
-      // Transform to database format
-      return parsed.map((module: any, index: number) => ({
+      return parsed.map((m: any, i: number) => ({
         course_id: options.courseId,
-        title: module.title || `Module ${index + 1}`,
-        content: module.content || '',
-        module_order: module.order || index + 1,
-        word_count: (module.content || '').split(/\s+/).length,
-        estimated_read_time: Math.ceil((module.content || '').split(/\s+/).length / 200),
+        title: m.title || `Module ${i + 1}`,
+        content: m.content || "",
+        module_order: m.order || i + 1,
+        word_count: (m.content || "").split(/\s+/).length,
+        estimated_read_time: Math.ceil((m.content || "").split(/\s+/).length / 200),
       }));
     } catch (error) {
-      console.error('Module parsing error:', error);
+      console.error("Module parsing error:", error);
       throw error;
     }
+  }
+
+  // ── Cache helpers ────────────────────────────────────────────────────────
+
+  private generateContentHash(options: GenerateQuestionsOptions): string {
+    const input = `${options.content.substring(0, 1000)}-${options.difficulty}-${options.questionCount}-${options.questionTypes.join(",")}`;
+    return createHash("md5").update(input).digest("hex");
+  }
+
+  private getCachedQuestions(hash: string): AIResponse | null {
+    const entry = this.cache.get(hash);
+    if (!entry) return null;
+    if (Date.now() >= entry.expiresAt) { this.cache.delete(hash); return null; }
+    return entry.data;
+  }
+
+  private setCachedQuestions(hash: string, response: AIResponse): void {
+    this.cache.set(hash, { data: response, timestamp: Date.now(), expiresAt: Date.now() + 24 * 60 * 60 * 1000 });
+  }
+
+  private cleanupCache(): void {
+    const now = Date.now();
+    let n = 0;
+    for (const [k, v] of this.cache.entries()) {
+      if (now > v.expiresAt) { this.cache.delete(k); n++; }
+    }
+    if (n > 0) console.log(`🧹 Cache cleanup: removed ${n} expired entries`);
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  // ── Status / diagnostics ─────────────────────────────────────────────────
+
+  private logProviderStatus(): void {
+    console.log("📊 Provider status:");
+    for (const [id, p] of this.providers) {
+      const status = p.available ? "✅" : "❌";
+      const cooldown = p.cooldownUntil ? ` (cooldown ${Math.ceil((p.cooldownUntil - Date.now()) / 1000)}s)` : "";
+      console.log(`  ${status} [${id}] ${p.name} — ${p.requestCount}/${p.maxRequests} RPM${cooldown}`);
+    }
+  }
+
+  public getProviderStatus(): Record<string, any> {
+    const out: Record<string, any> = {};
+    for (const [id, p] of this.providers) {
+      out[id] = {
+        name: p.name,
+        available: p.available,
+        requestsUsed: p.requestCount,
+        maxRequests: p.maxRequests,
+        priority: p.priority,
+        costPerToken: p.costPerToken,
+        maxContextTokens: p.maxTokens,
+        cooldownUntil: p.cooldownUntil,
+      };
+    }
+    return out;
+  }
+
+  public async healthCheck(): Promise<Record<string, boolean>> {
+    console.log("🩺 Running provider health checks…");
+    const results: Record<string, boolean> = {};
+    console.log("🤖 Running AI Provider Health Checks...");
+
+    for (const [id, provider] of this.providers) {
+      if (id === "mock-ai") { results[id] = true; continue; }
+      try {
+        await this.makeProviderRequest(id, 'Respond with valid JSON only: {"questions":[]}');
+        results[id] = true;
+        console.log(`  ✅ ${provider.name}`);
+      } catch (err) {
+        results[id] = false;
+        console.log(`  ❌ ${provider.name}: ${err instanceof Error ? err.message : err}`);
+      }
+      await this.sleep(800);
+    }
+
+    return results;
   }
 }
 
