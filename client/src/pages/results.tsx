@@ -1,213 +1,216 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useResultsStore } from "@/stores";
-import { useLocation } from "wouter";
-import { useAuth } from "@/contexts/AuthContext";
+import { useEffect, useState } from 'react';
+import { useLocation } from 'wouter';
+import { ChevronDown, ChevronRight, BookOpen, TrendingUp, Clock } from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { ApiService } from '../services/apiService';
+
+interface CourseResult {
+  course_id: string;
+  course_title: string;
+  total_modules: number;
+  modules_tested: number;
+  overall_average_score: number;
+  best_module_score: number;
+  total_tests_taken: number;
+  last_studied_at: string;
+}
+
+interface ModuleResult {
+  module_id: string;
+  module_title: string;
+  total_attempts: number;
+  average_score: number;
+  best_score: number;
+  last_attempt_at: string;
+}
 
 export default function Results() {
   const [, setLocation] = useLocation();
-  const { user } = useAuth();
-  const { testResults, loadResults, recentResults, totalTestsTaken, averageScore, bestScore } = useResultsStore();
+  const [courses, setCourses] = useState<CourseResult[]>([]);
+  const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
+  const [moduleResults, setModuleResults] = useState<Record<string, ModuleResult[]>>({});
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log('Results page mounted, loading results...');
-    loadResults();
-  }, [loadResults]);
+    loadCourseResults();
+  }, []);
 
-  // Reload results when user changes
-  useEffect(() => {
-    if (user) {
-      loadResults();
+  const loadCourseResults = async () => {
+    try {
+      const data = await ApiService.getCoursePerformance();
+      setCourses(Array.isArray(data) ? data : []);
+      setLoading(false);
+    } catch (error) {
+      console.error('Failed to load course results:', error);
+      setCourses([]);
+      setLoading(false);
     }
-  }, [user, loadResults]);
-
-  // Force re-render when testResults change
-  useEffect(() => {
-    console.log('Results updated:', testResults.length, 'total results');
-    console.log('Recent results:', recentResults.length);
-    if (testResults.length > 0) {
-      console.log('First test result:', testResults[0].testTitle, testResults[0].score, testResults[0].completedAt);
-    }
-    if (recentResults.length > 0) {
-      console.log('First recent result:', recentResults[0].testTitle, recentResults[0].score);
-    }
-  }, [testResults, recentResults]);
-
-  const handleViewDetails = (resultId: string) => {
-    // TODO: Navigate to detailed results view
-    console.log("Viewing details for result:", resultId);
   };
 
-  return (
-    <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-7xl mx-auto">
-      {/* Summary Stats */}
-      {testResults.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6 lg:mb-8">
-          <Card className="border-studywise-gray-200">
-            <CardContent className="p-4 sm:p-6 text-center">
-              <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-studywise-gray-900">{totalTestsTaken}</div>
-              <div className="text-xs sm:text-sm text-studywise-gray-600 mt-1">Tests Taken</div>
-            </CardContent>
-          </Card>
+  const loadModuleResults = async (courseId: string) => {
+    if (moduleResults[courseId]) return; // Already loaded
 
-          <Card className="border-studywise-gray-200">
-            <CardContent className="p-4 sm:p-6 text-center">
-              <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-studywise-gray-900">{averageScore}%</div>
-              <div className="text-xs sm:text-sm text-studywise-gray-600 mt-1">Average Score</div>
-            </CardContent>
-          </Card>
+    try {
+      const data = await ApiService.getModulePerformance(courseId);
+      setModuleResults(prev => ({ ...prev, [courseId]: Array.isArray(data) ? data : [] }));
+    } catch (error) {
+      console.error('Failed to load module results:', error);
+    }
+  };
 
-          <Card className="border-studywise-gray-200">
-            <CardContent className="p-4 sm:p-6 text-center">
-              <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-studywise-gray-900">{bestScore}%</div>
-              <div className="text-xs sm:text-sm text-studywise-gray-600 mt-1">Best Score</div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+  const toggleCourse = (courseId: string) => {
+    const newExpanded = new Set(expandedCourses);
+    if (newExpanded.has(courseId)) {
+      newExpanded.delete(courseId);
+    } else {
+      newExpanded.add(courseId);
+      loadModuleResults(courseId);
+    }
+    setExpandedCourses(newExpanded);
+  };
 
-      {/* Results Section */}
-      <Card className="shadow-sm border-studywise-gray-200 overflow-hidden" data-testid="card-results-table">
-        <div className="px-4 sm:px-6 py-4 border-b border-studywise-gray-200">
-          <h2 className="text-lg sm:text-xl font-semibold text-studywise-gray-900" data-testid="text-table-title">
-            Recent Test Scores
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-studywise-gray-600">Loading results...</p>
+      </div>
+    );
+  }
+
+  if (courses.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <BookOpen className="w-16 h-16 text-studywise-gray-400 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-studywise-gray-900 mb-2">
+            No test results yet
           </h2>
+          <p className="text-studywise-gray-600 mb-6">
+            Take your first test to see your progress here
+          </p>
+          <Button onClick={() => setLocation('/dashboard')}>
+            Create a Course
+          </Button>
         </div>
+      </div>
+    );
+  }
 
-        {testResults.length === 0 ? (
-          <div className="text-center py-8 sm:py-12 px-4">
-            <p className="text-studywise-gray-600 mb-4 text-sm sm:text-base">
-              No test results yet. Take your first test to see results here!
-            </p>
-            <Button 
-              onClick={() => setLocation('/dashboard')}
-              size="lg"
-              className="bg-primary hover:bg-primary/90 w-full sm:w-auto"
-            >
-              Create Your First Test
-            </Button>
-          </div>
-        ) : (
-          <>
-            {/* Mobile Card View */}
-            <div className="block sm:hidden">
-              {recentResults.map((result) => (
-                <div 
-                  key={result.id} 
-                  className="border-b border-studywise-gray-200 p-4 space-y-3"
-                  data-testid={`row-result-${result.id}`}
+  return (
+    <div className="min-h-screen bg-studywise-gray-50 py-8">
+      <div className="max-w-6xl mx-auto px-4">
+        <h1 className="text-3xl font-bold text-studywise-gray-900 mb-8">
+          Your Progress
+        </h1>
+
+        <div className="space-y-4">
+          {courses.map(course => {
+            const isExpanded = expandedCourses.has(course.course_id);
+            const modules = moduleResults[course.course_id] || [];
+            const progressPercentage = (course.modules_tested / course.total_modules) * 100;
+
+            return (
+              <div key={course.course_id} className="bg-white rounded-lg shadow-sm overflow-hidden">
+                {/* Course Header */}
+                <button
+                  onClick={() => toggleCourse(course.course_id)}
+                  className="w-full px-6 py-5 flex items-center gap-4 hover:bg-studywise-gray-50 transition-colors"
                 >
-                  <div className="flex justify-between items-start">
-                    <h3 className="font-medium text-studywise-gray-900 text-sm leading-tight pr-2">
-                      {result.testTitle}
-                    </h3>
-                    <span 
-                      className="text-lg font-semibold text-studywise-gray-900 flex-shrink-0" 
-                      data-testid={`text-score-${result.id}`}
-                    >
-                      {result.score}%
-                    </span>
+                  <div className="flex-shrink-0">
+                    {isExpanded ? (
+                      <ChevronDown className="w-5 h-5 text-studywise-gray-600" />
+                    ) : (
+                      <ChevronRight className="w-5 h-5 text-studywise-gray-600" />
+                    )}
                   </div>
-                  
-                  <div className="w-full bg-studywise-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-black h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${result.score}%` }}
-                      data-testid={`progress-bar-${result.id}`}
-                    />
-                  </div>
-                  
-                  <div className="flex justify-between items-center text-sm text-studywise-gray-500">
-                    <span data-testid={`text-time-${result.id}`}>
-                      {result.timeSpent ? Math.round(result.timeSpent / 60) + ' min' : '--'}
-                    </span>
-                    <span data-testid={`text-date-${result.id}`}>
-                      {new Date(result.completedAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                  
-                  <button 
-                    onClick={() => handleViewDetails(result.id)}
-                    className="w-full text-center py-2 text-primary hover:text-blue-600 text-sm font-medium border border-primary rounded-md hover:bg-primary/5 transition-colors"
-                    data-testid={`button-view-details-${result.id}`}
-                  >
-                    View Details
-                  </button>
-                </div>
-              ))}
-            </div>
 
-            {/* Desktop Table View */}
-            <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full" data-testid="table-results">
-                <thead className="bg-studywise-gray-50">
-                  <tr>
-                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-studywise-gray-500 uppercase tracking-wider">
-                      Test Title
-                    </th>
-                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-studywise-gray-500 uppercase tracking-wider">
-                      Score
-                    </th>
-                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-studywise-gray-500 uppercase tracking-wider">
-                      Time Taken
-                    </th>
-                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-studywise-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-studywise-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-studywise-gray-200">
-                  {recentResults.map((result) => (
-                    <tr key={result.id} className="hover:bg-studywise-gray-50" data-testid={`row-result-${result.id}`}>
-                      <td className="px-4 lg:px-6 py-4">
-                        <span className="font-medium text-studywise-gray-900 text-sm lg:text-base">
-                          {result.testTitle}
+                  <div className="flex-1 text-left">
+                    <h3 className="text-lg font-semibold text-studywise-gray-900 mb-2">
+                      {course.course_title}
+                    </h3>
+
+                    <div className="flex flex-wrap gap-6 text-sm text-studywise-gray-600">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="w-4 h-4" />
+                        <span>
+                          {course.modules_tested}/{course.total_modules} modules tested
                         </span>
-                      </td>
-                      <td className="px-4 lg:px-6 py-4">
-                        <div className="flex items-center">
-                          <span 
-                            className="text-lg font-semibold text-studywise-gray-900" 
-                            data-testid={`text-score-${result.id}`}
-                          >
-                            {result.score}%
-                          </span>
-                          <div className="ml-2 w-12 lg:w-16 bg-studywise-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-black h-2 rounded-full transition-all duration-300"
-                              style={{ width: `${result.score}%` }}
-                              data-testid={`progress-bar-${result.id}`}
-                            />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4" />
+                        <span>Average: {Math.round(course.overall_average_score)}%</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        <span>
+                          Last studied: {course.last_studied_at ? new Date(course.last_studied_at).toLocaleDateString() : 'Never'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="mt-3">
+                      <div className="w-full bg-studywise-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-primary h-2 rounded-full transition-all"
+                          style={{ width: `${progressPercentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <div className="text-3xl font-bold text-primary">
+                      {Math.round(course.overall_average_score)}%
+                    </div>
+                    <div className="text-sm text-studywise-gray-600">
+                      {course.total_tests_taken} tests
+                    </div>
+                  </div>
+                </button>
+
+                {/* Module Results */}
+                {isExpanded && (
+                  <div className="border-t border-studywise-gray-200 bg-studywise-gray-50">
+                    {modules.length === 0 ? (
+                      <div className="px-6 py-8 text-center text-studywise-gray-600">
+                        Loading module results...
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-studywise-gray-200">
+                        {modules.map(module => (
+                          <div key={module.module_id} className="px-6 py-4 hover:bg-white transition-colors">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <h4 className="font-medium text-studywise-gray-900 mb-2">
+                                  {module.module_title}
+                                </h4>
+                                <div className="flex gap-6 text-sm text-studywise-gray-600">
+                                  <span>{module.total_attempts} attempts</span>
+                                  <span>Best: {Math.round(module.best_score)}%</span>
+                                  <span>Average: {Math.round(module.average_score)}%</span>
+                                  <span>
+                                    Last: {new Date(module.last_attempt_at).toLocaleDateString()}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-2xl font-bold text-studywise-gray-900">
+                                  {Math.round(module.average_score)}%
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-4 lg:px-6 py-4 text-studywise-gray-900 text-sm lg:text-base" data-testid={`text-time-${result.id}`}>
-                        {result.timeSpent ? Math.round(result.timeSpent / 60) + ' min' : '--'}
-                      </td>
-                      <td className="px-4 lg:px-6 py-4 text-studywise-gray-500 text-sm lg:text-base" data-testid={`text-date-${result.id}`}>
-                        {new Date(result.completedAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 lg:px-6 py-4">
-                        <button 
-                          onClick={() => handleViewDetails(result.id)}
-                          className="text-primary hover:text-blue-600 text-sm font-medium"
-                          data-testid={`button-view-details-${result.id}`}
-                        >
-                          View Details
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-      </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

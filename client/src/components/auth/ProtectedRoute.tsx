@@ -1,5 +1,5 @@
 
-import { ReactNode } from 'react'
+import { ReactNode, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLocation } from 'wouter'
 import { Loader2 } from 'lucide-react'
@@ -12,6 +12,12 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { user, loading } = useAuth()
   const [, setLocation] = useLocation()
 
+  useEffect(() => {
+    if (!loading && !user) {
+      setLocation('/auth')
+    }
+  }, [user, loading, setLocation])
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -21,7 +27,6 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }
 
   if (!user) {
-    setLocation('/auth')
     return null
   }
 
