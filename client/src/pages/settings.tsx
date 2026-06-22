@@ -18,7 +18,8 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { Bell, LogOut, User } from "lucide-react";
+import { Bell, LogOut, User, Settings as SettingsIcon, Save, AlertTriangle, RefreshCw } from "lucide-react";
+import { ApiService } from "@/services/apiService";
 
 export default function Settings() {
   const { user, signOut, updatePassword } = useAuth();
@@ -31,6 +32,13 @@ export default function Settings() {
     fullName: "",
     avatarUrl: "",
   });
+
+  const [aiPreferences, setAiPreferences] = useState({
+    default_question_type: 'mixed' as 'mcq' | 'true_false' | 'mixed',
+    default_difficulty: 'medium' as 'easy' | 'medium' | 'hard',
+    default_questions_per_module: 10,
+  });
+  const [isSavingAi, setIsSavingAi] = useState(false);
 
   // Load user data when component mounts or user changes
   useEffect(() => {
@@ -45,8 +53,44 @@ export default function Settings() {
         fullName: user.user_metadata?.full_name || user.user_metadata?.name || '',
         avatarUrl: user.user_metadata?.avatar_url || user.user_metadata?.picture || user.user_metadata?.photoURL || googleAvatarUrl || '',
       });
+
+      loadAiPreferences();
     }
   }, [user]);
+
+  const loadAiPreferences = async () => {
+    try {
+      const data = await ApiService.get('/api/user/profile').then(res => res.json());
+      if (data) {
+        setAiPreferences({
+          default_question_type: data.default_question_type || 'mixed',
+          default_difficulty: data.default_difficulty || 'medium',
+          default_questions_per_module: data.default_questions_per_module || 10,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load AI preferences:', error);
+    }
+  };
+
+  const handleSaveAiPreferences = async () => {
+    setIsSavingAi(true);
+    try {
+      await ApiService.put('/api/user/profile', aiPreferences);
+      toast({
+        title: "Settings saved",
+        description: "Your question generation preferences have been updated.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingAi(false);
+    }
+  };
 
   const [accountSettings, setAccountSettings] = useState({
     emailNotifications: true,
@@ -69,10 +113,14 @@ export default function Settings() {
     confirmPassword: "",
   });
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
   const handleSaveProfile = async () => {
+    setIsUpdatingProfile(true);
     try {
-      // Profile updates would go here (Supabase doesn't directly update metadata after signup)
+      await ApiService.put('/api/user/profile', {
+        full_name: profileInfo.fullName
+      });
       toast({
         title: "Profile updated",
         description: "Your profile information has been saved.",
@@ -83,6 +131,8 @@ export default function Settings() {
         description: "Failed to update profile. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsUpdatingProfile(false);
     }
   };
 
@@ -310,7 +360,7 @@ ${profileInfo.fullName || 'StudyWise AI User'}`);
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProfileInfo({ ...profileInfo, fullName: e.target.value })}
                 className="mt-2"
                 placeholder="Enter your full name"
-                disabled
+                disabled={isUpdatingProfile}
               />
             </div>
             <div>
@@ -343,15 +393,21 @@ ${profileInfo.fullName || 'StudyWise AI User'}`);
             </div>
           </div>
           
-          {/* <div className="flex justify-end">
+          <div className="flex justify-end mt-6 pt-4 border-t border-studywise-gray-200">
             <Button 
               onClick={handleSaveProfile}
+              disabled={isUpdatingProfile || !profileInfo.fullName.trim()}
               size="sm"
-              className="bg-primary hover:bg-blue-600"
+              className="bg-primary hover:bg-blue-600 gap-2"
             >
+              {isUpdatingProfile ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
               Save Profile
             </Button>
-          </div> */}
+          </div>
         </CardContent>
       </Card>
 
@@ -473,6 +529,122 @@ ${profileInfo.fullName || 'StudyWise AI User'}`);
               </Button>
             </div>
           {/* </div> */}
+        </CardContent>
+      </Card>
+
+      {/* Question Generation Settings */}
+      <Card className="shadow-sm border-studywise-gray-200 mb-6">
+        <div className="px-6 py-4 border-b border-studywise-gray-200 flex items-center gap-2">
+          <SettingsIcon className="w-5 h-5 text-studywise-gray-600" />
+          <h2 className="text-lg font-semibold text-studywise-gray-900">Question Generation</h2>
+        </div>
+        <CardContent className="p-6 space-y-6">
+          <p className="text-sm text-studywise-gray-600">
+            These settings apply to all future tests and exams generated from your documents.
+          </p>
+
+          <div className="space-y-6">
+            {/* Question Type */}
+            <div>
+              <Label className="text-sm font-medium text-studywise-gray-700 block mb-3">
+                Preferred Question Type
+              </Label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[
+                  { value: 'mcq', label: 'Multiple Choice' },
+                  { value: 'true_false', label: 'True/False' },
+                  { value: 'mixed', label: 'Mixed' },
+                ].map(option => (
+                  <label
+                    key={option.value}
+                    className={`flex items-center justify-center p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                      aiPreferences.default_question_type === option.value
+                        ? 'border-primary bg-primary/5 text-primary font-medium'
+                        : 'border-studywise-gray-200 text-studywise-gray-600 hover:border-studywise-gray-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="questionType"
+                      value={option.value}
+                      checked={aiPreferences.default_question_type === option.value}
+                      onChange={(e) => setAiPreferences({ ...aiPreferences, default_question_type: e.target.value as any })}
+                      className="sr-only"
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Difficulty */}
+            <div>
+              <Label className="text-sm font-medium text-studywise-gray-700 block mb-3">
+                Default Difficulty
+              </Label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[
+                  { value: 'easy', label: 'Easy' },
+                  { value: 'medium', label: 'Medium' },
+                  { value: 'hard', label: 'Hard' },
+                ].map(option => (
+                  <label
+                    key={option.value}
+                    className={`flex items-center justify-center p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                      aiPreferences.default_difficulty === option.value
+                        ? 'border-primary bg-primary/5 text-primary font-medium'
+                        : 'border-studywise-gray-200 text-studywise-gray-600 hover:border-studywise-gray-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="difficulty"
+                      value={option.value}
+                      checked={aiPreferences.default_difficulty === option.value}
+                      onChange={(e) => setAiPreferences({ ...aiPreferences, default_difficulty: e.target.value as any })}
+                      className="sr-only"
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Questions count */}
+            <div>
+              <div className="flex justify-between mb-3">
+                <Label className="text-sm font-medium text-studywise-gray-700">
+                  Questions per Module
+                </Label>
+                <span className="text-sm font-bold text-primary">{aiPreferences.default_questions_per_module}</span>
+              </div>
+              <input
+                type="range"
+                min={5}
+                max={30}
+                step={5}
+                value={aiPreferences.default_questions_per_module}
+                onChange={(e) => setAiPreferences({ ...aiPreferences, default_questions_per_module: parseInt(e.target.value) })}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-4 border-t border-studywise-gray-200">
+            <Button 
+              onClick={handleSaveAiPreferences}
+              disabled={isSavingAi}
+              size="sm"
+              className="bg-primary hover:bg-blue-600 gap-2"
+            >
+              {isSavingAi ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              Save Question Preferences
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

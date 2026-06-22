@@ -50,6 +50,7 @@ interface AIProvider {
   priority: number;
   costPerToken?: number;
   maxTokens?: number;
+  cooldownUntil?: number;
 }
 
 class MultiProviderAIService {
@@ -75,7 +76,7 @@ class MultiProviderAIService {
         lastReset: Date.now(),
         maxRequests: 15,
         resetInterval: 60 * 1000,
-        priority: 1,
+        priority: 2,
         costPerToken: 0.000125,
         maxTokens: 1000000
       });
@@ -90,64 +91,106 @@ class MultiProviderAIService {
         costPerToken: 0.00025,
         maxTokens: 30720
       });
-      console.log("✅ Gemini providers initialized");
+      console.log("✅ Gemini initialized");
     }
 
-    // Initialize OpenRouter (supports 200+ models)
-    const openrouterKey = process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY;
-    if (openrouterKey && openrouterKey !== 'your_openrouter_api_key') {
-      // GPT models via OpenRouter
+    // Initialize OpenAI
+    const openaiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
+    if (openaiKey && openaiKey !== 'your_openai_api_key') {
       this.providers.set('gpt-4o-mini', {
-        name: 'GPT-4o Mini (OpenRouter)',
+        name: 'GPT-4o Mini',
         available: true,
         requestCount: 0,
         lastReset: Date.now(),
-        maxRequests: 10,
+        maxRequests: 20,
         resetInterval: 60 * 1000,
         priority: 2,
         costPerToken: 0.00015,
         maxTokens: 128000
       });
+      console.log("✅ OpenAI providers initialized");
+    }
 
-      this.providers.set('gpt-3.5-turbo', {
-        name: 'GPT-3.5 Turbo (OpenRouter)',
+    // Initialize Anthropic
+    const anthropicKey = process.env.ANTHROPIC_API_KEY || process.env.VITE_ANTHROPIC_API_KEY;
+    if (anthropicKey && anthropicKey !== 'your_anthropic_api_key') {
+      this.providers.set('claude-3-haiku', {
+        name: 'Claude 3 Haiku',
+        available: true,
+        requestCount: 0,
+        lastReset: Date.now(),
+        maxRequests: 10,
+        resetInterval: 60 * 1000,
+        priority: 3,
+        costPerToken: 0.00025,
+        maxTokens: 200000
+      });
+      console.log("✅ Anthropic providers initialized");
+    }
+
+    // Initialize DeepSeek
+    const deepseekKey = process.env.DEEPSEEK_API_KEY || process.env.VITE_DEEPSEEK_API_KEY;
+    if (deepseekKey && deepseekKey !== 'your_deepseek_api_key') {
+      this.providers.set('deepseek-chat', {
+        name: 'DeepSeek Chat',
+        available: true,
+        requestCount: 0,
+        lastReset: Date.now(),
+        maxRequests: 30,
+        resetInterval: 60 * 1000,
+        priority: 3,
+        costPerToken: 0.00014,
+        maxTokens: 128000
+      });
+      console.log("✅ DeepSeek initialized");
+    }
+
+    // Initialize Kimi (Moonshot)
+    const kimiKey = process.env.MOONSHOT_API_KEY || process.env.VITE_MOONSHOT_API_KEY || process.env.KIMI_API_KEY;
+    if (kimiKey && kimiKey !== 'your_kimi_api_key') {
+      this.providers.set('moonshot-v1-8k', {
+        name: 'Kimi (Moonshot)',
+        available: true,
+        requestCount: 0,
+        lastReset: Date.now(),
+        maxRequests: 10,
+        resetInterval: 60 * 1000,
+        priority: 5,
+        costPerToken: 0.0006,
+        maxTokens: 8192
+      });
+      console.log("✅ Kimi providers initialized");
+    }
+
+    // Initialize OpenRouter (supports 200+ models)
+    const openrouterKey = process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY;
+    if (openrouterKey && openrouterKey !== 'your_openrouter_api_key') {
+      // Add a few balanced OpenRouter models as versatile fallbacks
+      this.providers.set('or-llama-3-8b', {
+        name: 'Llama 3 8B (OpenRouter)',
         available: true,
         requestCount: 0,
         lastReset: Date.now(),
         maxRequests: 15,
         resetInterval: 60 * 1000,
-        priority: 3,
-        costPerToken: 0.0005,
-        maxTokens: 16385
+        priority: 1,
+        costPerToken: 0.00002,
+        maxTokens: 32768
       });
 
-      // Claude models via OpenRouter
-      this.providers.set('claude-3-haiku', {
-        name: 'Claude 3 Haiku (OpenRouter)',
-        available: true,
-        requestCount: 0,
-        lastReset: Date.now(),
-        maxRequests: 8,
-        resetInterval: 60 * 1000,
-        priority: 5,
-        costPerToken: 0.00025,
-        maxTokens: 200000
-      });
-
-      // Add Mistral as backup
-      this.providers.set('mistral-7b', {
+      this.providers.set('or-mistral-7b', {
         name: 'Mistral 7B (OpenRouter)',
         available: true,
         requestCount: 0,
         lastReset: Date.now(),
         maxRequests: 15,
         resetInterval: 60 * 1000,
-        priority: 7,
+        priority: 2,
         costPerToken: 0.00002,
         maxTokens: 32768
       });
 
-      console.log("✅ OpenRouter providers initialized");
+      console.log("✅ OpenRouter initialized");
     } else {
       console.log("ℹ️ OpenRouter API key not configured - OpenRouter providers disabled");
     }
@@ -155,19 +198,7 @@ class MultiProviderAIService {
     // Initialize Hugging Face Inference API (free tier available)
     const hfToken = process.env.HUGGINGFACE_API_TOKEN || process.env.VITE_HUGGINGFACE_API_TOKEN;
     if (hfToken && hfToken !== 'hf_your_huggingface_api_token_here') {
-      this.providers.set('microsoft-dialoGPT', {
-        name: 'DialoGPT (Hugging Face)',
-        available: true,
-        requestCount: 0,
-        lastReset: Date.now(),
-        maxRequests: 30,
-        resetInterval: 60 * 1000,
-        priority: 8,
-        costPerToken: 0, // Free
-        maxTokens: 1000
-      });
-
-      this.providers.set('distilgpt2', {
+      this.providers.set('hf-distilgpt2', {
         name: 'DistilGPT-2 (Hugging Face)',
         available: true,
         requestCount: 0,
@@ -179,7 +210,7 @@ class MultiProviderAIService {
         maxTokens: 1000
       });
 
-      console.log("✅ Hugging Face providers initialized");
+      console.log("✅ HuggingFace initialized");
     } else {
       console.log("ℹ️ Hugging Face API token not configured - Hugging Face providers disabled");
     }
@@ -198,6 +229,9 @@ class MultiProviderAIService {
     });
 
     console.log(`🤖 Multi-provider AI service initialized with ${this.providers.size} providers`);
+    
+    // Perform initial health check in background
+    setTimeout(() => this.healthCheck(), 1000);
   }
 
   private resetProviderLimits() {
@@ -216,8 +250,17 @@ class MultiProviderAIService {
     const availableProviders = Array.from(this.providers.entries())
       .filter(([_, provider]) => {
         // Check availability and rate limits
+        const now = Date.now();
         if (!provider.available || provider.requestCount >= provider.maxRequests) {
-          return false;
+          // Check if cooldown has expired
+          if (provider.cooldownUntil && now > provider.cooldownUntil) {
+            provider.available = true;
+            provider.cooldownUntil = undefined;
+            provider.requestCount = 0;
+            console.log(`✅ Provider ${provider.name} cooldown expired - back online`);
+          } else {
+            return false;
+          }
         }
         
         // Check if provider can handle content size
@@ -228,24 +271,13 @@ class MultiProviderAIService {
         return true;
       })
       .sort(([_, a], [__, b]) => {
-        // Always prioritize Gemini providers first (they're more reliable and don't require OpenRouter)
-        const aIsGemini = a.name.includes('Gemini');
-        const bIsGemini = b.name.includes('Gemini');
-        
-        if (aIsGemini && !bIsGemini) return -1; // Gemini first
-        if (!aIsGemini && bIsGemini) return 1;  // Gemini first
-        
-        // Smart provider selection based on request size
-        if (options && options.questionCount >= 15) {
-          // Large requests: prioritize cost-effectiveness
-          return (a.costPerToken || 0) - (b.costPerToken || 0);
-        } else if (options && options.questionCount <= 5) {
-          // Small requests: prioritize speed (lower priority number = higher priority)
-          return a.priority - b.priority;
-        } else {
-          // Medium requests: balance priority and cost
+        // Respect the priority property (lower number = higher priority)
+        if (a.priority !== b.priority) {
           return a.priority - b.priority;
         }
+        
+        // Otherwise use cost as tie-breaker
+        return (a.costPerToken || 0) - (b.costPerToken || 0);
       });
 
     if (availableProviders.length === 0) {
@@ -258,35 +290,156 @@ class MultiProviderAIService {
   }
 
   private async makeGeminiRequest(model: string, prompt: string): Promise<string> {
-    if (!this.geminiAI) throw new Error("Gemini not initialized");
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    if (!geminiKey) throw new Error("Gemini API key not configured");
 
-    // Try current known Gemini model names
-    const modelMapping: Record<string, string> = {
-      'gemini-flash': 'gemini-1.5-flash',
-      'gemini-pro': 'gemini-1.5-pro'
-    };
-
-    const aiModel = this.geminiAI.getGenerativeModel({
-      model: model === 'gemini-flash' ? 'gemini-1.5-flash' : 'gemini-1.5-pro',
-      // Increase timeout for network issues
-      generationConfig: {
-        temperature: 0.3,
-      }
-    });
+    // Use stable Gemini model names
+    const modelName = model === 'gemini-flash' ? 'gemini-2.0-flash' : 'gemini-2.5-pro';
 
     // Use AbortController for timeout handling
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
     try {
-      const result = await aiModel.generateContent(prompt);
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${geminiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.3,
+          }
+        }),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        throw new Error(`Gemini API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content || !data.candidates[0].content.parts || !data.candidates[0].content.parts[0]) {
+        throw new Error('Invalid response format from Gemini API');
+      }
+
       clearTimeout(timeoutId);
-      const response = await result.response;
-      return response.text();
+      return data.candidates[0].content.parts[0].text;
     } catch (error) {
       clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Request timeout: Connection to Gemini API timed out after 30 seconds');
+      }
       throw error;
     }
+  }
+
+  private async makeOpenAIRequest(model: string, prompt: string): Promise<string> {
+    const openaiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
+    if (!openaiKey) throw new Error("OpenAI API key not configured");
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openaiKey}`
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
+  }
+
+  private async makeAnthropicRequest(model: string, prompt: string): Promise<string> {
+    const anthropicKey = process.env.ANTHROPIC_API_KEY || process.env.VITE_ANTHROPIC_API_KEY;
+    if (!anthropicKey) throw new Error("Anthropic API key not configured");
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': anthropicKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 2000,
+        temperature: 0.3
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Anthropic API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.content[0].text;
+  }
+
+  private async makeDeepSeekRequest(model: string, prompt: string): Promise<string> {
+    const deepseekKey = process.env.DEEPSEEK_API_KEY || process.env.VITE_DEEPSEEK_API_KEY;
+    if (!deepseekKey) throw new Error("DeepSeek API key not configured");
+
+    const response = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${deepseekKey}`
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`DeepSeek API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
+  }
+
+  private async makeKimiRequest(model: string, prompt: string): Promise<string> {
+    const kimiKey = process.env.MOONSHOT_API_KEY || process.env.VITE_MOONSHOT_API_KEY || process.env.KIMI_API_KEY;
+    if (!kimiKey) throw new Error("Kimi API key not configured");
+
+    const response = await fetch('https://api.moonshot.cn/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${kimiKey}`
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Kimi API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
   }
 
   private async makeOpenRouterRequest(model: string, prompt: string): Promise<string> {
@@ -297,28 +450,20 @@ class MultiProviderAIService {
       throw new Error('OpenRouter API key not configured');
     }
 
-    // Validate key format (basic check)
-    if (openrouterKey.length < 20) {
-      throw new Error('OpenRouter API key appears to be invalid (too short)');
-    }
-
     const siteUrl = process.env.SITE_URL || process.env.VITE_SITE_URL || "http://localhost:3000";
     const appName = process.env.APP_NAME || process.env.VITE_APP_NAME || "AI Test Generator";
 
     // Map internal model names to OpenRouter model IDs
     const modelMapping: Record<string, string> = {
-      'gpt-4o-mini': 'openai/gpt-4o-mini',
-      'gpt-3.5-turbo': 'openai/gpt-3.5-turbo',
-      'claude-3-haiku': 'anthropic/claude-3-haiku',
-      'llama-3.1-8b': 'meta-llama/llama-3.1-8b-instruct',
-      'mistral-7b': 'mistralai/mistral-7b-instruct'
+      'or-llama-3-8b': 'meta-llama/llama-3-8b-instruct',
+      'or-mistral-7b': 'mistralai/mistral-7b-instruct'
     };
 
     const openrouterModel = modelMapping[model] || model;
 
     // Use AbortController for timeout handling
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // Increased timeout to 60s for OR
 
     try {
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -341,32 +486,14 @@ class MultiProviderAIService {
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`OpenRouter API error (${response.status}):`, errorText);
-
-        // Handle specific error cases
-        if (response.status === 401) {
-          throw new Error('OpenRouter API key is invalid or expired. Please update your API key.');
-        } else if (response.status === 429) {
-          throw new Error('OpenRouter rate limit exceeded. Please try again later.');
-        } else if (response.status >= 500) {
-          throw new Error('OpenRouter service is temporarily unavailable. Please try again later.');
-        } else {
-          throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
-        }
+        throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-
-      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-        throw new Error('Invalid response format from OpenRouter');
-      }
-
       clearTimeout(timeoutId);
       return data.choices[0].message.content;
     } catch (error) {
       clearTimeout(timeoutId);
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Request timeout: Connection to OpenRouter timed out after 30 seconds. This might be a network connectivity issue.');
-      }
       throw error;
     }
   }
@@ -380,8 +507,7 @@ class MultiProviderAIService {
 
     // Map internal model names to Hugging Face model IDs
     const modelMapping: Record<string, string> = {
-      'microsoft-dialoGPT': 'microsoft/DialoGPT-medium',
-      'distilgpt2': 'distilgpt2'
+      'hf-distilgpt2': 'distilgpt2'
     };
 
     const hfModel = modelMapping[model] || model;
@@ -404,31 +530,11 @@ class MultiProviderAIService {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Hugging Face API error (${response.status}):`, errorText);
-
-      if (response.status === 401) {
-        throw new Error('Hugging Face API token is invalid. Please update your API token.');
-      } else if (response.status === 429) {
-        throw new Error('Hugging Face rate limit exceeded. Please try again later.');
-      } else if (response.status === 503) {
-        throw new Error('Hugging Face model is currently loading. Please try again in a few seconds.');
-      } else if (response.status >= 500) {
-        throw new Error('Hugging Face service is temporarily unavailable. Please try again later.');
-      } else {
-        throw new Error(`Hugging Face API error: ${response.status} ${response.statusText}`);
-      }
+      throw new Error(`Hugging Face API error: ${response.status}`);
     }
 
     const data = await response.json();
-
-    if (Array.isArray(data) && data.length > 0 && data[0].generated_text) {
-      return data[0].generated_text;
-    } else if (data.generated_text) {
-      return data.generated_text;
-    } else {
-      throw new Error('Invalid response format from Hugging Face');
-    }
+    return Array.isArray(data) ? data[0].generated_text : data.generated_text;
   }
 
   private async makeMockRequest(model: string, prompt: string): Promise<string> {
@@ -485,22 +591,29 @@ class MultiProviderAIService {
 
       if (providerId.startsWith('gemini')) {
         response = await this.makeGeminiRequest(providerId, prompt);
-      } else if (providerId.startsWith('microsoft') || providerId === 'distilgpt2') {
-        // Hugging Face models
+      } else if (providerId.startsWith('gpt')) {
+        response = await this.makeOpenAIRequest(providerId, prompt);
+      } else if (providerId.startsWith('claude')) {
+        response = await this.makeAnthropicRequest(providerId, prompt);
+      } else if (providerId.startsWith('deepseek')) {
+        response = await this.makeDeepSeekRequest(providerId, prompt);
+      } else if (providerId.startsWith('moonshot')) {
+        response = await this.makeKimiRequest(providerId, prompt);
+      } else if (providerId.startsWith('or-')) {
+        response = await this.makeOpenRouterRequest(providerId, prompt);
+      } else if (providerId.startsWith('hf-')) {
         response = await this.makeHuggingFaceRequest(providerId, prompt);
       } else if (providerId === 'mock-ai') {
-        // Mock AI fallback
         response = await this.makeMockRequest(providerId, prompt);
       } else {
-        // All other models go through OpenRouter
-        response = await this.makeOpenRouterRequest(providerId, prompt);
+        throw new Error(`Unhandled provider type for ${providerId}`);
       }
 
       console.log(`✅ Request successful with ${provider.name}`);
       return response;
 
     } catch (error) {
-      console.error(`❌ Request failed with ${provider.name}:`, error);
+      console.error(`❌ Request failed with ${provider.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
 
       // Handle different types of errors
       if (error instanceof Error) {
@@ -519,33 +632,85 @@ class MultiProviderAIService {
           }
         } else if (error.message.includes('429') || error.message.includes('rate limit')) {
           provider.available = false;
+          provider.cooldownUntil = Date.now() + 60000; // 60 second cooldown
           console.log(`⏳ Provider ${provider.name} rate limited, cooldown for 60 seconds`);
-          setTimeout(() => {
-            provider.available = true;
-            provider.requestCount = 0;
-            console.log(`✅ Provider ${provider.name} back online`);
-          }, 60000);
         } else if (error.message.includes('quota') || error.message.includes('insufficient')) {
           provider.available = false;
+          provider.cooldownUntil = Date.now() + 3600000; // 1 hour cooldown
           console.log(`💰 Provider ${provider.name} quota exceeded, disabling for 1 hour`);
-          setTimeout(() => {
-            provider.available = true;
-            provider.requestCount = 0;
-          }, 3600000); // 1 hour
         } else if (error.message.includes('temporarily unavailable') || error.message.includes('5')) {
           // Temporary server errors - retry after delay
           provider.available = false;
+          provider.cooldownUntil = Date.now() + 30000; // 30 second cooldown
           console.log(`🌐 Provider ${provider.name} temporarily unavailable, cooldown for 30 seconds`);
-          setTimeout(() => {
-            provider.available = true;
-            provider.requestCount = 0;
-            console.log(`✅ Provider ${provider.name} back online`);
-          }, 30000);
         }
       }
 
       throw error;
     }
+  }
+
+  /**
+   * Universal AI call with automatic failover and retries
+   */
+  private async executeWithFailover(prompt: string, options?: any): Promise<string> {
+    const allProviderIds = Array.from(this.providers.keys());
+    const attemptedProviders = new Set<string>();
+    let lastError: Error | null = null;
+    
+    // Allow up to 5 attempts across different providers
+    const maxAttempts = 5;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      // Find best available provider based on priority and availability
+      const availableProviders = Array.from(this.providers.entries())
+        .filter(([id, p]) => {
+          const now = Date.now();
+          // A provider is eligible if it's available and not currently in cooldown
+          const isEnabled = p.available;
+          const isNotRateLimited = p.requestCount < p.maxRequests;
+          const isCooldownOver = !p.cooldownUntil || now >= p.cooldownUntil;
+          
+          return isEnabled && isNotRateLimited && isCooldownOver;
+        })
+        .sort(([_, a], [__, b]) => a.priority - b.priority);
+
+      if (availableProviders.length === 0) {
+        console.warn("⚠️ No providers available for failover, waiting 2s...");
+        await this.sleep(2000);
+        continue;
+      }
+
+      // Log status of available providers
+      if (attempt === 0) {
+        console.log(`🔍 Available providers for this request: ${availableProviders.map(([_, p]) => p.name).join(', ')}`);
+      }
+
+      // Try to find a provider we haven't tried in this specific chain yet
+      let providerId = availableProviders.find(([id]) => !attemptedProviders.has(id))?.[0];
+      
+      // If all available have been tried at least once, just pick the top one
+      if (!providerId) {
+        providerId = availableProviders[0][0];
+      }
+
+      attemptedProviders.add(providerId);
+      const provider = this.providers.get(providerId)!;
+
+      try {
+        console.log(`🔄 [Failover Attempt ${attempt + 1}/${maxAttempts}] Using ${provider.name}`);
+        const response = await this.makeProviderRequest(providerId, prompt);
+        return response;
+      } catch (error) {
+        lastError = error as Error;
+        console.warn(`❌ Provider ${provider.name} failed:`, error instanceof Error ? error.message : error);
+        
+        // Wait a bit before next attempt to allow for transient issues or cooldowns
+        await this.sleep(1000);
+      }
+    }
+
+    throw lastError || new Error("All AI providers failed after multiple attempts");
   }
 
   async generateQuestions(options: GenerateQuestionsOptions): Promise<AIResponse> {
@@ -559,158 +724,62 @@ class MultiProviderAIService {
     }
 
     console.log(`🤖 Generating ${options.questionCount} questions using multi-provider system`);
-    this.logProviderStatus();
-
     const prompt = this.buildPrompt(options);
-    let lastError: Error | null = null;
 
-    // Try all available providers, but prioritize Gemini
-    // Get list of all available provider IDs upfront
-    const allProviderIds = Array.from(this.providers.keys());
-    const attemptedProviders = new Set<string>();
-    let consecutiveFailures = 0;
-    let providerIndex = 0;
-    const maxAttempts = allProviderIds.length * 2; // Allow retries
-    
-    // Try each provider at least once before retrying
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      // First, try to get next untried provider
-      let providerId: string | null = null;
+    try {
+      const response = await this.executeWithFailover(prompt, options);
+      const parsedResponse = this.parseAIResponse(response);
       
-      // Try to find a provider we haven't tried yet
-      for (let i = 0; i < allProviderIds.length; i++) {
-        const candidateId = allProviderIds[(providerIndex + i) % allProviderIds.length];
-        const candidate = this.providers.get(candidateId);
-        
-        if (candidate && candidate.available && candidate.requestCount < candidate.maxRequests) {
-          // Check content size
-          const contentLength = options?.content?.length || 0;
-          if (!candidate.maxTokens || contentLength <= candidate.maxTokens * 0.6) {
-            if (!attemptedProviders.has(candidateId) || attempt >= allProviderIds.length) {
-              providerId = candidateId;
-              providerIndex = (providerIndex + i + 1) % allProviderIds.length;
-              break;
-            }
-          }
-        }
-      }
+      // Validate specifically for questions
+      this.validateQuestionsResponse(parsedResponse);
+      
+      const processedResponse = this.processGeneratedQuestions(parsedResponse, options);
 
-      if (!providerId) {
-        // If we've tried all providers at least once, break
-        if (attemptedProviders.size >= allProviderIds.length) {
-          console.error("❌ All providers have been attempted and failed");
-          break;
-        }
-        // If we've had too many consecutive failures, wait longer
-        if (consecutiveFailures >= 3) {
-          console.log("⏳ Multiple consecutive failures, waiting 5 seconds before retry...");
-          await this.sleep(5000);
-          consecutiveFailures = 0; // Reset counter
-        } else {
-          console.log("⏳ No suitable providers available, waiting 2 seconds before retry...");
-          await this.sleep(2000);
-        }
-        continue;
-      }
+      // Cache the successful response
+      this.setCachedQuestions(contentHash, processedResponse);
 
-      // Add to attempted set
-      if (!attemptedProviders.has(providerId)) {
-        attemptedProviders.add(providerId);
-      }
-
-      try {
-        const totalAttempts = allProviderIds.length * 2;
-        console.log(`🔄 Attempt ${attempt + 1}/${totalAttempts}: Using ${this.providers.get(providerId)?.name}`);
-
-        const response = await this.makeProviderRequest(providerId, prompt);
-        const parsedResponse = this.parseAIResponse(response);
-        const processedResponse = this.processGeneratedQuestions(parsedResponse, options);
-
-        // Cache the successful response
-        this.setCachedQuestions(contentHash, processedResponse);
-
-        console.log(`✅ Successfully generated ${processedResponse.questions.length} questions with ${this.providers.get(providerId)?.name}`);
-        return processedResponse;
-
-      } catch (error) {
-        lastError = error as Error;
-        const providerName = this.providers.get(providerId)?.name || providerId;
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.log(`❌ Provider ${providerName} failed:`, errorMessage);
-        
-        consecutiveFailures++;
-
-        // Check if it's a network/connectivity error
-        const isNetworkError = errorMessage.includes('fetch failed') || 
-                               errorMessage.includes('timeout') || 
-                               errorMessage.includes('ECONNREFUSED') ||
-                               errorMessage.includes('ENOTFOUND') ||
-                               (error instanceof Error && 'code' in error && error.code === 'UND_ERR_CONNECT_TIMEOUT');
-        
-        if (isNetworkError) {
-          console.warn(`🌐 Network connectivity issue detected. This might be a firewall, proxy, or internet connection problem.`);
-          // For network errors, try other providers immediately without long delays
-          const totalAttempts = allProviderIds.length * 2;
-          if (attempt < totalAttempts - 1) {
-            const delay = 500; // Short delay for network errors
-            console.log(`⏳ Waiting ${delay}ms before trying next provider...`);
-            await this.sleep(delay);
-          }
-        } else {
-          // For other errors, use normal delay
-          const totalAttempts = allProviderIds.length * 2;
-          if (attempt < totalAttempts - 1) {
-            const delay = Math.min(1000 * (attempt + 1), 3000); // Max 3 seconds
-            console.log(`⏳ Waiting ${delay}ms before trying next provider...`);
-            await this.sleep(delay);
-          }
-        }
-      }
+      return processedResponse;
+    } catch (error) {
+      console.error("Critical AI Failure in generateQuestions, falling back to Mock AI:", error);
+      
+      // Ultimate fallback to Mock AI
+      const response = await this.makeMockRequest('mock-ai', prompt);
+      const parsedResponse = this.parseAIResponse(response);
+      return this.processGeneratedQuestions(parsedResponse, options);
     }
-
-    // Final attempt: try mock AI if not already tried
-    if (!mockAITried && this.providers.get('mock-ai')?.available) {
-      console.log("🔄 Final attempt: Using Mock AI fallback...");
-      const mockProvider = this.providers.get('mock-ai');
-      if (mockProvider) {
-        mockProvider.requestCount++;
-        try {
-          const response = await this.makeMockRequest('mock-ai', prompt);
-          const parsedResponse = this.parseAIResponse(response);
-          const processedResponse = this.processGeneratedQuestions(parsedResponse, options);
-
-          // Cache the successful response
-          this.setCachedQuestions(contentHash, processedResponse);
-
-          console.log(`✅ Successfully generated ${processedResponse.questions.length} questions with ${mockProvider.name}`);
-          return processedResponse;
-        } catch (error) {
-          lastError = error as Error;
-          console.log(`❌ Mock AI fallback failed:`, error instanceof Error ? error.message : 'Unknown error');
-        }
-      }
-    }
-
-    // If all attempts failed, provide helpful error message
-    console.error("❌ All providers failed to generate questions");
-    this.logProviderStatus();
-    
-    // Check if Gemini is configured
-    const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-    if (!geminiKey) {
-      throw new Error(`Question generation failed: No AI providers configured. Please set GEMINI_API_KEY environment variable. Last error: ${lastError?.message || "Unknown"}`);
-    }
-    
-    throw new Error(`Question generation failed: All providers exhausted. Last error: ${lastError?.message || "Unknown"}`);
   }
 
   private buildPrompt(options: GenerateQuestionsOptions): string {
     const { content, difficulty, questionCount, questionTypes, focus } = options;
 
-    const maxContentLength = 3000; // Increased for better context
+    const maxContentLength = 3000;
     const optimizedContent = content.length > maxContentLength
       ? content.substring(0, maxContentLength) + "..."
       : content;
+
+    const isTrueFalseOnly = questionTypes.length === 1 && questionTypes[0] === 'true-false';
+    
+    const exampleQuestion = isTrueFalseOnly ? {
+      "id": "q1",
+      "type": "true-false",
+      "question": "The Earth is flat.",
+      "options": ["True", "False"],
+      "correctAnswer": "False",
+      "explanation": "Scientific evidence confirms Earth is an oblate spheroid.",
+      "difficulty": difficulty,
+      "points": difficulty === "easy" ? 1 : difficulty === "medium" ? 2 : 3,
+      "sourceText": "Evidence from satellite imagery confirms the Earth is round."
+    } : {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "What is the capital of France?",
+      "options": ["London", "Berlin", "Paris", "Madrid"],
+      "correctAnswer": "Paris",
+      "explanation": "Paris is the capital and largest city of France.",
+      "difficulty": difficulty,
+      "points": difficulty === "easy" ? 1 : difficulty === "medium" ? 2 : 3,
+      "sourceText": "The capital of France is Paris."
+    };
 
     return `Generate exactly ${questionCount} high-quality ${difficulty} test questions from this content:
 
@@ -727,19 +796,11 @@ ${focus ? `- Focus areas: ${focus}` : ""}
 RESPONSE FORMAT - Return valid JSON only:
 {
   "questions": [
-    {
-      "id": "q1",
-      "type": "multiple-choice",
-      "question": "Clear, specific question text",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correctAnswer": "Option A",
-      "explanation": "Brief explanation referencing the source",
-      "difficulty": "${difficulty}",
-      "points": ${difficulty === "easy" ? 1 : difficulty === "medium" ? 2 : 3},
-      "sourceText": "Exact text from content that supports this question and answer"
-    }
+    ${JSON.stringify(exampleQuestion, null, 2)}
   ]
 }
+
+IMPORTANT: If multiple question types were requested, provide a balanced mix. If only true-false was requested, ONLY provide true-false questions with ["True", "False"] as options.
 
 Generate ${questionCount} questions now:`;
   }
@@ -751,61 +812,65 @@ Generate ${questionCount} questions now:`;
         throw new Error("Response is too short or empty");
       }
 
-      // Check for common gibberish patterns
-      const gibberishPatterns = [
-        /^[^\w\s]*$/, // Only symbols/no alphanumeric
-        /(\w{20,})/, // Very long words (likely gibberish)
-        /^.{0,50}$/, // Too short for valid JSON response
-        /(.)\1{10,}/, // Repeated characters
-      ];
-
-      if (gibberishPatterns.some(pattern => pattern.test(text))) {
-        throw new Error("Response appears to be gibberish or malformed");
-      }
-
       let jsonText = text.trim();
 
       // Remove markdown code blocks
       jsonText = jsonText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
       jsonText = jsonText.replace(/^```\s*/, "").replace(/\s*```$/, "");
 
-      // Find JSON object - try multiple patterns
-      let jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+      // Find JSON object or array - look for the largest matching block to avoid picking up partial matches in reasoning text
+      let jsonMatch = jsonText.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+      
       if (!jsonMatch) {
-        // Try to find JSON in a larger context
-        jsonMatch = jsonText.match(/\{[\s\S]{50,}\}/);
+        throw new Error("No valid JSON object or array found in response");
       }
 
-      if (!jsonMatch) {
-        throw new Error("No valid JSON object found in response");
+      // If we found a match, try to find the outermost JSON structure if there are nested ones
+      const content = jsonMatch[0];
+      const firstBrace = content.indexOf('{');
+      const firstBracket = content.indexOf('[');
+      
+      let startIdx = -1;
+      let endIdx = -1;
+      
+      if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+        startIdx = jsonText.indexOf('{');
+        endIdx = jsonText.lastIndexOf('}') + 1;
+      } else if (firstBracket !== -1) {
+        startIdx = jsonText.indexOf('[');
+        endIdx = jsonText.lastIndexOf(']') + 1;
+      }
+      
+      if (startIdx !== -1 && endIdx !== -1) {
+        const cleanedJson = jsonText.substring(startIdx, endIdx);
+        return JSON.parse(cleanedJson);
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
-
-      // Validate structure
-      if (!parsed.questions || !Array.isArray(parsed.questions)) {
-        throw new Error("Invalid response format - questions array missing");
-      }
-
-      if (parsed.questions.length === 0) {
-        throw new Error("No questions generated");
-      }
-
-      // Validate each question has required fields
-      for (const question of parsed.questions) {
-        if (!question.question || typeof question.question !== 'string') {
-          throw new Error("Invalid question format - missing or invalid question text");
-        }
-        if (!question.correctAnswer || typeof question.correctAnswer !== 'string') {
-          throw new Error("Invalid question format - missing or invalid correct answer");
-        }
-      }
-
       return parsed;
     } catch (error) {
       console.error("Failed to parse AI response:", error);
       console.error("Response preview:", text.substring(0, 300) + "...");
       throw new Error(`Invalid JSON response from AI: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private validateQuestionsResponse(parsed: any): void {
+    if (!parsed.questions || !Array.isArray(parsed.questions)) {
+      throw new Error("Invalid response format - questions array missing");
+    }
+
+    if (parsed.questions.length === 0) {
+      throw new Error("No questions generated");
+    }
+
+    for (const question of parsed.questions) {
+      if (!question.question || typeof question.question !== 'string') {
+        throw new Error("Invalid question format - missing or invalid question text");
+      }
+      if (!question.correctAnswer && !question.correct_answer) {
+        throw new Error("Invalid question format - missing correct answer");
+      }
     }
   }
 
@@ -929,10 +994,10 @@ PERFORMANCE SUMMARY:
 
 INCORRECT QUESTIONS (showing up to 3):
 ${wrongQuestions.slice(0, 3).map((q, i) => `
-${i + 1}. Question: ${q.question}
+${i + 1}. Question: ${q.question || q.question_text || "Unknown question"}
    Correct Answer: ${testResult.correctAnswers[q.id]}
    User Answer: ${testResult.userAnswers[q.id] || "Not answered"}
-   Topic: ${q.sourceText.substring(0, 100)}...
+   Topic: ${(q.sourceText || q.source_text || "")?.substring(0, 100)}...
 `).join("")}
 
 Provide insights in JSON format:
@@ -945,17 +1010,11 @@ Provide insights in JSON format:
 }`;
 
     try {
-      const providerId = this.getAvailableProvider();
-      if (!providerId) {
-        return this.generateBasicInsights(testResult);
-      }
-
-      const response = await this.makeProviderRequest(providerId, prompt);
+      const response = await this.executeWithFailover(prompt);
       const jsonMatch = response.match(/\{[\s\S]*\}/);
 
       if (jsonMatch) {
         const insights = JSON.parse(jsonMatch[0]);
-        console.log(`✅ Generated insights using ${this.providers.get(providerId)?.name}`);
         return insights;
       }
 
@@ -1077,23 +1136,124 @@ Provide insights in JSON format:
 
   public async healthCheck(): Promise<Record<string, boolean>> {
     const results: Record<string, boolean> = {};
-    
+    console.log("🤖 Running AI Provider Health Checks...");
+
     for (const [key, provider] of this.providers) {
       try {
         // Simple test request to check if provider is working
-        await this.makeProviderRequest(key, "Test: Generate one simple question about mathematics. Respond with valid JSON containing a questions array with one question.");
+        await this.makeProviderRequest(key, "Respond with valid JSON: {\"questions\": []}");
         results[key] = true;
-        console.log(`✅ Health check passed for ${provider.name}`);
+        console.log(`  - ${provider.name}: ✅`);
       } catch (error) {
         results[key] = false;
-        console.log(`❌ Health check failed for ${provider.name}:`, error instanceof Error ? error.message : 'Unknown error');
+        console.log(`  - ${provider.name}: ❌ (${error instanceof Error ? error.message : 'Error'})`);
       }
-      
+
       // Small delay between health checks
       await this.sleep(1000);
     }
-    
+
     return results;
+  }
+
+  public async listAvailableGeminiModels(): Promise<void> {
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    if (!geminiKey) {
+      console.log('❌ No Gemini API key found');
+      return;
+    }
+
+    try {
+      // Try v1 API first (current API)
+      console.log('🔍 Checking available Gemini models...');
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${geminiKey}`);
+      if (!response.ok) {
+        console.log(`❌ v1 API failed: ${response.status} - ${response.statusText}`);
+        // Try v1beta API as fallback
+        const betaResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`);
+        if (!betaResponse.ok) {
+          console.log(`❌ v1beta API also failed: ${betaResponse.status} - ${betaResponse.statusText}`);
+          return;
+        }
+        const betaData = await betaResponse.json();
+        console.log('📋 Available models in v1beta API:');
+        betaData.models?.forEach((model: any) => {
+          console.log(`  - ${model.name} (supports: ${model.supportedGenerationMethods?.join(', ') || 'unknown'})`);
+        });
+        return;
+      }
+      const data = await response.json();
+      console.log('📋 Available models in v1 API:');
+      data.models?.forEach((model: any) => {
+        console.log(`  - ${model.name} (supports: ${model.supportedGenerationMethods?.join(', ') || 'unknown'})`);
+      });
+    } catch (error) {
+      console.error('❌ Failed to list models:', error);
+    }
+  }
+
+
+  /**
+   * Parse content into structured modules
+   */
+  async parseContentIntoModules(options: {
+    content: string;
+    context?: string;
+    courseId: string;
+  }): Promise<Array<{
+    course_id: string;
+    title: string;
+    content: string;
+    module_order: number;
+    word_count: number;
+    estimated_read_time: number;
+  }>> {
+    const prompt = `You are an expert educational content organizer. Analyze the following content and break it down into logical study modules/chapters.
+
+${options.context ? `Context: ${options.context}\n\n` : ''}
+
+Content to analyze:
+${options.content.substring(0, 5000)}${options.content.length > 5000 ? '...' : ''}
+
+Instructions:
+1. Identify natural divisions in the content (chapters, sections, topics)
+2. Create 3-8 modules (unless content is very short or very long)
+3. Each module should be a complete, self-contained learning unit
+4. Provide a clear, descriptive title for each module
+5. Include the full text content for each module
+
+Return a JSON array of modules in this exact format:
+[
+  {
+    "title": "Module Title",
+    "content": "Full module text content here...",
+    "order": 1
+  }
+]
+
+IMPORTANT: Return ONLY the JSON array, no additional text.`;
+
+    try {
+      const response = await this.executeWithFailover(prompt);
+      const parsed = this.parseAIResponse(response);
+
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        throw new Error('Invalid module structure returned');
+      }
+
+      // Transform to database format
+      return parsed.map((module: any, index: number) => ({
+        course_id: options.courseId,
+        title: module.title || `Module ${index + 1}`,
+        content: module.content || '',
+        module_order: module.order || index + 1,
+        word_count: (module.content || '').split(/\s+/).length,
+        estimated_read_time: Math.ceil((module.content || '').split(/\s+/).length / 200),
+      }));
+    } catch (error) {
+      console.error('Module parsing error:', error);
+      throw error;
+    }
   }
 }
 

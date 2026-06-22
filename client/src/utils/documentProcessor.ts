@@ -169,7 +169,7 @@ export class DocumentProcessor {
       // Convert DOCX to HTML using mammoth
       const result = await mammoth.convertToHtml({
         arrayBuffer: arrayBuffer
-      });
+      } as any);
       
       // Extract plain text from HTML
       // Create a temporary div to parse HTML and extract text content
