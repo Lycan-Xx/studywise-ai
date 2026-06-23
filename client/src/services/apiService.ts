@@ -143,7 +143,7 @@ export class ApiService {
     courseId: string;
     moduleId: string;
     numberOfQuestions?: number;
-    questionType?: 'mcq' | 'truefalse' | 'mixed';
+    questionType?: 'mcq' | 'true_false' | 'mixed';
     difficulty?: 'easy' | 'medium' | 'hard';
   }): Promise<any> {
     const { courseId, moduleId } = data;
@@ -309,7 +309,7 @@ export class ApiService {
    */
   static async updateUserPreferences(data: {
     questionDifficulty?: 'easy' | 'medium' | 'hard';
-    questionTypes?: ('mcq' | 'truefalse')[];
+    questionTypes?: ('mcq' | 'true_false')[];
     defaultQuestionsPerModule?: number;
   }): Promise<any> {
     const response = await this.put('/api/user/preferences', data);

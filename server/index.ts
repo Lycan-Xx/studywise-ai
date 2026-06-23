@@ -87,6 +87,8 @@ declare global {
     interface Request {
       user?: {
         id: string;
+        email?: string;
+        user_metadata?: Record<string, any>;
       };
     }
   }
