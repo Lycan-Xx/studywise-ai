@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { devtools, persist, createJSONStorage } from 'zustand/middleware';
 import type { TestConfig, Question } from '@/types';
 import { aiService, type GenerateQuestionsOptions } from '@/services/aiService';
-import ApiService from '@/services/apiService';
+import { ApiService } from '@/services/apiService';
 
 // New interfaces for course-based testing
 export interface TestSession {
@@ -86,7 +86,7 @@ interface TestStore {
   goToQuestion: (index: number) => void;
   submitTest: (testId: string, totalTime: number) => Promise<TestResult>;
   setTestResult: (result: TestResult) => void;
-  requestAIAnalysis: (resultId: string) => Promise<void>;
+  requestAIAnalysis: (testId: string) => Promise<void>;
   resetNewTest: () => void;
 }
 
@@ -402,13 +402,13 @@ export const useTestStore = create<TestStore>()(
           set({ testResult: result }, false, 'setTestResult');
         },
 
-        requestAIAnalysis: async (resultId) => {
+        requestAIAnalysis: async (testId) => {
           set({ isGenerating: true, error: null });
 
           try {
-            const analysis = await ApiService.requestAIAnalysis(resultId);
+            const analysis = await ApiService.requestAIAnalysis(testId);
             set((state) => {
-              if (!state.testResult || state.testResult.id !== resultId) return state;
+              if (!state.testResult || state.testResult.testId !== testId) return state;
 
               return {
                 testResult: {

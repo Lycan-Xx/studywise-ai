@@ -30,12 +30,26 @@ export class ModuleTestController {
         default_questions_per_module: 5
       };
 
+      // Verify course ownership before accessing module
+      const { data: course, error: courseError } = await supabase
+        .from('courses')
+        .select('id')
+        .eq('id', courseId)
+        .eq('user_id', userId)
+        .single();
+
+      if (courseError || !course) {
+        console.error(`❌ Course not found or unauthorized: ${courseId}`, courseError);
+        return res.status(404).json({ message: 'Course not found' });
+      }
+
       // Get module content
       console.log(`🔍 Generating test for module: ${moduleId} (User: ${userId})`);
       const { data: module, error: moduleError } = await supabase
         .from('modules')
         .select('content, title')
         .eq('id', moduleId)
+        .eq('course_id', courseId)
         .single();
 
       if (moduleError || !module) {
@@ -167,6 +181,7 @@ export class ModuleTestController {
         .from('courses')
         .select('source_content, title')
         .eq('id', courseId)
+        .eq('user_id', userId)
         .single();
 
       if (!course) {
@@ -385,7 +400,8 @@ export class ModuleTestController {
       const { data: userAnswers } = await supabase
         .from('user_answers')
         .select('*')
-        .eq('test_id', testId);
+        .eq('test_id', testId)
+        .eq('user_id', userId);
 
       // Generate insights
       const insights = await aiService.generateTestInsights({

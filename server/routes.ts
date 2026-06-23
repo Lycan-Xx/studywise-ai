@@ -9,7 +9,7 @@ import { DatabaseService, supabase } from './lib/supabase.js';
 const router = Router();
 
 // Validate the Supabase JWT from the Authorization header
-const authMiddleware = async (req: any, res: any, next: any) => {
+const authMiddleware = async (req: any & { user?: { id: string; email: string; user_metadata?: Record<string, any> } }, res: any, next: any) => {
   const authHeader = req.headers['authorization'] as string;
   if (!authHeader?.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Missing or invalid Authorization header' });
@@ -21,7 +21,7 @@ const authMiddleware = async (req: any, res: any, next: any) => {
     if (error || !user) {
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
-    req.user = user;
+    req.user = user as { id: string; email: string; user_metadata?: Record<string, any> };
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Token validation failed' });
@@ -68,8 +68,8 @@ router.get('/user/profile', authMiddleware, async (req, res) => {
       if (error.code === 'PGRST116') {
         return res.json({
           id: req.user!.id,
-          email: req.user!.email,
-          full_name: req.user!.user_metadata?.full_name || '',
+          email: (req as any).user!.email,
+          full_name: (req as any).user!.user_metadata?.full_name || '',
           default_question_type: 'mixed',
           default_difficulty: 'medium',
           default_questions_per_module: 10,
@@ -93,9 +93,9 @@ router.put('/user/profile', authMiddleware, async (req, res) => {
     const { data, error } = await supabase
       .from('user_profiles')
       .upsert({ 
+        ...req.body,
         id: userId,
         email: req.user!.email,
-        ...req.body,
         updated_at: new Date().toISOString()
       })
       .select()

@@ -91,10 +91,23 @@ export class ResultsController {
   static async getTestQuestions(req: Request, res: Response) {
     try {
       const { testId } = req.params;
+      const userId = req.user?.id;
+
+      // Verify test ownership
+      const { data: test, error: testError } = await supabase
+        .from('tests')
+        .select('id')
+        .eq('id', testId)
+        .eq('user_id', userId)
+        .single();
+
+      if (testError || !test) {
+        return res.status(404).json({ message: 'Test not found' });
+      }
 
       const { data, error } = await supabase
         .from('questions')
-        .select('*')
+        .select('id, test_id, question_text, question_type, options, question_order')
         .eq('test_id', testId)
         .order('question_order');
 
@@ -146,11 +159,12 @@ export class ResultsController {
       const { testId } = req.params;
       const userId = req.user?.id;
 
-      // Get test to find module and course
+      // Get test to find module and course, verify ownership
       const { data: test } = await supabase
         .from('tests')
         .select('module_id')
         .eq('id', testId)
+        .eq('user_id', userId)
         .single();
 
       if (!test) {
