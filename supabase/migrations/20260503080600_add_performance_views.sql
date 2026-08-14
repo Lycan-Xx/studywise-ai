@@ -35,7 +35,7 @@ CREATE OR REPLACE VIEW public.course_performance AS
 SELECT 
     c.id as course_id,
     c.user_id,
-    c.title,
+    c.title as course_title,
     c.total_modules,
     COUNT(DISTINCT m.id) FILTER (WHERE tr.id IS NOT NULL) as modules_tested,
     ROUND(AVG(COALESCE(tr.score_percentage, 0))::numeric, 2) as overall_average_score,
@@ -54,7 +54,7 @@ SELECT
     m.id as module_id,
     m.course_id,
     c.user_id,
-    m.title,
+    m.title as module_title,
     COUNT(tr.id) as total_attempts,
     ROUND(AVG(COALESCE(tr.score_percentage, 0))::numeric, 2) as average_score,
     MAX(COALESCE(tr.score_percentage, 0)) as best_score,
