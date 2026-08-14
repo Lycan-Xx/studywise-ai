@@ -1,6 +1,31 @@
 // @/utils/documentProcessor.ts
 import * as pdfjsLib from "pdfjs-dist";
 
+// ─── Heading detection types ───────────────────────────────────────────────────
+
+/**
+ * A structural heading detected in the source document before AI processing.
+ * Passing these to the server lets the AI confirm structure rather than guess it.
+ */
+export interface DetectedHeading {
+  text: string;
+  /** 1 = major (H1 / Chapter), 2 = section (H2), 3 = subsection (H3) */
+  level: number;
+  /** Character offset in the full extracted text string */
+  position: number;
+}
+
+/**
+ * What processFile now returns — text plus any structural hints we could extract
+ * for free from the document format (docx HTML tags, markdown #, numbered sections).
+ */
+export interface ProcessedDocument {
+  text: string;
+  headings: DetectedHeading[];
+  /** How headings were found — lets the server know how much to trust them */
+  detectionMethod: 'html' | 'markdown' | 'heuristic' | 'none';
+}
+
 // Configure PDF.js worker with optimized hybrid approach
 const LOCAL_URL = '/pdf.worker.min.mjs';
 
@@ -47,9 +72,11 @@ export class DocumentProcessor {
   }
 
   /**
-   * Process different file types and extract text
+   * Process different file types and extract text + structural headings.
+   * Returns a ProcessedDocument instead of a plain string so callers can pass
+   * detected headings to the server as module boundary hints.
    */
-  static async processFile(file: File): Promise<string | null> {
+  static async processFile(file: File): Promise<ProcessedDocument> {
     try {
       if (file.type === 'text/plain' || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
         return await this.processTextFile(file);
@@ -66,22 +93,119 @@ export class DocumentProcessor {
     }
   }
 
+  // ─── Heading extraction helpers ─────────────────────────────────────────────
+
   /**
-   * Process plain text files
+   * Extract headings from mammoth's HTML output (<h1>–<h4> tags).
+   * This is the most reliable method — DOCX heading styles map directly to HTML tags.
    */
-  private static async processTextFile(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
+  private static extractHeadingsFromHtml(html: string, fullText: string): DetectedHeading[] {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const headings: DetectedHeading[] = [];
+    let searchFrom = 0;
+
+    doc.body.childNodes.forEach(node => {
+      const el = node as HTMLElement;
+      if (!el.tagName) return;
+
+      const tag = el.tagName.toLowerCase();
+      const text = el.textContent?.trim() || '';
+
+      if (['h1', 'h2', 'h3', 'h4'].includes(tag) && text.length > 0) {
+        const level = parseInt(tag[1]);
+        // Find the heading's position in the extracted plain text
+        const position = fullText.indexOf(text, searchFrom);
+        headings.push({
+          text,
+          level,
+          position: position >= 0 ? position : searchFrom,
+        });
+        if (position >= 0) searchFrom = position + text.length;
+      }
+    });
+
+    return headings;
+  }
+
+  /**
+   * Extract headings from plain text / markdown using pattern matching.
+   * Handles: # markdown, numbered sections, Chapter/Section/Unit/Topic prefixes,
+   * and ALL-CAPS short lines (common in handwritten or scan-converted notes).
+   */
+  private static extractHeadingsFromText(text: string): {
+    headings: DetectedHeading[];
+    method: 'markdown' | 'heuristic' | 'none';
+  } {
+    const headings: DetectedHeading[] = [];
+    let offset = 0;
+    let foundMarkdown = false;
+
+    for (const line of text.split('\n')) {
+      const trimmed = line.trim();
+
+      // Markdown headings: #, ##, ###
+      const mdMatch = trimmed.match(/^(#{1,3})\s+(.+)/);
+      if (mdMatch) {
+        foundMarkdown = true;
+        headings.push({
+          text: mdMatch[2].trim(),
+          level: mdMatch[1].length,
+          position: offset,
+        });
+      } else {
+        // Numbered section: "1.", "2.1", "1.2.3  Title"
+        const numberedMatch = trimmed.match(/^(\d+(?:\.\d+)*)\s{1,4}([A-Z].{2,60})$/);
+        if (numberedMatch) {
+          const dots = (numberedMatch[1].match(/\./g) || []).length;
+          headings.push({ text: trimmed, level: Math.min(dots + 1, 3), position: offset });
+        }
+        // Chapter / Section / Unit / Topic / Part prefix
+        else if (/^(chapter|section|unit|topic|part)\s+\d+/i.test(trimmed) && trimmed.length < 80) {
+          headings.push({ text: trimmed, level: 1, position: offset });
+        }
+        // ALL-CAPS short line — typical in handwritten / low-fidelity scans
+        else if (
+          /^[A-Z][A-Z\s\d\-:]{3,50}$/.test(trimmed) &&
+          trimmed.split(' ').length <= 8 &&
+          trimmed.split(' ').length >= 2
+        ) {
+          headings.push({ text: trimmed, level: 2, position: offset });
+        }
+      }
+
+      offset += line.length + 1; // +1 for the newline
+    }
+
+    if (headings.length === 0) return { headings: [], method: 'none' };
+    return { headings, method: foundMarkdown ? 'markdown' : 'heuristic' };
+  }
+
+  /**
+   * Process plain text / markdown files.
+   * Extracts markdown headings (#, ##, ###) and heuristic section markers.
+   */
+  private static async processTextFile(file: File): Promise<ProcessedDocument> {
+    const text = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => resolve(e.target?.result as string || '');
       reader.onerror = () => reject(new Error('Failed to read text file'));
       reader.readAsText(file);
     });
+
+    const { headings, method } = this.extractHeadingsFromText(text);
+    console.log(`📑 Text/MD heading detection (${method}): ${headings.length} headings found`);
+
+    return { text, headings, detectionMethod: method };
   }
 
   /**
-   * Process PDF files using PDF.js
+   * Process PDF files using PDF.js.
+   * After text extraction, runs heuristic heading detection on the result.
+   * (PDF.js exposes font-size metadata per item but it requires canvas rendering —
+   *  heuristic pattern matching gives us 80% of the value at zero extra cost.)
    */
-  private static async processPdf(file: File): Promise<string> {
+  private static async processPdf(file: File): Promise<ProcessedDocument> {
     try {
       // Convert file to ArrayBuffer
       const arrayBuffer = await file.arrayBuffer();
@@ -145,7 +269,10 @@ export class DocumentProcessor {
         throw new Error('No text content found in PDF. The PDF might contain only images or be password protected.');
       }
 
-      return fullText;
+      const { headings, method } = this.extractHeadingsFromText(fullText);
+      console.log(`📑 PDF heading detection (${method}): ${headings.length} headings found`);
+
+      return { text: fullText, headings, detectionMethod: method };
     } catch (error) {
       console.error('PDF processing error:', error);
       if (error instanceof Error) {
@@ -156,41 +283,47 @@ export class DocumentProcessor {
   }
 
   /**
-   * Process DOCX files using mammoth.js
+   * Process DOCX files using mammoth.js.
+   * mammoth converts to HTML which preserves heading levels (h1–h4) — we extract
+   * those before discarding the HTML, giving us the most reliable heading data
+   * of all three formats.
    */
-  private static async processDocx(file: File): Promise<string> {
+  private static async processDocx(file: File): Promise<ProcessedDocument> {
     try {
-      // Dynamically import mammoth to avoid loading it when not needed
       const mammoth = await import('mammoth');
-      
-      // Convert file to ArrayBuffer
       const arrayBuffer = await file.arrayBuffer();
-      
-      // Convert DOCX to HTML using mammoth
-      const result = await mammoth.convertToHtml({
-        arrayBuffer: arrayBuffer
-      } as any);
-      
-      // Extract plain text from HTML
-      // Create a temporary div to parse HTML and extract text content
-      const parser = new DOMParser();
-      const htmlDoc = parser.parseFromString(result.value, 'text/html');
-      const text = htmlDoc.body.innerText || htmlDoc.body.textContent || '';
-      
-      if (!text.trim()) {
-        throw new Error('No text content found in DOCX. The file might be empty or corrupted.');
-      }
-      
-      // Log any conversion messages/warnings
+
+      // convertToHtml preserves heading tags; extractRawText strips them — use HTML
+      const result = await mammoth.convertToHtml({ arrayBuffer } as any);
+
       if (result.messages && result.messages.length > 0) {
         console.warn('Mammoth conversion warnings:', result.messages);
       }
-      
-      return text;
+
+      // Extract plain text from HTML for the content field
+      const parser = new DOMParser();
+      const htmlDoc = parser.parseFromString(result.value, 'text/html');
+      const text = htmlDoc.body.innerText || htmlDoc.body.textContent || '';
+
+      if (!text.trim()) {
+        throw new Error('No text content found in DOCX. The file might be empty or corrupted.');
+      }
+
+      // Extract headings from the HTML before we discard it
+      const headings = this.extractHeadingsFromHtml(result.value, text);
+      console.log(`📑 DOCX heading detection (html): ${headings.length} headings found`);
+
+      // If no HTML headings found, fall back to heuristic scan of the plain text
+      if (headings.length === 0) {
+        const { headings: fallbackHeadings, method } = this.extractHeadingsFromText(text);
+        console.log(`📑 DOCX fallback heading detection (${method}): ${fallbackHeadings.length} headings found`);
+        return { text, headings: fallbackHeadings, detectionMethod: method };
+      }
+
+      return { text, headings, detectionMethod: 'html' };
     } catch (error) {
       console.error('DOCX processing error:', error);
       if (error instanceof Error) {
-        // Check if mammoth import failed
         if (error.message.includes('mammoth')) {
           throw new Error('DOCX processing library not loaded. Please refresh the page and try again.');
         }

@@ -90,15 +90,23 @@ export const useCourseStore = create<CourseState>()(
         set({ isGenerating: true, generationError: null });
         
         try {
-          // Extract file content
-          const content = await extractFileContent(file);
+          // Extract file content + structural headings detected client-side
+          const processed = await extractFileContent(file);
           
+          console.log(
+            `📤 Sending course generation request: ` +
+            `${processed.text.length} chars, ` +
+            `${processed.headings.length} headings (${processed.detectionMethod})`
+          );
+
           // Call backend API via ApiService
           const course = await ApiService.generateCourse({
             filename: file.name,
-            content,
+            content: processed.text,
             userContext: context || '',
-            fileType: getFileType(file.name)
+            fileType: getFileType(file.name),
+            detectedHeadings: processed.headings,        // NEW: structural hints
+            headingDetectionMethod: processed.detectionMethod, // NEW: confidence signal
           });
 
           set({ currentCourse: course, isGenerating: false });
@@ -205,36 +213,14 @@ export const useCourseStore = create<CourseState>()(
 );
 
 // Helper functions
-async function extractFileContent(file: File): Promise<string> {
-  const fileType = getFileType(file.name);
-  
-  if (fileType === 'txt' || fileType === 'md') {
-    return await file.text();
-  }
-  
-  if (fileType === 'pdf') {
-    // Use PDF.js (assuming it's already set up in your project)
-    const pdfjsLib = await import('pdfjs-dist');
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    
-    let text = '';
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      text += content.items.map((item: any) => item.str).join(' ') + '\n';
-    }
-    return text;
-  }
-  
-  if (fileType === 'docx') {
-    const mammoth = await import('mammoth');
-    const arrayBuffer = await file.arrayBuffer();
-    const result = await (mammoth as any).extractRawText({ arrayBuffer: arrayBuffer } as any);
-    return result.value;
-  }
-  
-  throw new Error('Unsupported file type');
+
+// Use DocumentProcessor for all extraction — it returns text + detected headings
+import { DocumentProcessor, ProcessedDocument } from '../utils/documentProcessor';
+
+async function extractFileContent(file: File): Promise<ProcessedDocument> {
+  const result = await DocumentProcessor.processFile(file);
+  if (!result) throw new Error('Failed to extract file content');
+  return result;
 }
 
 function getFileType(filename: string): 'pdf' | 'docx' | 'txt' | 'md' {
