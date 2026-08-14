@@ -995,16 +995,36 @@ Provide insights in JSON format:
     word_count: number;
     estimated_read_time: number;
   }>> {
+    // FIX 1: Raise cap from 8 K → 200 K chars (~50 K tokens).
+    // Every supported provider (Gemini 2.5 Flash, Groq Llama-4-Scout, OpenRouter) supports
+    // at least 128 K tokens, so 200 K chars is safely within all of them.
+    // The old 8 K cap was silently dropping ~80 % of a typical lecture-note PDF.
+    const MAX_MODULE_CONTENT = 200_000;
+    const contentForModules =
+      options.content.length > MAX_MODULE_CONTENT
+        ? options.content.substring(0, MAX_MODULE_CONTENT) +
+          "\n\n[Note: content beyond this point was truncated — structure modules to cover what is above]"
+        : options.content;
+
+    const truncated = options.content.length > MAX_MODULE_CONTENT;
+    if (truncated) {
+      console.warn(
+        `⚠️  parseContentIntoModules: content (${options.content.length} chars) exceeds 200 K cap — ` +
+        `sending first ${MAX_MODULE_CONTENT} chars (${Math.round((MAX_MODULE_CONTENT / options.content.length) * 100)}% of document)`
+      );
+    }
+
     const prompt = `You are an expert educational content organiser. Analyse the following content and break it into logical study modules.
 
 ${options.context ? `Context: ${options.context}\n\n` : ""}Content:
-${options.content.substring(0, 8000)}${options.content.length > 8000 ? "…" : ""}
+${contentForModules}
 
 Instructions:
 1. Identify natural divisions (chapters, sections, topics)
 2. Create 3-8 modules; each should be self-contained
 3. Give each a clear, descriptive title
-4. Include the full text for each module
+4. Include the FULL verbatim text for each module — do NOT summarise or shorten
+5. Every sentence from the source must appear in exactly one module
 
 Return a JSON array only — no preamble, no markdown:
 [
@@ -1019,7 +1039,7 @@ Return a JSON array only — no preamble, no markdown:
         throw new Error("Invalid module structure returned");
       }
 
-      return parsed.map((m: any, i: number) => ({
+      const modules = parsed.map((m: any, i: number) => ({
         course_id: options.courseId,
         title: m.title || `Module ${i + 1}`,
         content: m.content || "",
@@ -1027,6 +1047,27 @@ Return a JSON array only — no preamble, no markdown:
         word_count: (m.content || "").split(/\s+/).length,
         estimated_read_time: Math.ceil((m.content || "").split(/\s+/).length / 200),
       }));
+
+      // FIX 1b: Coverage guard — warn if the AI dropped significant content.
+      // We compare total chars distributed across modules against the content we sent.
+      const totalModuleChars = modules.reduce((sum, m) => sum + m.content.length, 0);
+      const sentChars = contentForModules.length;
+      const coverageRatio = sentChars > 0 ? totalModuleChars / sentChars : 1;
+
+      if (coverageRatio < 0.5) {
+        console.warn(
+          `⚠️  Module coverage is only ${Math.round(coverageRatio * 100)}% ` +
+          `(${totalModuleChars} / ${sentChars} chars distributed). ` +
+          `The AI may have summarised instead of copying content verbatim. ` +
+          `Consider re-running or falling back to single-module mode.`
+        );
+      } else {
+        console.log(
+          `✅ Module coverage: ${Math.round(coverageRatio * 100)}% across ${modules.length} modules`
+        );
+      }
+
+      return modules;
     } catch (error) {
       console.error("Module parsing error:", error);
       throw error;
@@ -1036,7 +1077,14 @@ Return a JSON array only — no preamble, no markdown:
   // ── Cache helpers ────────────────────────────────────────────────────────
 
   private generateContentHash(options: GenerateQuestionsOptions): string {
-    const input = `${options.content.substring(0, 1000)}-${options.difficulty}-${options.questionCount}-${options.questionTypes.join(",")}`;
+    // FIX 2: Hash the FULL content, not just the first 1 K chars.
+    // The old approach caused two problems:
+    //   (a) Two different documents that share an intro paragraph return each other's cached questions.
+    //   (b) Re-uploading the same document with minor differences at the start caused cache misses
+    //       and wasted an API call for identical content.
+    // MD5 of the full string is fast (<1 ms even for 200 K chars) and fixes both.
+    const contentHash = createHash("md5").update(options.content).digest("hex");
+    const input = `${contentHash}-${options.difficulty}-${options.questionCount}-${options.questionTypes.join(",")}`;
     return createHash("md5").update(input).digest("hex");
   }
 
