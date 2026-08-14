@@ -176,10 +176,10 @@ export class ModuleTestController {
         default_difficulty: 'medium'
       };
 
-      // Get course content
+      // Get course metadata (no longer need source_content — we sample per module instead)
       const { data: course } = await supabase
         .from('courses')
-        .select('source_content, title')
+        .select('id, title')
         .eq('id', courseId)
         .eq('user_id', userId)
         .single();
@@ -188,19 +188,72 @@ export class ModuleTestController {
         return res.status(404).json({ message: 'Course not found' });
       }
 
-      // Generate questions using AI (20 questions for a full exam)
-      const questionTypes = preferences.default_question_type === 'mixed' 
+      // FIX 3: Generate exam questions proportionally from every module instead of dumping the
+      // entire raw source_content into a single AI call.
+      //
+      // Why the old approach was bad:
+      //   - Sending 60 K+ chars of raw source in one shot biases the model toward content it
+      //     reads first (primacy/recency effect), so early modules were over-represented.
+      //   - It was the most expensive single API call in the whole pipeline.
+      //
+      // New approach: fetch all modules → generate ceil(20 / N) questions per module in
+      // parallel → shuffle → trim to 20. This guarantees proportional coverage at lower cost.
+
+      const EXAM_TOTAL = 20;
+
+      const questionTypes = preferences.default_question_type === 'mixed'
         ? ['multiple-choice', 'true-false']
         : preferences.default_question_type === 'mcq'
         ? ['multiple-choice']
         : ['true-false'];
 
-      const aiResponse = await aiService.generateQuestions({
-        content: course.source_content,
-        difficulty: preferences.default_difficulty,
-        questionCount: 20,
-        questionTypes,
+      const { data: modules, error: modulesError } = await supabase
+        .from('modules')
+        .select('id, title, content')
+        .eq('course_id', courseId)
+        .order('module_order');
+
+      if (modulesError || !modules || modules.length === 0) {
+        return res.status(404).json({ message: 'No modules found for this course' });
+      }
+
+      const questionsPerModule = Math.ceil(EXAM_TOTAL / modules.length);
+
+      console.log(
+        `📝 Exam generation: ${modules.length} modules × ~${questionsPerModule} questions each → trim to ${EXAM_TOTAL}`
+      );
+
+      // Run all module question-generation calls in parallel to keep latency low
+      const perModuleResults = await Promise.allSettled(
+        modules.map((mod) =>
+          aiService.generateQuestions({
+            content: mod.content,
+            difficulty: preferences.default_difficulty,
+            questionCount: questionsPerModule,
+            questionTypes,
+            subject: mod.title, // scopes the AI to the module's topic
+          })
+        )
+      );
+
+      // Collect all questions; log any per-module failures but don't abort the whole exam
+      const allQuestions: any[] = [];
+      perModuleResults.forEach((result, idx) => {
+        if (result.status === 'fulfilled') {
+          allQuestions.push(...result.value.questions);
+        } else {
+          console.warn(`⚠️  Module ${modules[idx].title} question generation failed:`, result.reason);
+        }
       });
+
+      if (allQuestions.length === 0) {
+        throw new Error('All module question generations failed — cannot build exam');
+      }
+
+      // Shuffle for variety then cap to EXAM_TOTAL
+      const shuffled = allQuestions.sort(() => Math.random() - 0.5).slice(0, EXAM_TOTAL);
+
+      const aiResponse = { questions: shuffled };
 
       // Create test record
       const { data: test, error: testError } = await supabase
