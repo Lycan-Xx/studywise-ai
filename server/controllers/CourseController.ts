@@ -11,7 +11,7 @@ export class CourseController {
    */
   static async generateCourse(req: Request, res: Response) {
     try {
-      const { filename, file_type, content, user_context } = req.body;
+      const { filename, file_type, content, user_context, detected_headings, heading_detection_method } = req.body;
       const userId = req.user?.id;
 
       if (!userId) {
@@ -37,12 +37,15 @@ export class CourseController {
         .from('courses')
         .insert({
           user_id: userId,
-          title: filename.replace(/\.[^/.]+$/, ''), // Remove extension
+          title: filename.replace(/\.[^/.]+$/, ''),
           source_filename: filename,
           source_file_type: file_type,
           source_content: content,
           user_context: user_context || null,
           parsing_status: 'processing',
+          // Store heading hints so retryGeneration can use the same structural data
+          detected_headings: detected_headings || [],
+          heading_detection_method: heading_detection_method || 'none',
         })
         .select()
         .single();
@@ -64,6 +67,8 @@ export class CourseController {
           content,
           context: user_context,
           courseId: course.id,
+          detectedHeadings: detected_headings || [],
+          headingDetectionMethod: heading_detection_method || 'none',
         });
 
         // Insert modules
@@ -297,6 +302,9 @@ export class CourseController {
           content: course.source_content,
           context: course.user_context,
           courseId: course.id,
+          // Re-use the heading hints saved at initial generation time
+          detectedHeadings: course.detected_headings || [],
+          headingDetectionMethod: course.heading_detection_method || 'none',
         });
 
         // Insert modules

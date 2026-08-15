@@ -87,12 +87,17 @@ export class ApiService {
     content: string;
     userContext?: string;
     fileType: 'pdf' | 'docx' | 'txt' | 'md';
+    detectedHeadings?: Array<{ text: string; level: number; position: number }>;
+    headingDetectionMethod?: 'html' | 'markdown' | 'heuristic' | 'none';
   }): Promise<any> {
     const payload = {
       filename: data.filename,
       file_type: data.fileType,
       content: data.content,
-      user_context: data.userContext
+      user_context: data.userContext,
+      // Structural hints — server uses these to anchor module boundaries
+      detected_headings: data.detectedHeadings || [],
+      heading_detection_method: data.headingDetectionMethod || 'none',
     };
     const response = await this.post('/api/courses/generate', payload);
     if (!response.ok) throw new Error('Failed to generate course');

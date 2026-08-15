@@ -910,12 +910,18 @@ Generate ${questionCount} questions now:`;
     weaknesses: string[];
     studyRecommendations: string[];
     focusAreas: string[];
+    conceptExplanations: Array<{
+      concept: string;
+      originalText: string;
+      plainExplanation: string;
+      example: string;
+    }>;
   }> {
     const wrongQuestions = testResult.questions.filter(
       q => testResult.userAnswers[q.id] !== testResult.correctAnswers[q.id]
     );
 
-    const prompt = `Analyze this test performance and provide actionable insights:
+    const prompt = `Analyze this test performance and provide actionable insights.
 
 PERFORMANCE SUMMARY:
 - Score: ${testResult.score}% (${testResult.totalQuestions - wrongQuestions.length}/${testResult.totalQuestions} correct)
@@ -927,24 +933,42 @@ ${wrongQuestions
   .map(
     (q, i) => `${i + 1}. Question: ${q.question}
    Correct Answer: ${testResult.correctAnswers[q.id]}
-   User Answer: ${testResult.userAnswers[q.id] || "Not answered"}
-   Topic: ${(q.sourceText ?? "").substring(0, 100)}…`
+   Student's Answer: ${testResult.userAnswers[q.id] || "Not answered"}
+   Source text: ${(q.sourceText ?? "").substring(0, 200)}`
   )
   .join("\n\n")}
 
-Provide insights in JSON format:
+Return JSON ONLY — no preamble, no markdown:
 {
-  "overallPerformance": "Clear assessment of performance level",
-  "strengths": ["2-3 specific strengths"],
-  "weaknesses": ["2-3 specific areas needing improvement"],
-  "studyRecommendations": ["3-4 actionable study strategies"],
-  "focusAreas": ["2-3 specific topics to review"]
-}`;
+  "overallPerformance": "Clear, honest one-sentence assessment",
+  "strengths": ["2-3 specific things the student demonstrated well"],
+  "weaknesses": ["2-3 specific gaps to address"],
+  "studyRecommendations": ["3-4 concrete, actionable study strategies"],
+  "focusAreas": ["2-3 specific topics to revisit"],
+  "conceptExplanations": [
+    {
+      "concept": "Name of the concept the student got wrong (short, max 6 words)",
+      "originalText": "The exact source sentence this question was based on",
+      "plainExplanation": "What this concept means in plain language — 2-3 sentences, no jargon, written for someone encountering it for the first time",
+      "example": "A concrete real-world example that makes this concept stick. Be specific — name actual things, places, or scenarios."
+    }
+  ]
+}
+
+Rules for conceptExplanations:
+- One entry per wrong question (max 3)
+- plainExplanation must NOT use the same wording as originalText — it should be a fresh, simple restatement
+- example must be concrete, not abstract ("e.g. a car engine converts chemical energy in petrol to kinetic energy" not "e.g. energy conversion in everyday life")`;
 
     try {
       const response = await this.executeWithFailover(prompt);
       const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) return JSON.parse(jsonMatch[0]);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        // Ensure conceptExplanations always exists even if AI omits it
+        if (!parsed.conceptExplanations) parsed.conceptExplanations = [];
+        return parsed;
+      }
       return this.generateBasicInsights(testResult);
     } catch {
       return this.generateBasicInsights(testResult);
@@ -980,6 +1004,9 @@ Provide insights in JSON format:
         "Key concepts from the source material",
         score < 70 ? "Fundamental principles and definitions" : "Advanced applications and details",
       ],
+      // Fallback: empty array — no AI-generated explanations available
+      // The UI should gracefully handle this being empty
+      conceptExplanations: [],
     };
   }
 
@@ -987,6 +1014,8 @@ Provide insights in JSON format:
     content: string;
     context?: string;
     courseId: string;
+    detectedHeadings?: Array<{ text: string; level: number; position: number }>;
+    headingDetectionMethod?: 'html' | 'markdown' | 'heuristic' | 'none';
   }): Promise<Array<{
     course_id: string;
     title: string;
@@ -995,40 +1024,72 @@ Provide insights in JSON format:
     word_count: number;
     estimated_read_time: number;
   }>> {
-    // FIX 1: Raise cap from 8 K → 200 K chars (~50 K tokens).
-    // Every supported provider (Gemini 2.5 Flash, Groq Llama-4-Scout, OpenRouter) supports
-    // at least 128 K tokens, so 200 K chars is safely within all of them.
-    // The old 8 K cap was silently dropping ~80 % of a typical lecture-note PDF.
-    const MAX_MODULE_CONTENT = 200_000;
-    const contentForModules =
-      options.content.length > MAX_MODULE_CONTENT
-        ? options.content.substring(0, MAX_MODULE_CONTENT) +
-          "\n\n[Note: content beyond this point was truncated — structure modules to cover what is above]"
-        : options.content;
 
-    const truncated = options.content.length > MAX_MODULE_CONTENT;
-    if (truncated) {
+    // ── FIX A: Raise content cap 8K → 200K chars ───────────────────────────
+    // Every supported provider handles ≥128K tokens; 200K chars ≈ 50K tokens.
+    // The old 8K cap silently dropped ~80% of a typical lecture-note PDF.
+    const MAX_CONTENT = 200_000;
+    const contentForModules = options.content.length > MAX_CONTENT
+      ? options.content.substring(0, MAX_CONTENT) +
+        "\n\n[Content truncated — structure modules to cover what appears above]"
+      : options.content;
+
+    if (options.content.length > MAX_CONTENT) {
       console.warn(
-        `⚠️  parseContentIntoModules: content (${options.content.length} chars) exceeds 200 K cap — ` +
-        `sending first ${MAX_MODULE_CONTENT} chars (${Math.round((MAX_MODULE_CONTENT / options.content.length) * 100)}% of document)`
+        `⚠️  parseContentIntoModules: content (${options.content.length} chars) exceeds ` +
+        `200K cap — sending first ${MAX_CONTENT} chars ` +
+        `(${Math.round((MAX_CONTENT / options.content.length) * 100)}% of document)`
       );
     }
 
-    const prompt = `You are an expert educational content organiser. Analyse the following content and break it into logical study modules.
+    // ── FIX B: Build a structure hint from client-detected headings ─────────
+    // When the client found real headings (from HTML tags or markdown #), we tell
+    // the AI exactly how many modules to make and what to call them.
+    // This turns "guess the structure" into "confirm the structure I'm giving you"
+    // — a fundamentally more reliable operation.
+    const headings = options.detectedHeadings || [];
+    const method = options.headingDetectionMethod || 'none';
 
-${options.context ? `Context: ${options.context}\n\n` : ""}Content:
+    // Only use headings we're confident about (html > markdown > heuristic)
+    // Require at least 2 headings to be worth using as boundaries
+    const useHeadings = headings.length >= 2 && method !== 'none';
+
+    // Major headings (level 1–2) become module boundaries; level 3 stays as sub-content
+    const majorHeadings = headings.filter(h => h.level <= 2);
+    const moduleCount = useHeadings
+      ? Math.min(Math.max(majorHeadings.length, 3), 8)
+      : null; // null = let the AI decide (3–8)
+
+    const structureHint = useHeadings
+      ? `DOCUMENT STRUCTURE DETECTED (method: ${method}, confidence: ${method === 'html' ? 'high' : method === 'markdown' ? 'high' : 'medium'}):
+The document has ${headings.length} headings. Major section boundaries (use as module titles):
+${majorHeadings.map((h, i) => `  ${i + 1}. ${'#'.repeat(h.level)} "${h.text}" (char position ${h.position})`).join('\n')}
+
+IMPORTANT:
+- Create exactly ${moduleCount} modules — one per major heading above
+- Use the heading text as the module title (verbatim)
+- Do NOT merge or split these sections
+- Include ALL content between consecutive headings in the corresponding module`
+      : `No structural headings were detected in this document.
+Infer module boundaries from: topic shifts, paragraph breaks, and content flow.
+Create 3–8 self-contained modules.`;
+
+    const prompt = `You are an expert educational content organiser. Your job is to divide the following content into study modules WITHOUT losing or summarising any text.
+
+${options.context ? `Subject context: ${options.context}\n\n` : ''}${structureHint}
+
+CONTENT:
 ${contentForModules}
 
-Instructions:
-1. Identify natural divisions (chapters, sections, topics)
-2. Create 3-8 modules; each should be self-contained
-3. Give each a clear, descriptive title
-4. Include the FULL verbatim text for each module — do NOT summarise or shorten
-5. Every sentence from the source must appear in exactly one module
-
-Return a JSON array only — no preamble, no markdown:
+RULES:
+1. Every sentence from the content must appear in exactly one module — verbatim, not summarised
+2. ${useHeadings ? `Use the ${moduleCount} headings listed above as module boundaries` : 'Identify natural topic divisions (3–8 modules)'}
+3. Module titles must match the heading text exactly (if headings were provided)
+4. Do NOT rewrite, shorten, or paraphrase any content
+5. Return a JSON array ONLY — no preamble, no markdown fences:
 [
-  { "title": "Module Title", "content": "Full module text…", "order": 1 }
+  { "title": "Exact Heading Text", "content": "Full verbatim text for this module...", "order": 1 },
+  ...
 ]`;
 
     try {
@@ -1048,22 +1109,23 @@ Return a JSON array only — no preamble, no markdown:
         estimated_read_time: Math.ceil((m.content || "").split(/\s+/).length / 200),
       }));
 
-      // FIX 1b: Coverage guard — warn if the AI dropped significant content.
-      // We compare total chars distributed across modules against the content we sent.
+      // ── FIX C: Coverage guard ────────────────────────────────────────────
+      // Warn if AI distributed <50% of content — indicates summarisation
       const totalModuleChars = modules.reduce((sum, m) => sum + m.content.length, 0);
-      const sentChars = contentForModules.length;
-      const coverageRatio = sentChars > 0 ? totalModuleChars / sentChars : 1;
+      const coverageRatio = contentForModules.length > 0
+        ? totalModuleChars / contentForModules.length
+        : 1;
 
       if (coverageRatio < 0.5) {
         console.warn(
-          `⚠️  Module coverage is only ${Math.round(coverageRatio * 100)}% ` +
-          `(${totalModuleChars} / ${sentChars} chars distributed). ` +
-          `The AI may have summarised instead of copying content verbatim. ` +
-          `Consider re-running or falling back to single-module mode.`
+          `⚠️  Module coverage only ${Math.round(coverageRatio * 100)}% ` +
+          `(${totalModuleChars} / ${contentForModules.length} chars). ` +
+          `AI likely summarised instead of distributing verbatim content.`
         );
       } else {
         console.log(
-          `✅ Module coverage: ${Math.round(coverageRatio * 100)}% across ${modules.length} modules`
+          `✅ Module coverage: ${Math.round(coverageRatio * 100)}% across ${modules.length} modules ` +
+          `(headings used: ${useHeadings ? `yes, ${method}` : 'no — inferred'})`
         );
       }
 
