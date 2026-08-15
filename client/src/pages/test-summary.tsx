@@ -254,8 +254,9 @@ export default function TestSummary() {
               const userAnswer = userAnswers.find(a => a.question_id === question.id);
               const isCorrect = userAnswer?.is_correct ?? false;
               
-              // Handle T/F questions with null options
-              const displayOptions = (question.question_type === 'true-false' || question.question_type === 'true_false') 
+              // Handle T/F questions with null options — backend stores type as 'true_false'
+              const isTrueFalse = question.question_type === 'true-false' || question.question_type === 'true_false';
+              const displayOptions = isTrueFalse
                 ? (question.options?.length ? question.options : ['True', 'False'])
                 : (question.options || []);
 
@@ -277,18 +278,26 @@ export default function TestSummary() {
 
                       <div className="space-y-2 mb-3">
                         {displayOptions.map((option, optIndex) => {
-                          const isUserAnswer = String(userAnswer?.user_answer).trim().toLowerCase() === String(option).trim().toLowerCase();
-                          const isCorrectAnswer = String(question.correct_answer).trim().toLowerCase() === String(option).trim().toLowerCase();
+                          const normalizedUserAnswer = String(userAnswer?.user_answer ?? '').trim().toLowerCase();
+                          const normalizedCorrectAnswer = String(question.correct_answer ?? '').trim().toLowerCase();
+                          const normalizedOption = String(option).trim().toLowerCase();
+
+                          const isUserAnswer = normalizedUserAnswer !== '' && normalizedUserAnswer === normalizedOption;
+                          // Only highlight correct if correct_answer is actually populated
+                          const isCorrectAnswer = normalizedCorrectAnswer !== '' && normalizedCorrectAnswer === normalizedOption;
 
                           return (
                             <div
                               key={optIndex}
-                              className={`px-3 py-2 rounded text-sm ${isCorrectAnswer
+                              className={`px-3 py-2 rounded text-sm ${
+                                isCorrectAnswer && isUserAnswer
+                                  ? 'bg-green-50 text-green-900 font-medium ring-1 ring-green-400'
+                                  : isCorrectAnswer
                                   ? 'bg-green-50 text-green-900 font-medium'
                                   : isUserAnswer
-                                    ? 'bg-red-50 text-red-900'
-                                    : 'bg-studywise-gray-50 text-studywise-gray-700'
-                                }`}
+                                  ? 'bg-red-50 text-red-900'
+                                  : 'bg-studywise-gray-50 text-studywise-gray-700'
+                              }`}
                             >
                               {option}
                               {isCorrectAnswer && ' ✓'}
@@ -297,6 +306,11 @@ export default function TestSummary() {
                           );
                         })}
                       </div>
+
+                      {/* Show if user did not answer */}
+                      {!userAnswer && (
+                        <p className="text-xs text-studywise-gray-400 italic mb-3">No answer provided</p>
+                      )}
 
                       {question.explanation && (
                         <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-900">

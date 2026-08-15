@@ -107,7 +107,7 @@ export class ResultsController {
 
       const { data, error } = await supabase
         .from('questions')
-        .select('id, test_id, question_text, question_type, options, question_order')
+        .select('id, test_id, question_text, question_type, options, correct_answer, explanation, question_order')
         .eq('test_id', testId)
         .order('question_order');
 

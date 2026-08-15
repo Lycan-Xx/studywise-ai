@@ -125,6 +125,11 @@ export default function Results() {
                   </div>
 
                   <div className="flex-1 text-left">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-primary/70 bg-primary/10 px-2 py-0.5 rounded-full">
+                        Course
+                      </span>
+                    </div>
                     <h3 className="text-lg font-semibold text-studywise-gray-900 mb-2">
                       {course.course_title}
                     </h3>
@@ -182,6 +187,11 @@ export default function Results() {
                           <div key={module.module_id} className="px-6 py-4 hover:bg-white transition-colors">
                             <div className="flex items-center justify-between">
                               <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-xs font-semibold uppercase tracking-wide text-studywise-gray-400 bg-studywise-gray-200 px-2 py-0.5 rounded-full">
+                                    Module
+                                  </span>
+                                </div>
                                 <h4 className="font-medium text-studywise-gray-900 mb-2">
                                   {module.module_title}
                                 </h4>
