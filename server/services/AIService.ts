@@ -141,6 +141,8 @@ class MultiProviderAIService {
     const groqKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY;
     if (groqKey && groqKey !== "your_groq_api_key") {
       // Llama 3.1 8B — 14,400 RPD free; best for high-volume, fast tasks
+      // FREE TIER TPM: 6,000 tokens/min → max safe request ≈ 5,000 tokens (20,000 chars)
+      // Do NOT raise maxTokens here — it controls pre-screening in getAvailableProvider.
       this.providers.set("groq-llama-3.1-8b", {
         name: "Llama 3.1 8B Instant (Groq Free)",
         available: true,
@@ -148,12 +150,13 @@ class MultiProviderAIService {
         lastReset: Date.now(),
         maxRequests: 30,      // 30 RPM
         resetInterval: 60 * 1000,
-        priority: 3,
+        priority: 4,          // lower priority than 70B — weaker model
         costPerToken: 0,
-        maxTokens: 128_000,
+        maxTokens: 5_000,     // TPM-capped: 6K TPM free tier; ~5K safe per request
       });
 
       // Llama 3.3 70B — 1,000 RPD free; best quality open model on Groq
+      // FREE TIER TPM: 12,000 tokens/min → max safe request ≈ 10,000 tokens (40,000 chars)
       this.providers.set("groq-llama-3.3-70b", {
         name: "Llama 3.3 70B Versatile (Groq Free)",
         available: true,
@@ -161,9 +164,9 @@ class MultiProviderAIService {
         lastReset: Date.now(),
         maxRequests: 30,      // 30 RPM
         resetInterval: 60 * 1000,
-        priority: 2,
+        priority: 3,
         costPerToken: 0,
-        maxTokens: 128_000,
+        maxTokens: 10_000,    // TPM-capped: 12K TPM free tier; ~10K safe per request
       });
 
       // Llama 4 Scout — 1,000 RPD free; 10M native context window (massive docs)
@@ -389,8 +392,14 @@ class MultiProviderAIService {
     };
     const modelName = modelMap[model] ?? "gemini-2.5-flash";
 
+    // Scale timeout with prompt size — a 90K char document takes much longer than a
+    // 1K char question. Flat 30s was too tight for module parsing of large files.
+    // Formula: 30s base + 1s per 2,000 chars, capped at 120s.
+    const promptChars = prompt.length;
+    const dynamicTimeout = Math.min(30_000 + Math.floor(promptChars / 2000) * 1_000, 120_000);
+
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30_000);
+    const timeoutId = setTimeout(() => controller.abort(), dynamicTimeout);
 
     try {
       const response = await fetch(
@@ -420,7 +429,7 @@ class MultiProviderAIService {
     } catch (error) {
       clearTimeout(timeoutId);
       if (error instanceof Error && error.name === "AbortError") {
-        throw new Error("Request timeout: Gemini API did not respond within 30 s");
+        throw new Error(`Request timeout: Gemini API did not respond within ${dynamicTimeout / 1000}s`);
       }
       throw error;
     }
@@ -565,6 +574,30 @@ class MultiProviderAIService {
   private async makeMockRequest(_model: string, prompt: string): Promise<string> {
     console.log("🤖 Using Mock AI fallback — all real providers exhausted or unavailable");
 
+    // Detect which call this is serving — module parsing vs question generation —
+    // and return the correct JSON shape for each. Previously this always returned
+    // { questions: [...] } which caused parseContentIntoModules to throw
+    // "Invalid module structure returned" and crash course creation entirely.
+    const isModuleParsing = prompt.includes("divide the following content into study modules") ||
+                            prompt.includes("break it into logical study modules");
+
+    if (isModuleParsing) {
+      // Return a single fallback module containing ALL the content.
+      // Extract the content block from between "CONTENT:" and "RULES:" in the prompt.
+      const contentMatch = prompt.match(/CONTENT:\n([\s\S]*?)\n\nRULES:/);
+      const rawContent = contentMatch ? contentMatch[1].trim() : "Content unavailable — AI providers unreachable.";
+
+      console.warn("⚠️  Mock module structure returned — course will have 1 module with full content.");
+      return JSON.stringify([
+        {
+          title: "Full Content (AI Unavailable)",
+          content: rawContent,
+          order: 1,
+        }
+      ], null, 2);
+    }
+
+    // Default: question generation mock
     const questionCountMatch = prompt.match(/Generate exactly (\d+) high-quality/);
     const questionCount = questionCountMatch ? parseInt(questionCountMatch[1]) : 5;
     const difficultyMatch = prompt.match(/high-quality (\w+) test questions/);
@@ -652,6 +685,14 @@ class MultiProviderAIService {
           // Wrong model name — permanently disable so we don't keep retrying a dead model
           provider.available = false;
           console.log(`🚫 ${provider.name} model not found — disabled for session (check model ID)`);
+
+        } else if (msg.includes("413") || msg.toLowerCase().includes("request too large") || msg.toLowerCase().includes("tokens per minute")) {
+          // 413 = payload too large for this provider's free-tier TPM limit.
+          // This is NOT a billing issue — it's a per-request size problem.
+          // Short cooldown (2 min) since the limit resets per minute on Groq.
+          provider.available = false;
+          provider.cooldownUntil = Date.now() + 2 * 60_000;
+          console.log(`📦 ${provider.name} payload too large (TPM exceeded) — 2 min cooldown. Consider chunking content.`);
 
         } else if (msg.includes("429") || msg.toLowerCase().includes("rate limit")) {
           provider.available = false;
