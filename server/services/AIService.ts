@@ -315,7 +315,22 @@ class MultiProviderAIService {
       maxTokens: 10_000,
     });
 
-    console.log(`🤖 Multi-provider AI service ready — ${this.providers.size} providers`);
+    const activeRealProviders = this.providers.size - 1; // subtract mock-ai
+    console.log(`🤖 Multi-provider AI service ready — ${activeRealProviders} real providers + 1 mock fallback`);
+
+    // Warn loudly at startup if critical keys are clearly wrong — saves a lot of debugging
+    const orKey = process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY || "";
+    if (orKey && orKey !== "your_openrouter_api_key" && !orKey.startsWith("sk-or-")) {
+      console.warn("⚠️  OPENROUTER_API_KEY looks wrong — OpenRouter keys start with 'sk-or-'. All OpenRouter providers will 401.");
+    }
+    const dsKey = process.env.DEEPSEEK_API_KEY || process.env.VITE_DEEPSEEK_API_KEY || "";
+    if (dsKey && dsKey !== "your_deepseek_api_key" && !dsKey.startsWith("sk-")) {
+      console.warn("⚠️  DEEPSEEK_API_KEY looks wrong — DeepSeek keys start with 'sk-'. Provider may fail.");
+    }
+    if (activeRealProviders <= 2) {
+      console.warn(`⚠️  Only ${activeRealProviders} real provider(s) active — system is fragile. Add more API keys.`);
+    }
+
     setTimeout(() => this.healthCheck(), 1500);
   }
 
@@ -464,7 +479,7 @@ class MultiProviderAIService {
     const modelMap: Record<string, string> = {
       "groq-llama-3.1-8b": "llama-3.1-8b-instant",
       "groq-llama-3.3-70b": "llama-3.3-70b-versatile",
-      "groq-llama-4-scout": "meta-llama/llama-4-scout-17b-16e-instruct",
+      "groq-llama-4-scout": "llama-4-scout-17b-16e-instruct",
     };
     const model = modelMap[providerId];
     if (!model) throw new Error(`Unknown Groq provider: ${providerId}`);
@@ -482,7 +497,7 @@ class MultiProviderAIService {
     if (!cerebrasKey) throw new Error("Cerebras API key not configured");
 
     const modelMap: Record<string, string> = {
-      "cerebras-llama-3.3-70b": "llama-3.3-70b",
+      "cerebras-llama-3.3-70b": "llama3.3-70b",
     };
     const model = modelMap[providerId];
     if (!model) throw new Error(`Unknown Cerebras provider: ${providerId}`);
@@ -613,17 +628,41 @@ class MultiProviderAIService {
       if (error instanceof Error) {
         const msg = error.message;
 
-        if (msg.includes("401") || msg.includes("invalid") || msg.includes("expired") || msg.includes("Unauthorized")) {
+        // 402 = billing/balance issue — NOT an auth failure; don't permanently disable,
+        // use a long cooldown in case balance is topped up later in the session.
+        if (msg.includes("402") || msg.toLowerCase().includes("insufficient balance")) {
           provider.available = false;
-          console.log(`🔐 ${provider.name} auth failed — disabled for session`);
+          provider.cooldownUntil = Date.now() + 3_600_000; // 1-hour cooldown, not permanent
+          console.log(`💰 ${provider.name} insufficient balance — 1 h cooldown (top up your account)`);
+
+        // 401 from OpenRouter means the key is wrong/missing — permanent for session
+        // 401 from Gemini/Groq can be a transient token issue — add 5 min cooldown instead
+        } else if (msg.includes("401") || msg.includes("Unauthorized") || msg.includes("User not found")) {
+          if (msg.includes("User not found") || msg.includes("user not found")) {
+            // OpenRouter-specific: "User not found" = bad key, disable for session
+            provider.available = false;
+            console.log(`🔐 ${provider.name} auth failed (bad key) — disabled for session`);
+          } else {
+            // Generic 401 — may be transient; try again in 5 min
+            provider.available = false;
+            provider.cooldownUntil = Date.now() + 5 * 60_000;
+            console.log(`🔐 ${provider.name} auth issue — 5 min cooldown`);
+          }
+        } else if (msg.includes("model_not_found") || msg.includes("does not exist") || msg.includes("404")) {
+          // Wrong model name — permanently disable so we don't keep retrying a dead model
+          provider.available = false;
+          console.log(`🚫 ${provider.name} model not found — disabled for session (check model ID)`);
+
         } else if (msg.includes("429") || msg.toLowerCase().includes("rate limit")) {
           provider.available = false;
           provider.cooldownUntil = Date.now() + 60_000;
           console.log(`⏳ ${provider.name} rate-limited — 60 s cooldown`);
+
         } else if (msg.includes("quota") || msg.includes("insufficient") || msg.includes("billing")) {
           provider.available = false;
           provider.cooldownUntil = Date.now() + 3_600_000;
           console.log(`💰 ${provider.name} quota/billing issue — 1 h cooldown`);
+
         } else if (msg.includes("503") || msg.includes("502") || msg.includes("unavailable") || msg.includes("timeout")) {
           provider.available = false;
           provider.cooldownUntil = Date.now() + 30_000;
@@ -816,12 +855,31 @@ Generate ${questionCount} questions now:`;
     if (!parsed.questions || !Array.isArray(parsed.questions) || parsed.questions.length === 0) {
       throw new Error("Response missing questions array or empty");
     }
+
+    // Normalise key names before validation — different models use different conventions:
+    //   Gemini Flash / Flash-Lite: sometimes returns correct_answer (snake_case)
+    //   Other models:              correctAnswer (camelCase) as instructed in the prompt
+    // We normalise here so processGeneratedQuestions always sees a consistent shape.
     for (const q of parsed.questions) {
+      // Key normalisation — resolve all known aliases into correctAnswer
+      if (!q.correctAnswer) {
+        if (q.correct_answer)   q.correctAnswer = q.correct_answer;
+        else if (q.answer)      q.correctAnswer = q.answer;
+        else if (q.correct)     q.correctAnswer = q.correct;
+        else if (q.correct_option) q.correctAnswer = q.correct_option;
+      }
+      // sourceText normalisation
+      if (!q.sourceText && q.source_text) q.sourceText = q.source_text;
+
+      // Validation — only hard-fail on missing question text;
+      // a missing correctAnswer is recoverable (processGeneratedQuestions fallback handles it)
       if (!q.question || typeof q.question !== "string") {
         throw new Error("Question missing or invalid question text");
       }
-      if (!q.correctAnswer && !q.correct_answer) {
-        throw new Error("Question missing correct answer");
+      if (!q.correctAnswer) {
+        // Log a warning but don't abort the whole batch — processGeneratedQuestions
+        // will fall back to options[0] which is better than triggering mock AI
+        console.warn("⚠️  Question missing correctAnswer — will use options[0] as fallback:", q.question?.substring(0, 60));
       }
     }
   }
