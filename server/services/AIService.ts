@@ -1139,7 +1139,14 @@ RULES:
   // ── Cache helpers ────────────────────────────────────────────────────────
 
   private generateContentHash(options: GenerateQuestionsOptions): string {
-    const input = `${options.content.substring(0, 1000)}-${options.difficulty}-${options.questionCount}-${options.questionTypes.join(",")}`;
+    // FIX 2: Hash the FULL content, not just the first 1 K chars.
+    // The old approach caused two problems:
+    //   (a) Two different documents that share an intro paragraph return each other's cached questions.
+    //   (b) Re-uploading the same document with minor differences at the start caused cache misses
+    //       and wasted an API call for identical content.
+    // MD5 of the full string is fast (<1 ms even for 200 K chars) and fixes both.
+    const contentHash = createHash("md5").update(options.content).digest("hex");
+    const input = `${contentHash}-${options.difficulty}-${options.questionCount}-${options.questionTypes.join(",")}`;
     return createHash("md5").update(input).digest("hex");
   }
 
