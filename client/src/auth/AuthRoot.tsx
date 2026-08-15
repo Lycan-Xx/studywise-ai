@@ -138,11 +138,10 @@ export default function AuthRoot() {
   };
 
   const backgroundVariants = {
-    initial: { opacity: 0, scale: 1.05 },
+    initial: { opacity: 0 },
     animate: {
       opacity: 1,
-      scale: 1,
-      transition: { duration: 0.6, ease: "easeOut" }
+      transition: { duration: 0.5, ease: "easeOut" }
     }
   };
 
@@ -167,7 +166,10 @@ export default function AuthRoot() {
 
   // Background content
   const backgroundContent = {
-    image: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=2560&auto=format&fit=crop",
+    // Fallback image
+    image: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1400&auto=format&fit=crop",
+    // Responsive srcSet to load optimal sizes dynamically (saves bandwidth on mobile, stays crisp/unblurred on 4K/retina)
+    srcSet: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=800&auto=format&fit=crop 800w, https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1400&auto=format&fit=crop 1400w, https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=2000&auto=format&fit=crop 2000w",
     title: "Transform your\nstudy habits",
     subtitle: "Join thousands of students who've already discovered the power of active learning"
   };
@@ -230,16 +232,24 @@ export default function AuthRoot() {
 
   return (
     <div className="min-h-screen w-full relative flex flex-col lg:flex-row overflow-hidden">
-      {/* Animated Background */}
+      {/* Background image — use <img> for browser preload scanner priority */}
       <motion.div
         variants={backgroundVariants}
         initial="initial"
         animate="animate"
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: `url("${backgroundContent.image}")`,
-        }}
-      />
+        className="absolute inset-0 overflow-hidden"
+      >
+        <img
+          src={backgroundContent.image}
+          srcSet={backgroundContent.srcSet}
+          sizes="100vw"
+          alt=""
+          aria-hidden="true"
+          fetchPriority="high"
+          decoding="async"
+          className="w-full h-full object-cover object-center"
+        />
+      </motion.div>
 
       {/* Floating particles - Fewer on mobile */}
       <div className="absolute inset-0 z-5">
@@ -261,8 +271,8 @@ export default function AuthRoot() {
       {/* Unified background overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-black/40 via-black/50 to-black/70 z-10" />
 
-      {/* Background blur behind card */}
-      <div className="absolute inset-0 backdrop-blur-sm lg:backdrop-blur-lg bg-black/30 lg:bg-black/60 z-10" />
+      {/* Dark overlay for readability (removed full-screen blur to keep background crisp and clear in Chrome) */}
+      <div className="absolute inset-0 bg-black/30 lg:bg-black/60 z-10" />
 
       {/* Mobile Header with Background Content - Only on mobile */}
       <div className="flex lg:hidden relative z-20 pt-12 pb-8 px-4">
