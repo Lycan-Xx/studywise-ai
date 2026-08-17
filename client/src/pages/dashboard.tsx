@@ -4,6 +4,7 @@ import { FileUploadZone } from '../components/dashboard/FileUploadZone';
 import { GenerationLoadingOverlay } from '../components/dashboard/GenerationLoadingOverlay';
 import { useCourseStore } from '../stores/useCourseStore';
 import { Button } from '../components/ui/button';
+import { DocumentProcessor } from '../utils/documentProcessor';
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
@@ -20,57 +21,23 @@ export default function Dashboard() {
     setError(null);
   };
 
+  const handleFileReject = (reason: string) => {
+    setError(reason);
+    setSelectedFile(null);
+  };
+
   const handlePreviewFile = async () => {
     if (!selectedFile) return;
     
     try {
-      const content = await extractFileContent(selectedFile);
-      setPreviewContent(content);
+      // DocumentProcessor already enforces the 15MB cap and handles all 4 file
+      // types + heading extraction — no need to duplicate that logic here.
+      const processed = await DocumentProcessor.processFile(selectedFile);
+      setPreviewContent(processed.text);
       setShowPreview(true);
     } catch (err) {
-      setError('Failed to preview file');
+      setError(err instanceof Error ? err.message : 'Failed to preview file');
     }
-  };
-
-  const extractFileContent = async (file: File): Promise<string> => {
-    const fileType = getFileType(file.name);
-    
-    if (fileType === 'txt' || fileType === 'md') {
-      return await file.text();
-    }
-    
-    if (fileType === 'pdf') {
-      const pdfjsLib = await import('pdfjs-dist');
-      // Configure PDF.js worker before calling getDocument()
-      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      
-      let text = '';
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        text += content.items.map((item: any) => item.str).join(' ') + '\n';
-      }
-      return text;
-    }
-    
-    if (fileType === 'docx') {
-      const mammoth = await import('mammoth');
-      const arrayBuffer = await file.arrayBuffer();
-      const result = await mammoth.extractRawText({ arrayBuffer });
-      return result.value;
-    }
-    
-    throw new Error('Unsupported file type');
-  };
-
-  const getFileType = (filename: string): 'pdf' | 'docx' | 'txt' | 'md' => {
-    const ext = filename.split('.').pop()?.toLowerCase();
-    if (ext === 'pdf') return 'pdf';
-    if (ext === 'docx' || ext === 'doc') return 'docx';
-    if (ext === 'md' || ext === 'markdown') return 'md';
-    return 'txt';
   };
 
   const handleGenerateCourse = async () => {
@@ -108,6 +75,7 @@ export default function Dashboard() {
           {/* File Upload Zone */}
           <FileUploadZone 
             onFileSelect={handleFileSelect}
+            onFileReject={handleFileReject}
             disabled={isGenerating}
           />
 

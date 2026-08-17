@@ -1,25 +1,46 @@
 import { useCallback, useState } from 'react';
 import { Upload, FileText, FileType, File as FileIcon } from 'lucide-react';
 
+// Keep in sync with DocumentProcessor.MAX_FILE_SIZE — duplicated here so the
+// upload zone can reject oversized files before any parsing library is even
+// loaded, not just after arrayBuffer() has already read the whole file into memory.
+const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
+
 interface FileUploadZoneProps {
   onFileSelect: (file: File) => void;
+  onFileReject?: (reason: string) => void;
   disabled?: boolean;
 }
 
-export function FileUploadZone({ onFileSelect, disabled }: FileUploadZoneProps) {
+export function FileUploadZone({ onFileSelect, onFileReject, disabled }: FileUploadZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
+
+  const tryAccept = useCallback((file: File | undefined) => {
+    if (!file) return;
+
+    if (!isValidFile(file)) {
+      onFileReject?.(`"${file.name}" isn't a supported file type. Please use PDF, DOCX, TXT, or Markdown.`);
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      const sizeMb = (file.size / 1024 / 1024).toFixed(1);
+      onFileReject?.(
+        `"${file.name}" is ${sizeMb}MB — please upload files under ${MAX_FILE_SIZE / 1024 / 1024}MB. ` +
+        `Try splitting large documents into chapters, or compress scanned PDFs.`
+      );
+      return;
+    }
+
+    onFileSelect(file);
+  }, [onFileSelect, onFileReject]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    
     if (disabled) return;
-    
-    const file = e.dataTransfer.files[0];
-    if (file && isValidFile(file)) {
-      onFileSelect(file);
-    }
-  }, [onFileSelect, disabled]);
+    tryAccept(e.dataTransfer.files[0]);
+  }, [tryAccept, disabled]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -31,11 +52,8 @@ export function FileUploadZone({ onFileSelect, disabled }: FileUploadZoneProps) 
   }, []);
 
   const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && isValidFile(file)) {
-      onFileSelect(file);
-    }
-  }, [onFileSelect]);
+    tryAccept(e.target.files?.[0]);
+  }, [tryAccept]);
 
   return (
     <div
@@ -67,7 +85,7 @@ export function FileUploadZone({ onFileSelect, disabled }: FileUploadZoneProps) 
             Drop your file here or click to browse
           </p>
           <p className="text-sm text-studywise-gray-600">
-            Supports PDF, DOCX, TXT, and Markdown files
+            Supports PDF, DOCX, TXT, and Markdown files — up to 15MB
           </p>
         </div>
         

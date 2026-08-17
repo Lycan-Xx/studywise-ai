@@ -54,6 +54,14 @@ if (isDevelopment) {
 
 export class DocumentProcessor {
   /**
+   * Soft cap on upload size, enforced client-side before any parsing begins.
+   * 15MB comfortably covers a scanned lecture note or a large DOCX with embedded
+   * images, while protecting low-RAM devices (common in the African market this
+   * app targets first) from a browser tab crash during PDF.js/mammoth parsing.
+   */
+  private static readonly MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
+
+  /**
    * Check if a file type is supported
    */
   static isSupported(file: File): boolean {
@@ -77,6 +85,18 @@ export class DocumentProcessor {
    * detected headings to the server as module boundary hints.
    */
   static async processFile(file: File): Promise<ProcessedDocument> {
+    // Guard BEFORE any parsing starts — reading a 15MB+ file into an ArrayBuffer
+    // and running pdfjs-dist/mammoth over it can spike well past what a budget
+    // Android device's browser tab can hold without crashing.
+    if (file.size > this.MAX_FILE_SIZE) {
+      const sizeMb = (file.size / 1024 / 1024).toFixed(1);
+      const capMb = (this.MAX_FILE_SIZE / 1024 / 1024).toFixed(0);
+      throw new Error(
+        `This file is ${sizeMb}MB — please upload files under ${capMb}MB. ` +
+        `Try splitting large documents into chapters, or compress scanned PDFs before uploading.`
+      );
+    }
+
     try {
       if (file.type === 'text/plain' || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
         return await this.processTextFile(file);
