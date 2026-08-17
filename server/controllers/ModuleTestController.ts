@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { supabase } from '../lib/supabase';
 import { aiService } from '../services/AIService';
+import { computeServerQuote } from './WalletController';
 
 export class ModuleTestController {
   /**
@@ -66,12 +67,67 @@ export class ModuleTestController {
         ? ['multiple-choice']
         : ['true-false'];
 
+      // ── Wallet pre-authorization for this test generation ────────────────
+      // Regenerating/retaking a module test is its own billable action —
+      // separate from the course-creation hold, which only covered the
+      // initial module-parsing + first question pool. Quote against just
+      // this module's content, not the whole course.
+      const quote = computeServerQuote(module.content, preferences.default_questions_per_module);
+      const heldAmountUSD = quote.costUSD;
+
+      try {
+        await supabase.rpc('apply_wallet_transaction', {
+          p_user_id: userId,
+          p_type: 'test_regeneration',
+          p_amount_usd: -heldAmountUSD,
+          p_reference_id: moduleId,
+          p_description: `Module test generation: ${module.title}`,
+        });
+      } catch (walletError) {
+        console.warn(`💳 Insufficient balance for user ${userId} — test quote was $${heldAmountUSD.toFixed(4)}`);
+        return res.status(402).json({
+          message: 'Insufficient wallet balance',
+          quotedCostUSD: heldAmountUSD,
+        });
+      }
+
       const aiResponse = await aiService.generateQuestions({
         content: module.content,
         difficulty: preferences.default_difficulty,
         questionCount: preferences.default_questions_per_module,
         questionTypes,
+        userId,
+        courseId,
       });
+
+      // Reconcile: refund the gap between the hold and actual AI spend for
+      // this specific call. We scope the usage lookup to rows created after
+      // the hold was taken, since ai_usage_log is keyed by course_id (shared
+      // across many test generations for the same course) rather than by
+      // this individual request.
+      try {
+        const { data: usageRows } = await supabase
+          .from('ai_usage_log')
+          .select('cost_usd')
+          .eq('course_id', courseId)
+          .eq('call_type', 'question_generation')
+          .gte('created_at', new Date(Date.now() - 60_000).toISOString()); // last 60s — this request's window
+
+        const actualCostUSD = (usageRows ?? []).reduce((sum, row) => sum + (row.cost_usd ?? 0), 0);
+        const refundUSD = Math.max(0, heldAmountUSD - actualCostUSD);
+
+        if (refundUSD > 0.000001) {
+          await supabase.rpc('apply_wallet_transaction', {
+            p_user_id: userId,
+            p_type: 'refund',
+            p_amount_usd: refundUSD,
+            p_reference_id: moduleId,
+            p_description: `Refund: quoted $${heldAmountUSD.toFixed(4)}, actual cost $${actualCostUSD.toFixed(4)}`,
+          });
+        }
+      } catch (reconcileError) {
+        console.error(`⚠️  Wallet reconciliation failed for module test ${moduleId}:`, reconcileError);
+      }
 
       // Create test record
       const { data: test, error: testError } = await supabase
@@ -223,6 +279,29 @@ export class ModuleTestController {
         `📝 Exam generation: ${modules.length} modules × ~${questionsPerModule} questions each → trim to ${EXAM_TOTAL}`
       );
 
+      // ── Wallet pre-authorization for the full exam ────────────────────────
+      // Quote against the combined content of every module, since this call
+      // fans out to one generateQuestions request per module in parallel.
+      const combinedContent = modules.map(m => m.content).join('\n\n');
+      const quote = computeServerQuote(combinedContent, questionsPerModule);
+      const heldAmountUSD = quote.costUSD;
+
+      try {
+        await supabase.rpc('apply_wallet_transaction', {
+          p_user_id: userId,
+          p_type: 'test_regeneration',
+          p_amount_usd: -heldAmountUSD,
+          p_reference_id: courseId,
+          p_description: `Full course exam generation: ${course.title}`,
+        });
+      } catch (walletError) {
+        console.warn(`💳 Insufficient balance for user ${userId} — exam quote was $${heldAmountUSD.toFixed(4)}`);
+        return res.status(402).json({
+          message: 'Insufficient wallet balance',
+          quotedCostUSD: heldAmountUSD,
+        });
+      }
+
       // Run all module question-generation calls in parallel to keep latency low
       const perModuleResults = await Promise.allSettled(
         modules.map((mod) =>
@@ -232,6 +311,8 @@ export class ModuleTestController {
             questionCount: questionsPerModule,
             questionTypes,
             subject: mod.title, // scopes the AI to the module's topic
+            userId,
+            courseId,
           })
         )
       );
@@ -247,6 +328,18 @@ export class ModuleTestController {
       });
 
       if (allQuestions.length === 0) {
+        // Refund the full hold — nothing was generated at all
+        try {
+          await supabase.rpc('apply_wallet_transaction', {
+            p_user_id: userId,
+            p_type: 'refund',
+            p_amount_usd: heldAmountUSD,
+            p_reference_id: courseId,
+            p_description: 'Full refund — all module question generations failed',
+          });
+        } catch (refundError) {
+          console.error('⚠️  Failed to refund after total exam generation failure:', refundError);
+        }
         throw new Error('All module question generations failed — cannot build exam');
       }
 
@@ -254,6 +347,31 @@ export class ModuleTestController {
       const shuffled = allQuestions.sort(() => Math.random() - 0.5).slice(0, EXAM_TOTAL);
 
       const aiResponse = { questions: shuffled };
+
+      // Reconcile: refund the gap between the hold and actual AI spend
+      try {
+        const { data: usageRows } = await supabase
+          .from('ai_usage_log')
+          .select('cost_usd')
+          .eq('course_id', courseId)
+          .eq('call_type', 'question_generation')
+          .gte('created_at', new Date(Date.now() - 120_000).toISOString()); // last 2 min — this exam's window
+
+        const actualCostUSD = (usageRows ?? []).reduce((sum, row) => sum + (row.cost_usd ?? 0), 0);
+        const refundUSD = Math.max(0, heldAmountUSD - actualCostUSD);
+
+        if (refundUSD > 0.000001) {
+          await supabase.rpc('apply_wallet_transaction', {
+            p_user_id: userId,
+            p_type: 'refund',
+            p_amount_usd: refundUSD,
+            p_reference_id: courseId,
+            p_description: `Refund: quoted $${heldAmountUSD.toFixed(4)}, actual cost $${actualCostUSD.toFixed(4)}`,
+          });
+        }
+      } catch (reconcileError) {
+        console.error(`⚠️  Wallet reconciliation failed for course exam ${courseId}:`, reconcileError);
+      }
 
       // Create test record
       const { data: test, error: testError } = await supabase
@@ -456,6 +574,15 @@ export class ModuleTestController {
         .eq('test_id', testId)
         .eq('user_id', userId);
 
+      // Get test's module → course chain so this call can be attributed to a
+      // course in ai_usage_log. Not gated behind a wallet hold — insights are
+      // small, bundled post-test value rather than a separately billed action.
+      const { data: moduleRow } = await supabase
+        .from('modules')
+        .select('course_id')
+        .eq('id', result.module_id)
+        .maybeSingle();
+
       // Generate insights
       const insights = await aiService.generateTestInsights({
         score: result.score_percentage,
@@ -465,6 +592,8 @@ export class ModuleTestController {
         correctAnswers: Object.fromEntries((questions || []).map(q => [q.id, q.correct_answer])),
         testTitle: 'Module Test',
         sourceContent: '',
+        userId,
+        courseId: moduleRow?.course_id,
       });
 
       const { data: updatedResult, error: updateError } = await supabase

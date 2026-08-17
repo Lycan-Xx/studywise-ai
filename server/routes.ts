@@ -3,6 +3,7 @@ import TestController from './controllers/TestController.js';
 import { CourseController } from './controllers/CourseController.js';
 import { ModuleTestController } from './controllers/ModuleTestController.js';
 import { ResultsController } from './controllers/ResultsController.js';
+import { WalletController } from './controllers/WalletController.js';
 import { aiService } from './services/AIService.js';
 import { DatabaseService, supabase } from './lib/supabase.js';
 
@@ -53,6 +54,12 @@ router.get('/tests/:testId/result', authMiddleware, ResultsController.getTestRes
 router.get('/tests/:testId/questions', authMiddleware, ResultsController.getTestQuestions);
 router.get('/tests/:testId/answers', authMiddleware, ResultsController.getTestAnswers);
 router.get('/tests/:testId/stats', authMiddleware, ResultsController.getTestStats);
+
+// Wallet routes — pay-as-you-go quoting, balance, ledger, and top-up confirmation
+router.post('/wallet/quote', authMiddleware, WalletController.getQuote);
+router.get('/wallet/balance', authMiddleware, WalletController.getBalance);
+router.get('/wallet/transactions', authMiddleware, WalletController.getTransactions);
+router.post('/wallet/topup/confirm', authMiddleware, WalletController.confirmTopup);
 
 // User profile routes
 router.get('/user/profile', authMiddleware, async (req, res) => {

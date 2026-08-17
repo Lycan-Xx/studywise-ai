@@ -4,6 +4,7 @@ import "../config.js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createHash } from "crypto";
 import { nanoid } from "nanoid";
+import { supabase } from "../lib/supabase";
 
 interface GenerateQuestionsOptions {
   content: string;
@@ -12,6 +13,10 @@ interface GenerateQuestionsOptions {
   questionTypes: string[];
   subject?: string;
   focus?: string;
+  /** For AI usage billing — who to log this call's cost against */
+  userId?: string;
+  /** For AI usage billing — which course this call belongs to, if any */
+  courseId?: string;
 }
 
 interface GeneratedQuestion {
@@ -51,6 +56,48 @@ interface AIProvider {
   costPerToken?: number;
   maxTokens?: number;
   cooldownUntil?: number;
+}
+
+/** Token usage reported back by a provider for a single request */
+interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+}
+
+/** What a provider request resolves to — text plus the usage needed for billing */
+interface ProviderResult {
+  text: string;
+  usage: TokenUsage;
+  providerId: string;
+}
+
+/**
+ * Real per-token pricing for cost calculation — kept separate from the
+ * provider's `costPerToken` field (which drives provider selection priority,
+ * not billing). Update this when a provider changes their published rate.
+ * All figures USD per token (i.e. list price / 1,000,000).
+ */
+const PROVIDER_PRICING: Record<string, { input: number; output: number }> = {
+  "gemini-2.5-flash":      { input: 0.30 / 1_000_000, output: 2.50 / 1_000_000 },
+  "gemini-2.5-flash-lite": { input: 0.05 / 1_000_000, output: 0.20 / 1_000_000 },
+  "groq-llama-3.1-8b":     { input: 0.05 / 1_000_000, output: 0.08 / 1_000_000 },
+  "groq-llama-3.3-70b":    { input: 0.59 / 1_000_000, output: 0.79 / 1_000_000 },
+  "groq-llama-4-scout":    { input: 0.11 / 1_000_000, output: 0.34 / 1_000_000 },
+  "cerebras-llama-3.3-70b":{ input: 0.60 / 1_000_000, output: 0.60 / 1_000_000 },
+  "deepseek-v4-flash":     { input: 0.14 / 1_000_000, output: 0.28 / 1_000_000 },
+  // OpenRouter free-tier models — zero marginal cost while the ':free' route lasts
+  "or-llama-4-scout":      { input: 0, output: 0 },
+  "or-deepseek-r1":        { input: 0, output: 0 },
+  "or-qwen3-235b":         { input: 0, output: 0 },
+  "or-gpt-oss-120b":       { input: 0, output: 0 },
+  "or-llama-3.3-70b":      { input: 0, output: 0 },
+  "mock-ai":               { input: 0, output: 0 },
+};
+
+function calculateCostUSD(providerId: string, usage: TokenUsage): number {
+  const rate = PROVIDER_PRICING[providerId];
+  if (!rate) return 0; // unknown provider — log 0 rather than throw, never block a response over pricing
+  return usage.inputTokens * rate.input + usage.outputTokens * rate.output;
 }
 
 // ─── Provider directory (June 2026) ────────────────────────────────────────
@@ -141,6 +188,11 @@ class MultiProviderAIService {
     const groqKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY;
     if (groqKey && groqKey !== "your_groq_api_key") {
       // Llama 3.1 8B — 14,400 RPD free; best for high-volume, fast tasks
+      // Llama 3.1 8B — 14,400 RPD free; best for high-volume, fast tasks
+      // FREE TIER TPM: 6,000 tokens/min → max safe request ≈ 5,000 tokens.
+      // maxTokens here drives pre-screening in getAvailableProvider — it must
+      // reflect the real per-minute budget, not the model's raw context window,
+      // or large documents get routed here and immediately 413.
       this.providers.set("groq-llama-3.1-8b", {
         name: "Llama 3.1 8B Instant (Groq Free)",
         available: true,
@@ -148,12 +200,13 @@ class MultiProviderAIService {
         lastReset: Date.now(),
         maxRequests: 30,      // 30 RPM
         resetInterval: 60 * 1000,
-        priority: 3,
+        priority: 4,
         costPerToken: 0,
-        maxTokens: 128_000,
+        maxTokens: 5_000,
       });
 
       // Llama 3.3 70B — 1,000 RPD free; best quality open model on Groq
+      // FREE TIER TPM: 12,000 tokens/min → max safe request ≈ 10,000 tokens.
       this.providers.set("groq-llama-3.3-70b", {
         name: "Llama 3.3 70B Versatile (Groq Free)",
         available: true,
@@ -161,9 +214,9 @@ class MultiProviderAIService {
         lastReset: Date.now(),
         maxRequests: 30,      // 30 RPM
         resetInterval: 60 * 1000,
-        priority: 2,
+        priority: 3,
         costPerToken: 0,
-        maxTokens: 128_000,
+        maxTokens: 10_000,
       });
 
       // Llama 4 Scout — 1,000 RPD free; 10M native context window (massive docs)
@@ -378,7 +431,7 @@ class MultiProviderAIService {
 
   // ── Request helpers ──────────────────────────────────────────────────────
 
-  private async makeGeminiRequest(model: string, prompt: string): Promise<string> {
+  private async makeGeminiRequest(model: string, prompt: string): Promise<ProviderResult> {
     const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
     if (!geminiKey) throw new Error("Gemini API key not configured");
 
@@ -389,8 +442,13 @@ class MultiProviderAIService {
     };
     const modelName = modelMap[model] ?? "gemini-2.5-flash";
 
+    // Scale timeout with prompt size — a 90K char module-parsing prompt needs far
+    // longer than a 1K char question-generation prompt. Flat 30s was too tight for
+    // large documents. Formula: 30s base + 1s per 2,000 chars, capped at 120s.
+    const dynamicTimeout = Math.min(30_000 + Math.floor(prompt.length / 2000) * 1_000, 120_000);
+
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30_000);
+    const timeoutId = setTimeout(() => controller.abort(), dynamicTimeout);
 
     try {
       const response = await fetch(
@@ -416,11 +474,20 @@ class MultiProviderAIService {
       if (!text) throw new Error("Invalid response format from Gemini API");
 
       clearTimeout(timeoutId);
-      return text;
+
+      // Gemini reports usage under usageMetadata — fall back to a char/4 estimate
+      // if the field is ever missing so billing never crashes on a shape change.
+      const usageMeta = data?.usageMetadata;
+      const usage: TokenUsage = {
+        inputTokens: usageMeta?.promptTokenCount ?? Math.ceil(prompt.length / 4),
+        outputTokens: usageMeta?.candidatesTokenCount ?? Math.ceil(text.length / 4),
+      };
+
+      return { text, usage, providerId: model };
     } catch (error) {
       clearTimeout(timeoutId);
       if (error instanceof Error && error.name === "AbortError") {
-        throw new Error("Request timeout: Gemini API did not respond within 30 s");
+        throw new Error(`Request timeout: Gemini API did not respond within ${dynamicTimeout / 1000}s`);
       }
       throw error;
     }
@@ -433,8 +500,9 @@ class MultiProviderAIService {
     model: string,
     prompt: string,
     extraHeaders: Record<string, string> = {},
-    timeoutMs = 45_000
-  ): Promise<string> {
+    timeoutMs = 45_000,
+    providerId?: string
+  ): Promise<ProviderResult> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -449,7 +517,14 @@ class MultiProviderAIService {
         body: JSON.stringify({
           model,
           messages: [{ role: "user", content: prompt }],
-          max_tokens: 2000,
+          // NOTE: max_tokens was previously hard-capped at 2000, which silently
+          // truncated module-parsing output for any document producing more than
+          // ~1500 words of verbatim module content. 8000 covers the vast majority
+          // of question-generation and module-parsing responses; large module
+          // parsing can still exceed this on very content-dense documents, but
+          // that's a model/prompt-chunking problem, not something to solve by
+          // capping output further.
+          max_tokens: 8000,
           temperature: 0.3,
         }),
         signal: controller.signal,
@@ -462,7 +537,17 @@ class MultiProviderAIService {
 
       const data = await response.json();
       clearTimeout(timeoutId);
-      return data.choices[0].message.content as string;
+
+      const text = data.choices[0].message.content as string;
+
+      // OpenAI-compatible APIs (Groq, Cerebras, DeepSeek, OpenRouter) all report
+      // usage the same way — fall back to a char/4 estimate if it's ever absent.
+      const usage: TokenUsage = {
+        inputTokens: data?.usage?.prompt_tokens ?? Math.ceil(prompt.length / 4),
+        outputTokens: data?.usage?.completion_tokens ?? Math.ceil(text.length / 4),
+      };
+
+      return { text, usage, providerId: providerId ?? model };
     } catch (error) {
       clearTimeout(timeoutId);
       if (error instanceof Error && error.name === "AbortError") {
@@ -472,7 +557,7 @@ class MultiProviderAIService {
     }
   }
 
-  private async makeGroqRequest(providerId: string, prompt: string): Promise<string> {
+  private async makeGroqRequest(providerId: string, prompt: string): Promise<ProviderResult> {
     const groqKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY;
     if (!groqKey) throw new Error("Groq API key not configured");
 
@@ -488,11 +573,14 @@ class MultiProviderAIService {
       "https://api.groq.com/openai/v1",
       groqKey,
       model,
-      prompt
+      prompt,
+      {},
+      45_000,
+      providerId
     );
   }
 
-  private async makeCerebrasRequest(providerId: string, prompt: string): Promise<string> {
+  private async makeCerebrasRequest(providerId: string, prompt: string): Promise<ProviderResult> {
     const cerebrasKey = process.env.CEREBRAS_API_KEY || process.env.VITE_CEREBRAS_API_KEY;
     if (!cerebrasKey) throw new Error("Cerebras API key not configured");
 
@@ -506,11 +594,14 @@ class MultiProviderAIService {
       "https://api.cerebras.ai/v1",
       cerebrasKey,
       model,
-      prompt
+      prompt,
+      {},
+      45_000,
+      providerId
     );
   }
 
-  private async makeDeepSeekRequest(providerId: string, prompt: string): Promise<string> {
+  private async makeDeepSeekRequest(providerId: string, prompt: string): Promise<ProviderResult> {
     const deepseekKey = process.env.DEEPSEEK_API_KEY || process.env.VITE_DEEPSEEK_API_KEY;
     if (!deepseekKey) throw new Error("DeepSeek API key not configured");
 
@@ -525,11 +616,14 @@ class MultiProviderAIService {
       "https://api.deepseek.com",
       deepseekKey,
       model,
-      prompt
+      prompt,
+      {},
+      45_000,
+      providerId
     );
   }
 
-  private async makeOpenRouterRequest(providerId: string, prompt: string): Promise<string> {
+  private async makeOpenRouterRequest(providerId: string, prompt: string): Promise<ProviderResult> {
     const openrouterKey = process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY;
     if (!openrouterKey || openrouterKey === "your_openrouter_api_key") {
       throw new Error("OpenRouter API key not configured");
@@ -558,12 +652,32 @@ class MultiProviderAIService {
         "HTTP-Referer": siteUrl,
         "X-Title": appName,
       },
-      60_000  // OpenRouter free tier can be slower — 60 s timeout
+      60_000,  // OpenRouter free tier can be slower — 60 s timeout
+      providerId
     );
   }
 
-  private async makeMockRequest(_model: string, prompt: string): Promise<string> {
+  private async makeMockRequest(_model: string, prompt: string): Promise<ProviderResult> {
     console.log("🤖 Using Mock AI fallback — all real providers exhausted or unavailable");
+
+    // Detect which call this is serving — module parsing vs question generation —
+    // and return the correct JSON shape for each. Returning the question shape for
+    // a module-parsing call causes parseContentIntoModules to throw "Invalid module
+    // structure returned" and crash course creation entirely instead of degrading.
+    const isModuleParsing = prompt.includes("divide the following content into study modules") ||
+                            prompt.includes("break it into logical study modules");
+
+    if (isModuleParsing) {
+      const contentMatch = prompt.match(/CONTENT:\n([\s\S]*?)\n\nRULES:/);
+      const rawContent = contentMatch ? contentMatch[1].trim() : "Content unavailable — AI providers unreachable.";
+
+      console.warn("⚠️  Mock module structure returned — course will have 1 module with full content.");
+      const text = JSON.stringify([
+        { title: "Full Content (AI Unavailable)", content: rawContent, order: 1 }
+      ], null, 2);
+
+      return { text, usage: { inputTokens: 0, outputTokens: 0 }, providerId: "mock-ai" };
+    }
 
     const questionCountMatch = prompt.match(/Generate exactly (\d+) high-quality/);
     const questionCount = questionCountMatch ? parseInt(questionCountMatch[1]) : 5;
@@ -590,47 +704,57 @@ class MultiProviderAIService {
       sourceText: "Generated from your content (mock response)",
     }));
 
-    return JSON.stringify({ questions }, null, 2);
+    const text = JSON.stringify({ questions }, null, 2);
+    // Mock is always free — usage is 0 so it never appears in cost totals
+    return { text, usage: { inputTokens: 0, outputTokens: 0 }, providerId: "mock-ai" };
   }
 
   // ── Provider dispatch ────────────────────────────────────────────────────
 
-  private async makeProviderRequest(providerId: string, prompt: string): Promise<string> {
+  private async makeProviderRequest(providerId: string, prompt: string): Promise<ProviderResult> {
     const provider = this.providers.get(providerId);
     if (!provider) throw new Error(`Provider ${providerId} not found`);
 
     provider.requestCount++;
 
     try {
-      let response: string;
+      let result: ProviderResult;
 
       if (providerId.startsWith("gemini-")) {
-        response = await this.makeGeminiRequest(providerId, prompt);
+        result = await this.makeGeminiRequest(providerId, prompt);
       } else if (providerId.startsWith("groq-")) {
-        response = await this.makeGroqRequest(providerId, prompt);
+        result = await this.makeGroqRequest(providerId, prompt);
       } else if (providerId.startsWith("cerebras-")) {
-        response = await this.makeCerebrasRequest(providerId, prompt);
+        result = await this.makeCerebrasRequest(providerId, prompt);
       } else if (providerId.startsWith("deepseek-")) {
-        response = await this.makeDeepSeekRequest(providerId, prompt);
+        result = await this.makeDeepSeekRequest(providerId, prompt);
       } else if (providerId.startsWith("or-")) {
-        response = await this.makeOpenRouterRequest(providerId, prompt);
+        result = await this.makeOpenRouterRequest(providerId, prompt);
       } else if (providerId === "mock-ai") {
-        response = await this.makeMockRequest(providerId, prompt);
+        result = await this.makeMockRequest(providerId, prompt);
       } else {
         throw new Error(`Unhandled provider type: ${providerId}`);
       }
 
       console.log(`✅ Request successful via ${provider.name}`);
-      return response;
+      return result;
     } catch (error) {
       console.error(`❌ ${provider.name} failed: ${error instanceof Error ? error.message : error}`);
 
       if (error instanceof Error) {
         const msg = error.message;
 
+        // 413 = payload too large for this provider's free-tier TPM limit.
+        // This is NOT a billing issue — it's a per-request size problem.
+        // Short cooldown (2 min) since Groq's TPM budget resets per minute.
+        if (msg.includes("413") || msg.toLowerCase().includes("request too large") || msg.toLowerCase().includes("tokens per minute")) {
+          provider.available = false;
+          provider.cooldownUntil = Date.now() + 2 * 60_000;
+          console.log(`📦 ${provider.name} payload too large (TPM exceeded) — 2 min cooldown. Consider chunking content.`);
+
         // 402 = billing/balance issue — NOT an auth failure; don't permanently disable,
         // use a long cooldown in case balance is topped up later in the session.
-        if (msg.includes("402") || msg.toLowerCase().includes("insufficient balance")) {
+        } else if (msg.includes("402") || msg.toLowerCase().includes("insufficient balance")) {
           provider.available = false;
           provider.cooldownUntil = Date.now() + 3_600_000; // 1-hour cooldown, not permanent
           console.log(`💰 ${provider.name} insufficient balance — 1 h cooldown (top up your account)`);
@@ -639,17 +763,14 @@ class MultiProviderAIService {
         // 401 from Gemini/Groq can be a transient token issue — add 5 min cooldown instead
         } else if (msg.includes("401") || msg.includes("Unauthorized") || msg.includes("User not found")) {
           if (msg.includes("User not found") || msg.includes("user not found")) {
-            // OpenRouter-specific: "User not found" = bad key, disable for session
             provider.available = false;
             console.log(`🔐 ${provider.name} auth failed (bad key) — disabled for session`);
           } else {
-            // Generic 401 — may be transient; try again in 5 min
             provider.available = false;
             provider.cooldownUntil = Date.now() + 5 * 60_000;
             console.log(`🔐 ${provider.name} auth issue — 5 min cooldown`);
           }
         } else if (msg.includes("model_not_found") || msg.includes("does not exist") || msg.includes("404")) {
-          // Wrong model name — permanently disable so we don't keep retrying a dead model
           provider.available = false;
           console.log(`🚫 ${provider.name} model not found — disabled for session (check model ID)`);
 
@@ -674,9 +795,51 @@ class MultiProviderAIService {
     }
   }
 
+  // ── Usage tracking ───────────────────────────────────────────────────────
+
+  /**
+   * Fire-and-forget insert into ai_usage_log — the ground-truth record used to
+   * reconcile against the wallet pre-authorization hold taken before generation
+   * started. Never awaited by callers; a failed log write must not fail the
+   * user-facing AI response.
+   */
+  private recordUsage(record: {
+    userId?: string;
+    courseId?: string;
+    callType: "module_parsing" | "question_generation" | "test_insights";
+    providerId: string;
+    usage: TokenUsage;
+  }) {
+    if (!record.userId) return; // no user context (e.g. internal/system call) — nothing to bill
+
+    const costUsd = calculateCostUSD(record.providerId, record.usage);
+
+    supabase
+      .from("ai_usage_log")
+      .insert({
+        user_id: record.userId,
+        course_id: record.courseId ?? null,
+        call_type: record.callType,
+        provider_id: record.providerId,
+        input_tokens: record.usage.inputTokens,
+        output_tokens: record.usage.outputTokens,
+        cost_usd: costUsd,
+      })
+      .then(({ error }) => {
+        if (error) console.error("⚠️  Failed to log AI usage (non-fatal):", error.message);
+      });
+  }
+
   // ── Failover orchestration ───────────────────────────────────────────────
 
-  private async executeWithFailover(prompt: string, _options?: GenerateQuestionsOptions): Promise<string> {
+  private async executeWithFailover(
+    prompt: string,
+    usageContext?: {
+      userId?: string;
+      courseId?: string;
+      callType: "module_parsing" | "question_generation" | "test_insights";
+    }
+  ): Promise<string> {
     const attemptedProviders = new Set<string>();
     let lastError: Error | null = null;
     const maxAttempts = 6;
@@ -714,7 +877,21 @@ class MultiProviderAIService {
 
       try {
         console.log(`🔄 [Attempt ${attempt + 1}/${maxAttempts}] Trying ${provider.name}`);
-        return await this.makeProviderRequest(providerId, prompt);
+        const result = await this.makeProviderRequest(providerId, prompt);
+
+        // Log actual usage as soon as we have a successful response — this is the
+        // ground truth used to reconcile the wallet's pre-authorization hold.
+        if (usageContext) {
+          this.recordUsage({
+            userId: usageContext.userId,
+            courseId: usageContext.courseId,
+            callType: usageContext.callType,
+            providerId: result.providerId,
+            usage: result.usage,
+          });
+        }
+
+        return result.text;
       } catch (error) {
         lastError = error as Error;
         console.warn(`❌ ${provider.name} failed: ${lastError.message}`);
@@ -739,7 +916,11 @@ class MultiProviderAIService {
     const prompt = this.buildPrompt(options);
 
     try {
-      const response = await this.executeWithFailover(prompt, options);
+      const response = await this.executeWithFailover(prompt, {
+        userId: options.userId,
+        courseId: options.courseId,
+        callType: "question_generation",
+      });
       const parsed = this.parseAIResponse(response);
       this.validateQuestionsResponse(parsed);
       const result = this.processGeneratedQuestions(parsed, options);
@@ -747,8 +928,8 @@ class MultiProviderAIService {
       return result;
     } catch (error) {
       console.error("Critical AI failure — falling back to Mock AI:", error);
-      const response = await this.makeMockRequest("mock-ai", prompt);
-      return this.processGeneratedQuestions(this.parseAIResponse(response), options);
+      const mockResult = await this.makeMockRequest("mock-ai", prompt);
+      return this.processGeneratedQuestions(this.parseAIResponse(mockResult.text), options);
     }
   }
 
@@ -962,6 +1143,8 @@ Generate ${questionCount} questions now:`;
     correctAnswers: Record<string, string>;
     testTitle: string;
     sourceContent: string;
+    userId?: string;
+    courseId?: string;
   }): Promise<{
     overallPerformance: string;
     strengths: string[];
@@ -1019,7 +1202,11 @@ Rules for conceptExplanations:
 - example must be concrete, not abstract ("e.g. a car engine converts chemical energy in petrol to kinetic energy" not "e.g. energy conversion in everyday life")`;
 
     try {
-      const response = await this.executeWithFailover(prompt);
+      const response = await this.executeWithFailover(prompt, {
+        userId: testResult.userId,
+        courseId: testResult.courseId,
+        callType: "test_insights",
+      });
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
@@ -1074,6 +1261,7 @@ Rules for conceptExplanations:
     courseId: string;
     detectedHeadings?: Array<{ text: string; level: number; position: number }>;
     headingDetectionMethod?: 'html' | 'markdown' | 'heuristic' | 'none';
+    userId?: string;
   }): Promise<Array<{
     course_id: string;
     title: string;
@@ -1151,7 +1339,11 @@ RULES:
 ]`;
 
     try {
-      const response = await this.executeWithFailover(prompt);
+      const response = await this.executeWithFailover(prompt, {
+        userId: options.userId,
+        courseId: options.courseId,
+        callType: "module_parsing",
+      });
       const parsed = this.parseAIResponse(response);
 
       if (!Array.isArray(parsed) || parsed.length === 0) {
