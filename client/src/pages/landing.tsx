@@ -212,7 +212,7 @@ export default function Landing() {
                 <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
                   <iframe
                     className="absolute top-0 left-0 w-full h-full rounded-2xl"
-                    src="https://www.youtube.com/embed/YOUR_VIDEO_ID_HERE"
+                    src="https://www.youtube.com/embed/xNf9ORPiePc"
                     title="StudyWise AI Tutorial - Transform Your Notes Into Tests"
                     frameBorder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
