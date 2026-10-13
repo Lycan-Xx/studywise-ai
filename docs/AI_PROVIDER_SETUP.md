@@ -46,10 +46,10 @@ Check logs for:
 
 ### ✅ Preserved (Your Existing Keys)
 ```dotenv
-✅ GEMINI_API_KEY=***REMOVED***...
-✅ OPENROUTER_API_KEY=sk-or-v1-***REMOVED***...
-✅ DEEPSEEK_API_KEY=sk-***REMOVED***...
-✅ SUPABASE_URL=https://***REMOVED***...
+✅ GEMINI_API_KEY=your_gemini_api_key
+✅ OPENROUTER_API_KEY=your_openrouter_api_key
+✅ DEEPSEEK_API_KEY=your_deepseek_api_key
+✅ SUPABASE_URL=your_supabase_project_url
 ✅ GOOGLE_OAUTH_CLIENT_ID/SECRET
 ```
 

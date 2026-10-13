@@ -103,7 +103,9 @@ class MultiProviderAIService {
   private initializeProviders() {
     // ── 1. Google Gemini (AI Studio free tier) ──────────────────────────────
     // gemini-2.0-flash was shut down June 1 2026 — using 2.5 Flash now.
-    const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    // NOTE (security): server-side key only. Never read VITE_GEMINI_API_KEY here —
+    // Vite inlines VITE_* vars into the client bundle, exposing the key publicly.
+    const geminiKey = process.env.GEMINI_API_KEY;
     if (geminiKey) {
       this.geminiAI = new GoogleGenerativeAI(geminiKey);
 
@@ -138,7 +140,8 @@ class MultiProviderAIService {
 
     // ── 2. Groq (LPU inference — ultra fast, fully OpenAI-compatible) ───────
     // Free tier: no credit card. Rate limits are per-organisation.
-    const groqKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY;
+    // NOTE (security): server-side key only — VITE_* vars leak into the client bundle.
+    const groqKey = process.env.GROQ_API_KEY;
     if (groqKey && groqKey !== "your_groq_api_key") {
       // Llama 3.1 8B — 14,400 RPD free; best for high-volume, fast tasks
       this.providers.set("groq-llama-3.1-8b", {
@@ -187,7 +190,8 @@ class MultiProviderAIService {
     // ── 3. Cerebras (wafer-scale WSE — fastest inference on the planet) ─────
     // Free tier: 1M tokens/day, 30 RPM, no credit card.
     // Sign up at cloud.cerebras.ai — takes < 5 min.
-    const cerebrasKey = process.env.CEREBRAS_API_KEY || process.env.VITE_CEREBRAS_API_KEY;
+    // NOTE (security): server-side key only — VITE_* vars leak into the client bundle.
+    const cerebrasKey = process.env.CEREBRAS_API_KEY;
     if (cerebrasKey && cerebrasKey !== "your_cerebras_api_key") {
       this.providers.set("cerebras-llama-3.3-70b", {
         name: "Llama 3.3 70B (Cerebras Free, 2300 tok/s)",
@@ -210,7 +214,8 @@ class MultiProviderAIService {
     // deepseek-chat alias maps to deepseek-v4-flash until 2026-07-24, then deprecated.
     // Using explicit deepseek-v4-flash now to avoid breakage.
     // 1M context window, $0.14/M input tokens.
-    const deepseekKey = process.env.DEEPSEEK_API_KEY || process.env.VITE_DEEPSEEK_API_KEY;
+    // NOTE (security): server-side key only — VITE_* vars leak into the client bundle.
+    const deepseekKey = process.env.DEEPSEEK_API_KEY;
     if (deepseekKey && deepseekKey !== "your_deepseek_api_key") {
       this.providers.set("deepseek-v4-flash", {
         name: "DeepSeek V4 Flash (1M ctx, your key)",
@@ -230,7 +235,8 @@ class MultiProviderAIService {
     // ── 5. OpenRouter free tier (28+ free models via :free suffix) ──────────
     // 20 RPM / 200 RPD without credits; $10 one-time credit → 1,000 RPD permanently.
     // Free models include heavy hitters: Llama 4 Scout 10M ctx, DeepSeek R1, Qwen3 235B.
-    const openrouterKey = process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY;
+    // NOTE (security): server-side key only — VITE_* vars leak into the client bundle.
+    const openrouterKey = process.env.OPENROUTER_API_KEY;
     if (openrouterKey && openrouterKey !== "your_openrouter_api_key") {
       // Llama 4 Scout — 10M context, ideal for very long documents (15-20 pages = ~30K-50K tokens)
       this.providers.set("or-llama-4-scout", {
@@ -302,7 +308,27 @@ class MultiProviderAIService {
       console.log("ℹ️ OPENROUTER_API_KEY not set — OpenRouter free models disabled");
     }
 
-    // ── 6. Mock AI fallback (always available, zero quality — last resort) ───
+    // ── 6. Anthropic Claude (your paid key — premium frontier model) ─────────
+    // NOTE (security): server-side key only — VITE_* vars leak into the client bundle.
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    if (anthropicKey && anthropicKey !== "your_anthropic_api_key") {
+      this.providers.set("claude-3-opus", {
+        name: "Claude 3 Opus (Anthropic Paid)",
+        available: true,
+        requestCount: 0,
+        lastReset: Date.now(),
+        maxRequests: 50,      // Anthropic default RPM
+        resetInterval: 60 * 1000,
+        priority: 1,          // High priority paid model
+        costPerToken: 0.015 / 1000, // $15 / 1M tokens ($0.015/1K tokens)
+        maxTokens: 200_000,   // Claude 3 Opus context window
+      });
+      console.log("✅ Claude 3 Opus initialized (200K context, paid key)");
+    } else {
+      console.log("ℹ️ ANTHROPIC_API_KEY not set — Anthropic Claude disabled");
+    }
+
+    // ── 7. Mock AI fallback (always available, zero quality — last resort) ───
     this.providers.set("mock-ai", {
       name: "Mock AI (Fallback — no real AI)",
       available: true,
@@ -319,11 +345,11 @@ class MultiProviderAIService {
     console.log(`🤖 Multi-provider AI service ready — ${activeRealProviders} real providers + 1 mock fallback`);
 
     // Warn loudly at startup if critical keys are clearly wrong — saves a lot of debugging
-    const orKey = process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY || "";
+    const orKey = process.env.OPENROUTER_API_KEY || "";
     if (orKey && orKey !== "your_openrouter_api_key" && !orKey.startsWith("sk-or-")) {
       console.warn("⚠️  OPENROUTER_API_KEY looks wrong — OpenRouter keys start with 'sk-or-'. All OpenRouter providers will 401.");
     }
-    const dsKey = process.env.DEEPSEEK_API_KEY || process.env.VITE_DEEPSEEK_API_KEY || "";
+    const dsKey = process.env.DEEPSEEK_API_KEY || "";
     if (dsKey && dsKey !== "your_deepseek_api_key" && !dsKey.startsWith("sk-")) {
       console.warn("⚠️  DEEPSEEK_API_KEY looks wrong — DeepSeek keys start with 'sk-'. Provider may fail.");
     }
@@ -379,7 +405,8 @@ class MultiProviderAIService {
   // ── Request helpers ──────────────────────────────────────────────────────
 
   private async makeGeminiRequest(model: string, prompt: string): Promise<string> {
-    const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    // NOTE (security): server-side key only — VITE_* vars leak into the client bundle.
+    const geminiKey = process.env.GEMINI_API_KEY;
     if (!geminiKey) throw new Error("Gemini API key not configured");
 
     // Map internal provider IDs to actual Gemini model names
@@ -473,7 +500,7 @@ class MultiProviderAIService {
   }
 
   private async makeGroqRequest(providerId: string, prompt: string): Promise<string> {
-    const groqKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY;
+    const groqKey = process.env.GROQ_API_KEY;
     if (!groqKey) throw new Error("Groq API key not configured");
 
     const modelMap: Record<string, string> = {
@@ -493,7 +520,7 @@ class MultiProviderAIService {
   }
 
   private async makeCerebrasRequest(providerId: string, prompt: string): Promise<string> {
-    const cerebrasKey = process.env.CEREBRAS_API_KEY || process.env.VITE_CEREBRAS_API_KEY;
+    const cerebrasKey = process.env.CEREBRAS_API_KEY;
     if (!cerebrasKey) throw new Error("Cerebras API key not configured");
 
     const modelMap: Record<string, string> = {
@@ -511,7 +538,7 @@ class MultiProviderAIService {
   }
 
   private async makeDeepSeekRequest(providerId: string, prompt: string): Promise<string> {
-    const deepseekKey = process.env.DEEPSEEK_API_KEY || process.env.VITE_DEEPSEEK_API_KEY;
+    const deepseekKey = process.env.DEEPSEEK_API_KEY;
     if (!deepseekKey) throw new Error("DeepSeek API key not configured");
 
     const modelMap: Record<string, string> = {
@@ -530,7 +557,8 @@ class MultiProviderAIService {
   }
 
   private async makeOpenRouterRequest(providerId: string, prompt: string): Promise<string> {
-    const openrouterKey = process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY;
+    // NOTE (security): server-side key only — VITE_* vars leak into the client bundle.
+    const openrouterKey = process.env.OPENROUTER_API_KEY;
     if (!openrouterKey || openrouterKey === "your_openrouter_api_key") {
       throw new Error("OpenRouter API key not configured");
     }
@@ -560,6 +588,56 @@ class MultiProviderAIService {
       },
       60_000  // OpenRouter free tier can be slower — 60 s timeout
     );
+  }
+
+  private async makeAnthropicRequest(providerId: string, prompt: string): Promise<string> {
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    if (!anthropicKey) throw new Error("Anthropic API key not configured");
+
+    const modelMap: Record<string, string> = {
+      "claude-3-opus": "claude-3-opus-20240229",
+      "claude-3-5-sonnet": "claude-3-5-sonnet-20241022",
+    };
+    const model = modelMap[providerId] ?? "claude-3-opus-20240229";
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60_000); // 60s timeout
+
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": anthropicKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 4000,
+          temperature: 0.3,
+        }),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const err = await response.text().catch(() => response.statusText);
+        throw new Error(`Anthropic API error ${response.status}: ${err}`);
+      }
+
+      const data = await response.json();
+      const text = data?.content?.[0]?.text;
+      if (!text) throw new Error("Invalid response format from Anthropic API");
+
+      clearTimeout(timeoutId);
+      return text;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error("Request timeout: Anthropic API did not respond within 60s");
+      }
+      throw error;
+    }
   }
 
   private async makeMockRequest(_model: string, prompt: string): Promise<string> {
@@ -614,6 +692,8 @@ class MultiProviderAIService {
         response = await this.makeDeepSeekRequest(providerId, prompt);
       } else if (providerId.startsWith("or-")) {
         response = await this.makeOpenRouterRequest(providerId, prompt);
+      } else if (providerId.startsWith("claude-")) {
+        response = await this.makeAnthropicRequest(providerId, prompt);
       } else if (providerId === "mock-ai") {
         response = await this.makeMockRequest(providerId, prompt);
       } else {
