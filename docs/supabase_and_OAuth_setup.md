@@ -54,9 +54,7 @@
    Express default is 5000 in `server/index.ts:10`):
    - `http://localhost:8080` (Vite dev server)
    - `http://localhost:5000` (Express API, if you ever serve the client from it)
-   - `https://<YOUR-SITE>.netlify.app` — ⚠️ placeholder: I could not find your
-     real Netlify site name anywhere in the repo. Get it from your Netlify
-     dashboard (Site settings > General > Site details) and substitute it here.
+   - `https://studywiseai.netlify.app` (production frontend)
    - NOTE: with the Supabase Auth flow (section 4.4 below) Google never talks to
      your backend directly — origins are only needed if you keep a direct
      Google Identity Services button. Do NOT add secrets here.
@@ -81,17 +79,16 @@ Store in Replit environment:
 ## 5. Supabase Site URL Configuration
 
 ### 5.1 Allowed URLs (Supabase Dashboard > Authentication > URL Configuration)
-- **Site URL:** your production frontend origin
-  (⚠️ placeholder: repo has no deployed domain committed — use
-  `http://localhost:8080` for dev, your real Netlify URL in prod)
+- **Site URL:** `https://studywiseai.netlify.app` in production
+  (`http://localhost:8080` for local dev)
 - **Redirect URLs (allowlist):** Supabase rejects any `redirectTo` not listed here.
   Your code sends exactly two shapes (`client/src/contexts/AuthContext.tsx:100,116`),
   built as `${window.location.origin}/auth?...`, so add both, for each origin
   you run on (`/auth` route confirmed in `client/src/App.tsx:31`):
   - `http://localhost:8080/auth?mode=signup&step=2&oauth=true`
   - `http://localhost:8080/auth?mode=reset&type=recovery`
-  - `https://<YOUR-SITE>.netlify.app/auth?mode=signup&step=2&oauth=true`
-  - `https://<YOUR-SITE>.netlify.app/auth?mode=reset&type=recovery`
+  - `https://studywiseai.netlify.app/auth?mode=signup&step=2&oauth=true`
+  - `https://studywiseai.netlify.app/auth?mode=reset&type=recovery`
 - Ensure callback URLs are correctly configured
 
 ## 6. Supabase Storage (Optional)
