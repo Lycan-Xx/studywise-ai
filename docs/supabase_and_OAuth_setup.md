@@ -49,19 +49,26 @@
 1. Go to: APIs & Services > Credentials
 2. Click "Create Credentials" > "OAuth client ID"
 3. Application Type: Web application
-4. **Authorised JavaScript origins** — add one line per origin your app runs on:
-   - `http://localhost:8080` (Vite dev server — see `config/vite.config.ts`)
+4. **Authorised JavaScript origins** — add one line per origin your app runs on
+   (verified in-repo: Vite dev port is 8080 in `config/vite.config.ts:32`,
+   Express default is 5000 in `server/index.ts:10`):
+   - `http://localhost:8080` (Vite dev server)
    - `http://localhost:5000` (Express API, if you ever serve the client from it)
-   - `https://<your-netlify-site>.netlify.app` (production frontend)
+   - `https://<YOUR-SITE>.netlify.app` — ⚠️ placeholder: I could not find your
+     real Netlify site name anywhere in the repo. Get it from your Netlify
+     dashboard (Site settings > General > Site details) and substitute it here.
    - NOTE: with the Supabase Auth flow (section 4.4 below) Google never talks to
      your backend directly — origins are only needed if you keep a direct
      Google Identity Services button. Do NOT add secrets here.
 5. **Authorised redirect URIs:**
    - Google login in this app goes through **Supabase Auth**
-     (`supabase.auth.signInWithOAuth({ provider: 'google' })`), so the URI Google
+     (`supabase.auth.signInWithOAuth({ provider: 'google' })` in
+     `client/src/contexts/AuthContext.tsx:113`), so the URI Google
      redirects to is Supabase's callback, NOT your app:
-     `https://<your-project-ref>.supabase.co/auth/v1/callback`
-     (find your exact ref in Supabase Dashboard > Project Settings > General)
+     `https://<YOUR-PROJECT-REF>.supabase.co/auth/v1/callback`
+     (⚠️ placeholder — find your exact ref in Supabase Dashboard >
+     Project Settings > General. It is the subdomain of your
+     `VITE_SUPABASE_URL`.)
    - For local Supabase CLI development only, also add:
      `http://localhost:54321/auth/v1/callback`
    - The old Replit-style `/oauth2callback` URI below is obsolete — do not use it.
@@ -75,13 +82,16 @@ Store in Replit environment:
 
 ### 5.1 Allowed URLs (Supabase Dashboard > Authentication > URL Configuration)
 - **Site URL:** your production frontend origin
-  (e.g. `https://<your-netlify-site>.netlify.app`; use `http://localhost:8080` for dev)
-- **Redirect URLs (allowlist):** add every URL your app passes as `redirectTo`
-  in `AuthContext.tsx` — Supabase rejects anything not listed here:
+  (⚠️ placeholder: repo has no deployed domain committed — use
+  `http://localhost:8080` for dev, your real Netlify URL in prod)
+- **Redirect URLs (allowlist):** Supabase rejects any `redirectTo` not listed here.
+  Your code sends exactly two shapes (`client/src/contexts/AuthContext.tsx:100,116`),
+  built as `${window.location.origin}/auth?...`, so add both, for each origin
+  you run on (`/auth` route confirmed in `client/src/App.tsx:31`):
   - `http://localhost:8080/auth?mode=signup&step=2&oauth=true`
   - `http://localhost:8080/auth?mode=reset&type=recovery`
-  - `https://<your-netlify-site>.netlify.app/auth?mode=signup&step=2&oauth=true`
-  - `https://<your-netlify-site>.netlify.app/auth?mode=reset&type=recovery`
+  - `https://<YOUR-SITE>.netlify.app/auth?mode=signup&step=2&oauth=true`
+  - `https://<YOUR-SITE>.netlify.app/auth?mode=reset&type=recovery`
 - Ensure callback URLs are correctly configured
 
 ## 6. Supabase Storage (Optional)
