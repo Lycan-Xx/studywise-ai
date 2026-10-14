@@ -49,9 +49,22 @@
 1. Go to: APIs & Services > Credentials
 2. Click "Create Credentials" > "OAuth client ID"
 3. Application Type: Web application
-4. Redirect URIs:
-   - `http://<your-replit-url>/oauth2callback`
-   - Replace `<your-replit-url>` with actual Replit URL
+4. **Authorised JavaScript origins** — add one line per origin your app runs on:
+   - `http://localhost:8080` (Vite dev server — see `config/vite.config.ts`)
+   - `http://localhost:5000` (Express API, if you ever serve the client from it)
+   - `https://<your-netlify-site>.netlify.app` (production frontend)
+   - NOTE: with the Supabase Auth flow (section 4.4 below) Google never talks to
+     your backend directly — origins are only needed if you keep a direct
+     Google Identity Services button. Do NOT add secrets here.
+5. **Authorised redirect URIs:**
+   - Google login in this app goes through **Supabase Auth**
+     (`supabase.auth.signInWithOAuth({ provider: 'google' })`), so the URI Google
+     redirects to is Supabase's callback, NOT your app:
+     `https://<your-project-ref>.supabase.co/auth/v1/callback`
+     (find your exact ref in Supabase Dashboard > Project Settings > General)
+   - For local Supabase CLI development only, also add:
+     `http://localhost:54321/auth/v1/callback`
+   - The old Replit-style `/oauth2callback` URI below is obsolete — do not use it.
 
 ### 4.4 Environment Variable Setup
 Store in Replit environment:
@@ -60,8 +73,15 @@ Store in Replit environment:
 
 ## 5. Supabase Site URL Configuration
 
-### 5.1 Allowed URLs
-- Add primary authorization link to site URL configuration
+### 5.1 Allowed URLs (Supabase Dashboard > Authentication > URL Configuration)
+- **Site URL:** your production frontend origin
+  (e.g. `https://<your-netlify-site>.netlify.app`; use `http://localhost:8080` for dev)
+- **Redirect URLs (allowlist):** add every URL your app passes as `redirectTo`
+  in `AuthContext.tsx` — Supabase rejects anything not listed here:
+  - `http://localhost:8080/auth?mode=signup&step=2&oauth=true`
+  - `http://localhost:8080/auth?mode=reset&type=recovery`
+  - `https://<your-netlify-site>.netlify.app/auth?mode=signup&step=2&oauth=true`
+  - `https://<your-netlify-site>.netlify.app/auth?mode=reset&type=recovery`
 - Ensure callback URLs are correctly configured
 
 ## 6. Supabase Storage (Optional)
@@ -72,8 +92,9 @@ Store in Replit environment:
 ## 7. Security Recommendations
 
 ### 7.1 Callback URL Whitelist
-- Whitelist Supabase callback URL in Google Console
-- Verify redirect URI matches exactly
+- Whitelist the Supabase callback URL (section 4.3) in Google Console
+- Whitelist your app's `/auth` URLs in Supabase (section 5.1)
+- Verify redirect URI matches exactly (scheme, host, port, and path all matter)
 
 ### 7.2 Environment Security
 - Never commit `.env.local` to version control

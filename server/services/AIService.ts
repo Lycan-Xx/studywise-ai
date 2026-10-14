@@ -83,7 +83,10 @@ interface AIProvider {
 //    NOTE: :free roster rotates — check openrouter.ai/models?order=top-weekly&supported_parameters=tools
 //
 // PAID (your account — lowest cost per token):
-//  DeepSeek (api.deepseek.com — OpenAI-compatible)
+//  DeepSeek via OpenRouter (openrouter.ai — billed to your credits)
+//    deepseek/deepseek-v4.1-flash  1.05M context  $0.0441/M in  $0.675/M out  PRIORITY ✅
+//    NOTE: no :free suffix on paid entries — :free forces the capped free tier.
+//  DeepSeek direct (api.deepseek.com — OpenAI-compatible)
 //    deepseek-v4-flash     1 M context  $0.14/M in  $0.28/M out  YOUR KEY ✅
 //    NOTE: legacy aliases deepseek-chat / deepseek-reasoner deprecated 2026-07-24.
 //           Update to deepseek-v4-flash before then.
@@ -109,7 +112,9 @@ class MultiProviderAIService {
     if (geminiKey) {
       this.geminiAI = new GoogleGenerativeAI(geminiKey);
 
-      // Primary: Gemini 2.5 Flash — 1M context, best balance, 1,500 RPD free
+      // Gemini 2.5 Flash — 1M context, 1,500 RPD free.
+      // Role: dedicated IMAGE OCR provider (see extractTextFromImage) + text fallback.
+      // Text priority is intentionally 2 — DeepSeek V4.1 Flash (OpenRouter paid) is priority 1.
       this.providers.set("gemini-2.5-flash", {
         name: "Gemini 2.5 Flash (Google AI Studio)",
         available: true,
@@ -117,7 +122,7 @@ class MultiProviderAIService {
         lastReset: Date.now(),
         maxRequests: 10,      // 10 RPM on free tier (conservative)
         resetInterval: 60 * 1000,
-        priority: 1,
+        priority: 2,
         costPerToken: 0,
         maxTokens: 1_000_000,
       });
@@ -210,10 +215,10 @@ class MultiProviderAIService {
       console.log("ℹ️ CEREBRAS_API_KEY not set — Cerebras disabled (free, sign up at cloud.cerebras.ai)");
     }
 
-    // ── 4. DeepSeek (your paid key — best value frontier model) ─────────────
+    // ── 4. DeepSeek direct (your paid key — best value frontier model) ─────
     // deepseek-chat alias maps to deepseek-v4-flash until 2026-07-24, then deprecated.
     // Using explicit deepseek-v4-flash now to avoid breakage.
-    // 1M context window, $0.14/M input tokens.
+    // 1M context window, $0.14/M input tokens ($0.28/M output).
     // NOTE (security): server-side key only — VITE_* vars leak into the client bundle.
     const deepseekKey = process.env.DEEPSEEK_API_KEY;
     if (deepseekKey && deepseekKey !== "your_deepseek_api_key") {
@@ -224,20 +229,38 @@ class MultiProviderAIService {
         lastReset: Date.now(),
         maxRequests: 60,
         resetInterval: 60 * 1000,
-        priority: 2,
-        costPerToken: 0.00014,   // $0.14/M input tokens
+        priority: 2,                // text fallback behind OpenRouter DeepSeek V4.1 (priority 1)
+        costPerToken: 0.00014,   // ≈ $0.14/M input tokens (see directory note for full pricing)
         maxTokens: 1_000_000,
       });
 
       console.log("✅ DeepSeek V4 Flash initialized (1M context, paid key)");
     }
 
-    // ── 5. OpenRouter free tier (28+ free models via :free suffix) ──────────
-    // 20 RPM / 200 RPD without credits; $10 one-time credit → 1,000 RPD permanently.
+    // ── 5. OpenRouter (paid priority provider + free-tier fallbacks) ────────
+    // Paid entries bill your OpenRouter credits (no :free suffix, no 50 RPD cap).
+    // :free entries stay zero-cost (20 RPM / 200 RPD without credits).
     // Free models include heavy hitters: Llama 4 Scout 10M ctx, DeepSeek R1, Qwen3 235B.
     // NOTE (security): server-side key only — VITE_* vars leak into the client bundle.
     const openrouterKey = process.env.OPENROUTER_API_KEY;
     if (openrouterKey && openrouterKey !== "your_openrouter_api_key") {
+      // ── PRIORITY TEXT PROVIDER: DeepSeek V4.1 Flash (OpenRouter paid) ──
+      // $0.0441/M input, $0.675/M output, 1.05M context (checked Oct 2026).
+      // Cheapest current-gen model on OpenRouter that reliably holds strict JSON
+      // schemas for course + test generation and grading. First choice for all
+      // text generation; Gemini stays as fallback + dedicated OCR path.
+      this.providers.set("or-deepseek-v41-flash", {
+        name: "DeepSeek V4.1 Flash (OpenRouter Paid)",
+        available: true,
+        requestCount: 0,
+        lastReset: Date.now(),
+        maxRequests: 60,        // paid tier is credit-limited, not RPD-capped
+        resetInterval: 60 * 1000,
+        priority: 1,            // first choice for all text generation
+        costPerToken: 0.675 / 1_000_000, // $/token, output-weighted (generation is output-heavy)
+        maxTokens: 1_048_576,   // 1.05M context — full docs in a single call
+      });
+
       // Llama 4 Scout — 10M context, ideal for very long documents (15-20 pages = ~30K-50K tokens)
       this.providers.set("or-llama-4-scout", {
         name: "Llama 4 Scout 10M ctx (OpenRouter :free)",
@@ -303,7 +326,7 @@ class MultiProviderAIService {
         maxTokens: 128_000,
       });
 
-      console.log("✅ OpenRouter initialized: 5 free models (Llama 4 Scout 10M + DeepSeek R1 + Qwen3 235B + GPT-OSS 120B + Llama 3.3 70B)");
+      console.log("✅ OpenRouter initialized: DeepSeek V4.1 Flash (paid, priority) + 5 free models (Llama 4 Scout 10M + DeepSeek R1 + Qwen3 235B + GPT-OSS 120B + Llama 3.3 70B)");
     } else {
       console.log("ℹ️ OPENROUTER_API_KEY not set — OpenRouter free models disabled");
     }
@@ -453,6 +476,66 @@ class MultiProviderAIService {
     }
   }
 
+  /**
+   * IMAGE OCR — dedicated path for scanned pages / photos of text.
+   * Always uses Gemini 2.5 Flash (multimodal, free tier) regardless of which
+   * provider is priority 1 for text. Text-only models (DeepSeek, Llama, …)
+   * cannot accept image input, so OCR must never go through the failover chain.
+   *
+   * @param imageBase64 raw base64 image data (no data: prefix)
+   * @param mimeType e.g. "image/png" | "image/jpeg" | "image/webp"
+   * @returns extracted plain text, verbatim (no summarising)
+   */
+  async extractTextFromImage(imageBase64: string, mimeType: string): Promise<string> {
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (!geminiKey) throw new Error("Gemini API key not configured (required for image OCR)");
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60_000);
+
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: "Transcribe all visible text in this image verbatim. Preserve line breaks and reading order. Output plain text only — no commentary, no markdown, no summaries.",
+                  },
+                  { inline_data: { mime_type: mimeType, data: imageBase64 } },
+                ],
+              },
+            ],
+            generationConfig: { temperature: 0 },
+          }),
+          signal: controller.signal,
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.text().catch(() => response.statusText);
+        throw new Error(`Gemini OCR error ${response.status}: ${err}`);
+      }
+
+      const data = await response.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) throw new Error("Invalid OCR response format from Gemini API");
+
+      clearTimeout(timeoutId);
+      return text;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error("Request timeout: Gemini OCR did not respond within 60 s");
+      }
+      throw error;
+    }
+  }
+
   /** Generic OpenAI-compatible request — used by Groq, Cerebras, DeepSeek, OpenRouter */
   private async makeOpenAICompatibleRequest(
     baseUrl: string,
@@ -563,8 +646,9 @@ class MultiProviderAIService {
       throw new Error("OpenRouter API key not configured");
     }
 
-    // Always append :free to get free-tier routing (vs paid passthrough same model ID)
+    // :free suffix = free-tier routing. Paid entries (no suffix) bill your credits.
     const modelMap: Record<string, string> = {
+      "or-deepseek-v41-flash": "deepseek/deepseek-v4.1-flash", // paid — priority text provider
       "or-llama-4-scout": "meta-llama/llama-4-scout:free",
       "or-deepseek-r1": "deepseek/deepseek-r1:free",
       "or-qwen3-235b": "qwen/qwen3-235b-a22b:free",
